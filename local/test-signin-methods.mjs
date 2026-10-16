@@ -104,3 +104,61 @@ test('tokens are session-only unless the user chooses "Remember on this computer
   await s.setPat(ORIGIN, T, { remember: false });
   assert.equal(await s.isPatRemembered(ORIGIN), false, 'saving without remember drops an earlier remembered copy');
 });
+
+/* ------------------------------------------------------------------ connect with my login */
+import vm from 'node:vm';
+const storeMod = load('background/store.js');
+const dataService = load('background/data-service.js');
+const helperClient = load('background/helper-client.js');
+
+async function sessionConnectEnv(reply) {
+  globalThis.DCC = {};
+  const map = { 'core/validate.js': 'validate', 'core/ids.js': 'ids', 'errors.js': 'errors', 'databricks/pricing.js': 'pricing', 'databricks/warehouses.js': 'warehouses', 'background/registration.js': 'registration', 'background/oauth.js': 'oauth' };
+  for (const [f, ns] of Object.entries(map)) globalThis.DCC[ns] = load(f);
+  vm.runInThisContext(readFileSync(new URL('../extension/src/background/connect-handlers.js', import.meta.url), 'utf8'));
+  const registered = new Map();
+  const injected = [];
+  const sent = [];
+  const chrome = {
+    storage: { session: fakeArea() },
+    identity: { getRedirectURL: () => 'https://x.chromiumapp.org/' },
+    permissions: { contains: async () => true, getAll: async () => ({ origins: [ORIGIN + '/*'] }) },
+    scripting: {
+      getRegisteredContentScripts: async ({ ids }) => ids.filter((i) => registered.has(i)).map((i) => registered.get(i)),
+      registerContentScripts: async (d) => d.forEach((x) => registered.set(x.id, x)),
+      updateContentScripts: async (d) => d.forEach((x) => registered.set(x.id, x)),
+      unregisterContentScripts: async () => {},
+      executeScript: async (o) => injected.push(o.target.tabId),
+    },
+    tabs: { query: async () => [{ id: 9, active: true, status: 'complete' }], sendMessage: async (id, msg) => (sent.push(msg), typeof reply === 'function' ? reply(msg) : reply) },
+  };
+  const store = storeMod.create(fakeArea());
+  await store.migrate();
+  const data = dataService.create({ store, secrets: secretsMod.create(fakeArea()), helper: helperClient.create({ fetch: async () => { throw new Error('no'); }, getBridge: async () => null }), sessionTransport: transportMod.create({ chromeApi: chrome }), fetch: async () => { throw new Error('direct fetch must not be used in browser-login mode'); } });
+  const handlers = globalThis.DCC.handlerFactories.at(-1)({ store, data, chromeApi: chrome, oauth: null });
+  return { handlers, store, sent, injected, registered };
+}
+
+test('connect with my Databricks login: bridge injected first, warehouses via the tab, ID from header, saved as session', async () => {
+  const env = await sessionConnectEnv({ ok: true, status: 200, orgId: '1234567890', text: JSON.stringify({ warehouses: [{ id: 'a1b2c3d4e5f60001', name: 'Starter', state: 'RUNNING', cluster_size: 'Small' }] }) });
+  const out = await env.handlers['connect:oneClick'].handle({ url: ORIGIN + '/jobs', method: 'session' });
+  assert.deepEqual([out.connected, out.method, out.workspaceId, out.warehouseName], [true, 'session', '1234567890', 'Starter']);
+  assert.ok(env.injected.includes(9), 'bridge injected into the open tab before the first request');
+  assert.equal(env.sent[0].path, '/api/2.0/sql/warehouses');
+  const conn = await env.store.getConnection(ORIGIN);
+  assert.equal(conn.authMode, 'session');
+  assert.equal(conn.workspaceId, '1234567890');
+});
+
+test('connect with my Databricks login reports a refusing workspace instead of claiming success', async () => {
+  const env = await sessionConnectEnv({ ok: true, status: 401, text: '<html>login</html>' });
+  await assert.rejects(env.handlers['connect:oneClick'].handle({ url: ORIGIN + '/jobs', method: 'session' }), (e) => e.dcc.code === 'SESSION_REJECTED');
+  assert.equal(await env.store.getConnection(ORIGIN), null, 'nothing saved');
+});
+
+test('no method and no client ID asks the user to choose instead of failing', async () => {
+  const env = await sessionConnectEnv({});
+  const out = await env.handlers['connect:oneClick'].handle({ url: ORIGIN + '/jobs' });
+  assert.equal(out.needsChoice, true);
+  assert.equal(env.sent.length, 0);
+});
