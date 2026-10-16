@@ -161,13 +161,12 @@
           btn.textContent = 'Review connection';
         } else {
           box.appendChild(h('p', { class: 'pp-line pp-line--ok' }, 'Connected · workspace ' + conn.workspaceId));
-          btn.textContent = 'Edit connection';
+          btn.textContent = conn.authMode === 'oauth' ? 'Reconnect' : 'Edit connection';
         }
       } else {
         box.appendChild(h('p', { class: 'pp-line' }, tab.conflict ? 'Not connected. This URL has conflicting workspace IDs; you will choose one.' : 'Not connected yet.'));
         btn.textContent = 'Connect this workspace';
       }
-      if (tab.granted === false) box.appendChild(h('p', { class: 'pp-line pp-line--warn' }, 'Site access is not granted yet; you can allow it on the next page.'));
     } else {
       const reason = tab && UNSUPPORTED_TAB[tab.reason];
       box.appendChild(h('p', { class: 'pp-line' }, reason || 'Open a Databricks workspace tab to connect it from here, or set one up in Connection preferences.'));
@@ -176,10 +175,113 @@
     }
   }
 
-  async function onConnect() {
+  /* ---------------------------------------------------------------- one-click connect */
+
+  const CLIENT_ID_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{5,127}$/;
+
+  function setTabLine(kind, text) {
+    const box = $('tab-status');
+    box.querySelectorAll('[data-connect-line]').forEach((n) => n.remove());
+    if (text) box.appendChild(h('p', { class: 'pp-line' + (kind ? ' pp-line--' + kind : ''), 'data-connect-line': '' }, text));
+  }
+
+  async function showSetup(redirectUrl) {
+    const panel = $('oauth-setup');
+    panel.hidden = false;
+    let url = redirectUrl;
+    if (!url) {
+      const r = await send({ type: 'connect:redirectUrl' });
+      url = r.ok && r.data ? r.data.redirectUrl : '';
+    }
+    $('oauth-redirect').textContent = url || '';
+    const saved = state && state.settings && state.settings.oauth && state.settings.oauth.clientId;
+    if (saved && !$('oauth-client-id').value) $('oauth-client-id').value = saved;
+    $('oauth-client-id').focus();
+  }
+
+  /**
+   * Site access must be requested synchronously inside the click (user gesture), before any
+   * other await; everything after it runs in the background service worker.
+   */
+  function requestAccessThen(next) {
+    const pending = tab.granted === true ? Promise.resolve(true) : chromeApi.permissions.request({ origins: [tab.origin + '/*'] });
+    pending
+      .then((granted) => {
+        if (!granted) {
+          showAlert({ code: 'PERMISSION_NOT_GRANTED', title: 'Site access was not allowed', steps: ['Click Connect again and choose Allow. Access covers only ' + tab.host + '.'] });
+          return;
+        }
+        tab.granted = true;
+        return next();
+      })
+      .catch((e) => showAlert(backgroundError(e && e.message)));
+  }
+
+  async function oneClick(clientId) {
     const btn = $('connect-btn');
     btn.disabled = true;
+    $('oauth-save-connect').disabled = true;
     showAlert(null);
+    setTabLine(null, 'Signing in with Databricks… finish in the window that opens.');
+    const msg = { type: 'connect:oneClick', url: tab.url };
+    if (clientId) msg.clientId = clientId;
+    const r = await send(msg);
+    btn.disabled = false;
+    $('oauth-save-connect').disabled = false;
+    if (!r.ok) {
+      setTabLine(null, '');
+      showAlert(r.error);
+      if (r.error && /^OAUTH_CLIENT_/.test(r.error.code)) showSetup();
+      return;
+    }
+    if (r.data && r.data.needsClientId) {
+      setTabLine(null, '');
+      showSetup(r.data.redirectUrl);
+      return;
+    }
+    $('oauth-setup').hidden = true;
+    const fresh = await send({ type: 'page:state' });
+    if (fresh.ok && fresh.data) state = fresh.data;
+    renderSettings();
+    renderTab();
+    setTabLine('ok', 'Connected · workspace ' + r.data.workspaceId + (r.data.warehouseName ? ' · ' + r.data.warehouseName : '') + '. Costs now show on the page.');
+  }
+
+  function onConnect() {
+    showAlert(null);
+    const conn = tab && tab.supported ? connections()[tab.origin] : null;
+    const mismatch = conn && tab.workspaceId && tab.workspaceId !== conn.workspaceId;
+    // One click on real workspaces; the local fixture and edits use Connection preferences.
+    if (tab && tab.supported && tab.kind === 'workspace' && !mismatch && (!conn || conn.authMode === 'oauth')) {
+      requestAccessThen(() => oneClick());
+      return;
+    }
+    openOptionsForConnect();
+  }
+
+  function onSaveAndConnect() {
+    const value = $('oauth-client-id').value.trim();
+    if (!CLIENT_ID_RE.test(value)) {
+      showAlert({ code: 'OAUTH_CLIENT_MISSING', title: 'Enter the client ID from App connections', steps: ['It is shown after you add the connection in the account console.'] });
+      return;
+    }
+    if (!tab || !tab.supported || tab.kind !== 'workspace') return;
+    requestAccessThen(() => oneClick(value));
+  }
+
+  async function onCopyRedirect() {
+    const text = $('oauth-redirect').textContent;
+    try {
+      await root.navigator.clipboard.writeText(text);
+      $('oauth-copy').textContent = 'Copied';
+    } catch (_) {
+      $('oauth-copy').textContent = 'Select and copy';
+    }
+  }
+
+  async function openOptionsForConnect() {
+    const btn = $('connect-btn');
+    btn.disabled = true;
     if (tab && tab.supported) {
       const r = await send({ type: 'page:setPendingConnect', url: tab.url });
       if (!r.ok) {
@@ -195,6 +297,15 @@
       return;
     }
     closePopup();
+  }
+
+  /** The popup may have closed while the sign-in window was open; show how it ended. */
+  async function showRecentConnectOutcome() {
+    const r = await send({ type: 'connect:status' });
+    const st = r.ok && r.data;
+    if (!st || !tab || !tab.supported || Date.now() - st.at > 3 * 60 * 1000) return;
+    if (st.state === 'signing-in' || st.state === 'configuring') setTabLine(null, 'Finishing sign-in…');
+    else if (st.state === 'error' && st.error) showAlert(st.error);
   }
 
   /* ---------------------------------------------------------------- settings */
@@ -348,6 +459,9 @@
 
   function wire() {
     $('connect-btn').addEventListener('click', onConnect);
+    $('oauth-save-connect').addEventListener('click', onSaveAndConnect);
+    $('oauth-copy').addEventListener('click', onCopyRedirect);
+    $('oauth-guide').addEventListener('click', () => openPage('guide', 'sign-in'));
     $('open-options').addEventListener('click', () => openPage('options'));
     $('guide-link').addEventListener('click', () => openPage('guide'));
     for (const input of doc.querySelectorAll('input[name="mode"]')) {
@@ -389,6 +503,7 @@
     renderSettings();
     renderTab();
     renderDiagnostics();
+    await showRecentConnectOutcome();
   }
 
   const ready = init().catch((e) => showAlert(backgroundError(e && e.message)));

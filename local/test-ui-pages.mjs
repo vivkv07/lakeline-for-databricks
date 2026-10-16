@@ -311,18 +311,67 @@ test('popup: a failed settings update reverts the control and shows the error', 
   env.close();
 });
 
-test('popup: "Connect this workspace" hands the active tab URL to options', async () => {
-  const sw = popupWorker();
+test('popup: "Connect this workspace" is one click: site access in the gesture, then sign-in in the background', async () => {
+  const sw = popupWorker({
+    hooks: {
+      'connect:oneClick': async () => ok({ connected: true, origin: A, workspaceId: '42', warehouseName: 'Starter', injected: 1 }),
+      'connect:status': async () => ok(null),
+    },
+  });
   const env = openPage('popup', { onMessage: sw.fn, tabs: [{ id: 7, url: A + '/jobs/12?o=42' }] });
   await env.window.DCC.popupPage.ready;
   assert.equal(env.$('connect-btn').textContent, 'Connect this workspace');
   assert.match(env.text('tab-status'), /dbc-aaa\.cloud\.databricks\.com/);
-  assert.match(env.text('tab-status'), /Site access is not granted yet/);
+  env.$('connect-btn').click();
+  await settle();
+  // Permission is the first thing the click does, for exactly this origin.
+  assert.equal(env.events[0].kind === 'permission' || env.events.find((e) => e.kind === 'permission') !== undefined, true);
+  assert.deepEqual(env.perms.requests, [{ origins: [A + '/*'] }]);
+  const firstPermIdx = env.events.findIndex((e) => e.kind === 'permission');
+  const connectIdx = env.events.findIndex((e) => e.kind === 'message' && e.msg.type === 'connect:oneClick');
+  assert.ok(firstPermIdx !== -1 && connectIdx > firstPermIdx, 'site access requested before sign-in');
+  assert.deepEqual(env.messages.find((m) => m.type === 'connect:oneClick'), { type: 'connect:oneClick', url: A + '/jobs/12?o=42' });
+  assert.match(env.text('tab-status'), /Connected · workspace 42 · Starter/);
+  assert.equal(env.messages.some((m) => m.type === 'page:open'), false, 'no detour through options');
+  env.close();
+});
+
+test('popup: first connect shows the one-time client ID setup with the redirect URL, then connects', async () => {
+  let calls = 0;
+  const sw = popupWorker({
+    hooks: {
+      'connect:oneClick': async (msg) => (++calls === 1 ? ok({ needsClientId: true, redirectUrl: 'https://testextensionid.chromiumapp.org/' }) : ok({ connected: true, origin: A, workspaceId: '42', warehouseName: null })),
+      'connect:status': async () => ok(null),
+    },
+  });
+  const env = openPage('popup', { onMessage: sw.fn, tabs: [{ id: 7, url: A + '/jobs?o=42' }], granted: [A + '/*'] });
+  await env.window.DCC.popupPage.ready;
+  env.$('connect-btn').click();
+  await settle();
+  assert.equal(env.$('oauth-setup').hidden, false);
+  assert.equal(env.$('oauth-redirect').textContent, 'https://testextensionid.chromiumapp.org/');
+  env.$('oauth-client-id').value = 'bad';
+  env.$('oauth-save-connect').click();
+  await settle();
+  assert.match(env.text('page-alert'), /client ID/);
+  env.$('oauth-client-id').value = 'cost-companion-client-0001';
+  env.$('oauth-save-connect').click();
+  await settle();
+  assert.deepEqual(env.messages.filter((m) => m.type === 'connect:oneClick').at(-1), { type: 'connect:oneClick', url: A + '/jobs?o=42', clientId: 'cost-companion-client-0001' });
+  assert.equal(env.$('oauth-setup').hidden, true);
+  assert.deepEqual(env.perms.requests, [], 'already-granted access is not requested again');
+  env.close();
+});
+
+test('popup: the local test workspace still hands off to Connection preferences (token sign-in)', async () => {
+  const sw = popupWorker();
+  const env = openPage('popup', { onMessage: sw.fn, tabs: [{ id: 7, url: 'http://127.0.0.1:8765/jobs?o=1234567890' }] });
+  await env.window.DCC.popupPage.ready;
   env.$('connect-btn').click();
   await settle();
   const order = env.messages.filter((m) => m.type === 'page:setPendingConnect' || m.type === 'page:open');
   assert.deepEqual(order, [
-    { type: 'page:setPendingConnect', url: A + '/jobs/12?o=42' },
+    { type: 'page:setPendingConnect', url: 'http://127.0.0.1:8765/jobs?o=1234567890' },
     { type: 'page:open', page: 'options', anchor: 'connect' },
   ]);
   assert.equal(env.closed, true);

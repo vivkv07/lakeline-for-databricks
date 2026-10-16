@@ -47,6 +47,7 @@
       <li><a href="#cache">Caching and Refresh</a></li>
       <li><a href="#states">Missing data and status labels</a></li>
       <li><a href="#permissions">Permissions and privacy</a></li>
+      <li><a href="#sign-in">Sign in with Databricks</a></li>
       <li><a href="#helper">Local helper troubleshooting</a></li>
       <li><a href="#colors">Workspace colors</a></li>
       <li><a href="#monitor">Monitor widget</a></li>
@@ -648,6 +649,21 @@ AND (price.price_end_time IS NULL OR usage.usage_end_time &lt; price.price_end_t
 </section>
 
 <!-- ================================================================== helper -->
+<section id="sign-in" aria-labelledby="sign-in-title">
+  <h2 id="sign-in-title">Sign in with Databricks</h2>
+  <p>The recommended way to connect. On a workspace tab, open the extension and click <strong>Connect this workspace</strong>. Chrome asks to allow access to that one workspace, a Databricks sign-in window opens (it closes by itself when you are already signed in), and the extension picks a SQL warehouse and list prices automatically. Costs then show on the page.</p>
+  <p>It uses Databricks OAuth (authorization code with PKCE) against the workspace's own <code>/oidc/v1/authorize</code> and <code>/oidc/v1/token</code> endpoints. Cost queries ask only for the <code>sql</code> scope. The run monitor asks separately, once, for <code>all-apis</code> to read job, pipeline and compute status. Tokens stay in browser session storage, refresh automatically, and are cleared when the browser closes; the next Connect reuses your Databricks login.</p>
+  <h3 id="sign-in-setup">One-time setup by an account admin</h3>
+  <ol>
+    <li>Open the account console, then Settings, App connections, Add connection.</li>
+    <li>Name it, for example Cost Companion. Add the redirect URL shown in the extension popup (it ends in <code>.chromiumapp.org/</code> and is the same for everyone using this extension build).</li>
+    <li>Choose the SQL and All APIs scopes. Leave client secret generation off; the extension is a public client.</li>
+    <li>Copy the client ID and paste it in the popup once. New connections can take about 30 minutes to become active.</li>
+  </ol>
+  <p>Admins who prefer the CLI can create the same public connection with <code>databricks account custom-app-integration create --json '{"name":"Cost Companion","redirect_urls":["&lt;redirect URL from the popup&gt;"],"scopes":["sql","all-apis","offline_access"]}'</code> (no <code>--confidential</code> flag). The client ID is account-wide, so one registration covers every workspace in the account.</p>
+  <p>Other options remain under Connection preferences: a personal access token, or the local helper below.</p>
+</section>
+
 <section id="helper" aria-labelledby="helper-title">
   <h2 id="helper-title">Local helper troubleshooting</h2>
   <p>The local helper is a small Node program that listens only on <code>127.0.0.1:8766</code> and is never reachable from your network. It signs in with the Databricks CLI's browser OAuth and runs the same named cost queries as the extension, built from the same files. The CLI keeps its OAuth credentials in its own store. The helper holds only a short-lived access token in memory, sends it only to the selected workspace, and writes nothing to disk. These tokens never enter the extension. If you'd rather not run a helper, use a personal access token instead (below).</p>
