@@ -92,3 +92,36 @@ Then they ask Genie, switching workspaces and agents. The run monitor catches a 
   - The source is `video/composer/` (index.html + scenes + render.mjs), committed.
   - It renders on a virtual clock (performance.now and requestAnimationFrame replaced; every frame exact) at 1920×1080 CSS with deviceScaleFactor 2 → 3840×2160.
   - Frames are piped as high-quality JPEG to ffmpeg; no PNGs on disk.
+
+## Pacing v2 (owner feedback: zoom moves felt off and the cut was too fast to follow)
+
+This section supersedes the times in the timeline table above. Scene content is unchanged. Target length 2:34 (154 s plus a tail to about 156 s). All marks fall on 2 s bar lines at 120 BPM.
+
+| # | Scene | Time (s) | Beats |
+|---|---|---|---|
+| 1 | Hook | 0–6 | |
+| 2 | Reveal | 6–12 | Drop at 6 |
+| 3 | One-click connect | 12–22 | |
+| 4 | Cost banner | 22–34 | 7d / 30d / 90d, about 3.5 s each |
+| 5 | Run costs | 34–48 | Runs list with spike 34–41; job total with pipelines 41–48 |
+| 6 | Queries and sizing | 48–60 | Query estimate 48–54; size picker 54–60 |
+| 7 | Cost Explorer | 60–74 | Products 60–65; Top drivers 65–69; Calendar spike 69–74 |
+| 8 | Theme flip | 74–80 | |
+| 9 | Ask Genie | 80–116 | Ask 80–86; video tab 86–92; answer waiting 92–99; paste into doc 99–106; switch agent 106–111; switch workspace 111–116 |
+| 10 | Run monitor | 116–126 | |
+| 11 | Workspace colors | 126–140 | Same-looking tabs 126–130; pick colors 130–135; switch tabs 135–140 |
+| 12 | Security and privacy | 140–150 | |
+| 13 | CTA | 150–154 | Tail to about 156, fading out |
+
+Camera and comprehension rules:
+- Open each product scene on the full window for at least 1.5 s.
+- At most one camera move per beat. Each move takes 1.2–1.8 s, eased in and out (cubic), with no overshoot.
+- Hold at least 2.5 s after every move before the next.
+- Maximum zoom 1.8×.
+- Never zoom out and back in within 3 s, and never pan and zoom at the same time to an unrelated area.
+- Pull back over at least 1.2 s before a cut, or cut on the full window.
+- No camera motion while a caption is entering.
+- Captions stay on screen at least 3 s.
+- Multi-step scenes (4, 5, 7, 9, 11) show a small step label in the caption pill, e.g. "1 Ask · 2 Keep working · 3 Answer ready · 4 Paste into doc", with the current step highlighted.
+- The cursor moves over at least 0.6 s with deceleration. Each click shows its ripple, then a 0.5 s pause before the UI state changes.
+- Crossfades between states of the same page take 0.4–0.6 s; tab switches take 0.3 s.
