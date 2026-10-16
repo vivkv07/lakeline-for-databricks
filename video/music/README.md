@@ -32,7 +32,7 @@ Needs Node 20+ and ffmpeg with `loudnorm`, `ebur128` and `libmp3lame`. It uses
 
 ## Files
 
-- `compose.mjs`: the arrangement and the entry point. It holds the section plan (`PLAN`), the chord chart, the motif, the counter-melody, and the drum, bass and arp patterns. It also defines the mix (sends, sidechain, filter automation) and the JS master bus. Every part is written relative to its section's first bar. To follow a storyboard change, edit `PLAN` and the cue times; every section must start and end on a bar line (2 s at 120 BPM).
+- `compose.mjs`: the arrangement and the entry point. It holds the section plan (`PLAN`), the chord chart, the motif, the counter-melody, and the drum, bass and arp patterns. It also defines the mix (sends, sidechain, filter automation) and the JS master bus. Every part is written relative to its section's first bar. To follow a storyboard change, edit `PLAN`, `LIFT_CUE` and `CUES`; every section must start and end on a bar line (2 s at 120 BPM).
 - `synth.mjs`: the DSP, written from scratch.
   - Oscillators: polyBLEP saw, pulse and triangle (band-limited), and sine.
   - Envelopes and filters: closed-form ADSR, a trapezoidal state-variable filter (stable under modulation) and RBJ biquads.
@@ -56,14 +56,14 @@ Needs Node 20+ and ffmpeg with `loudnorm`, `ebur128` and `libmp3lame`. It uses
 |---|---|---|---|
 | 0-6 | 0-2 | intro | Filtered pad (Bm9, Gmaj9, Asus), a hint of the motif through a closed filter with long echoes, and a noise and tone riser. No drums. |
 | 6 | 3 | drop | Impact, then a light groove: kick on 1 and 3, clap on 2 and 4, offbeat hats, bass, and the full motif statement on the bell. |
-| 12-58 | 6-28 | groove | Main groove (kick on 1, 2-and and 3; clap on 2 and 4; hats and shaker; bass in a 3-3-2 rhythm; plucky arp), with a variation every 8 bars. At 12: 8th hats; the shaker enters at 20. At 28: 16th hats, bass octave pops, and the motif returns at 36. At 44: a syncopated arp, an airy upper pad and ghost kicks. Small reverse swells lead into the scene cuts at 20, 30, 40 and 48, and a clap roll leads into the breakdown. |
-| 58-62 | 29-30 | breakdown | Drums out, pad filter closes and reopens, the motif inverted (the "theme flip"), an arp build and a riser. |
-| 62-86 | 31-42 | lift | Unhurried four-on-the-floor groove with open hats, offbeat bass and a long-note counter-melody. At 75 (doc paste) there is a small lift: a rising bell flourish, 16th hat ghosts, the air pad and brighter pads. |
-| 86-94 | 43-46 | dark | Bm9, Gmaj9, Em9, F#m7; darker filter and lower arp; no shaker. |
-| 94-104 | 47-51 | bright | Playful: bouncy octave-jumping arp, rim ticks, motif in full, brighter pads. Drums stop before 104. |
-| 104-112 | 52-55 | calm | Pads and a soft motif answer, a quiet sustained bass, no drums. |
-| 112-116 | 56-57 | resolve | Final Dmaj9 swell with a soft impact and a callback to the opening of the motif. |
-| 116-118.5 | | tail | Reverb tail; fades to digital silence by about 118.3 s. |
+| 12-74 | 6-36 | groove | Relaxed, spacious main groove that changes every 8 bars. At 12: kick on 1 and 3, offbeat hats, long bass notes and a sparse arp. At 28: 8th hats, a soft shaker, and the motif returns at 36. At 44: kick adds the 2-and, bass moves in a 3-3-2 rhythm, and the airy upper pad comes in. At 60: a syncopated arp and the motif again, quieter. Soft reverse swells lead into the scene cuts at 22, 34, 48 and 54, and a clap roll leads into the breakdown. |
+| 74-80 | 37-39 | breakdown | Drums out, the pad filter closes and sweeps open, the motif inverted (the "theme flip"), an arp build and a riser. |
+| 80-116 | 40-57 | lift | Unhurried four-on-the-floor groove with open hats, offbeat bass and a long-note counter-melody. Faint swells mark 86, 92 and 106. At 99 (doc paste) a small lift: a rising bell flourish, 16th hat ghosts, the air pad and brighter pads. |
+| 116-126 | 58-62 | dark | Bm9, Gmaj9, Em9, F#m7, A; darker filter, lower arp, no shaker. |
+| 126-140 | 63-69 | bright | Playful: bouncy octave-jumping arp, rim ticks, the motif in full, brighter pads. Drums stop before 140. |
+| 140-150 | 70-74 | calm | Pads and a soft motif answer, a quiet sustained bass, no drums. |
+| 150-154 | 75-76 | resolve | Final Dmaj9 swell with a soft impact and a callback to the opening of the motif. |
+| 154-156.5 | | tail | Reverb tail, faded to digital silence by about 156.3 s. |
 
 The sidechain pumping comes from the kick schedule: pads duck by about 30 %, bass by about 50 %, and the arp and air pad slightly.
 
@@ -85,7 +85,7 @@ The sidechain pumping comes from the kick schedule: pads duck by about 30 %, bas
 The composer muxes whatever WAV is at `dist/video/music/lakeline-theme.wav`.
 
 1. Use a track whose licence covers this use (commercial video, online distribution).
-2. Edit or arrange it so its hits land on the marks in `markers.json`: the drop at 6.0 s, the breakdown at 58, the lift at 62, the calm at 104 and the resolve at 112.
+2. Edit or arrange it so its hits land on the marks in `markers.json`: the drop at 6.0 s, the breakdown at 74, the lift at 80, the calm at 140 and the resolve at 150.
 3. Master it into place: `node video/music/master.mjs path/to/licensed.wav`. This writes the -14 LUFS / -1 dBTP master and the preview. Or place a 48 kHz, 24-bit stereo WAV there directly.
 4. Optionally run `node video/music/check.mjs`. Its section-energy plan is written for this score, so a different track may "fail" those rows without being wrong.
 

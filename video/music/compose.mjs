@@ -35,22 +35,28 @@ const SEED = 20261015;
 const PLAN = [
   { id: 'intro', start: 0, end: 6, scene: '1 Hook', plan: 'Filtered pad, motif hint, riser into the drop. No drums.' },
   { id: 'drop', start: 6, end: 12, scene: '2 Reveal', plan: 'Drop at 6.0: light groove (kick on 1 and 3), full motif statement.' },
-  { id: 'groove', start: 12, end: 58, scene: '3-7 Product tour', plan: 'Main groove; variation every 8 bars (12, 28, 44).' },
-  { id: 'breakdown', start: 58, end: 62, scene: '8 Theme flip', plan: 'Drums out, motif inverted, filter sweep and riser.' },
-  { id: 'lift', start: 62, end: 86, scene: '9 Ask Genie', plan: 'Lifted, unhurried groove with the counter-melody; small lift at 75 (doc paste).' },
-  { id: 'dark', start: 86, end: 94, scene: '10 Run monitor', plan: 'Groove continues, darker chords and filter.' },
-  { id: 'bright', start: 94, end: 104, scene: '11 Workspace colors', plan: 'Brighter, playful variation: bouncy arp, rim ticks, motif returns.' },
-  { id: 'calm', start: 104, end: 112, scene: '12 Security and privacy', plan: 'Pads and soft motif, no drums.' },
-  { id: 'resolve', start: 112, end: 116, scene: '13 CTA', plan: 'Final chord swell with a callback to the motif.' },
+  { id: 'groove', start: 12, end: 74, scene: '3-7 Product tour', plan: 'Relaxed, spacious main groove; variation every 8 bars (12, 28, 44, 60).' },
+  { id: 'breakdown', start: 74, end: 80, scene: '8 Theme flip', plan: 'Drums out, motif inverted, filter sweep and riser.' },
+  { id: 'lift', start: 80, end: 116, scene: '9 Ask Genie', plan: 'Lifted, unhurried groove with the counter-melody; small lift at 99 (doc paste).' },
+  { id: 'dark', start: 116, end: 126, scene: '10 Run monitor', plan: 'Groove continues, darker chords and filter.' },
+  { id: 'bright', start: 126, end: 140, scene: '11 Workspace colors', plan: 'Brighter, playful variation: bouncy arp, rim ticks, motif returns.' },
+  { id: 'calm', start: 140, end: 150, scene: '12 Security and privacy', plan: 'Pads and soft motif, no drums.' },
+  { id: 'resolve', start: 150, end: 154, scene: '13 CTA', plan: 'Final chord swell with a callback to the motif.' },
 ];
 const MUSIC_END = PLAN[PLAN.length - 1].end;
 const LENGTH = MUSIC_END + 2.5; // reverb tail fades to silence by ~MUSIC_END + 2.3 s
 export const SECTIONS = [...PLAN, { id: 'tail', start: MUSIC_END, end: LENGTH, scene: 'Tail', plan: 'Reverb tail fading to silence.' }];
 
 /** The "small lift" inside the Genie section (doc paste). */
-const LIFT_CUE = 75;
-/** Scene cuts inside sections, for the composer's reference. */
-const CUES = [12, 20, 30, 40, 48, 67, 71, 75, 79, 82, 97, 100];
+const LIFT_CUE = 99;
+/** Scene and beat marks inside sections (notes/VIDEO.md, Pacing v2). Bar-aligned ones get a soft swell. */
+const CUES = [
+  [12, 'Connect'], [22, 'Cost banner'], [34, 'Run costs: runs list'], [41, 'Run costs: job total'],
+  [48, 'Queries: estimate'], [54, 'Queries: size picker'], [60, 'Explorer: products'], [65, 'Explorer: top drivers'],
+  [69, 'Explorer: calendar spike'], [80, 'Genie: ask'], [86, 'Genie: video tab'], [92, 'Genie: answer waiting'],
+  [99, 'Genie: paste into doc (small lift)'], [106, 'Genie: switch agent'], [111, 'Genie: switch workspace'],
+  [126, 'Colors: same-looking tabs'], [130, 'Colors: pick colors'], [135, 'Colors: switch tabs'],
+].map(([time, label]) => ({ time, label }));
 
 const SEC = Object.fromEntries(PLAN.map((s) => [s.id, { ...s, bar0: s.start / BAR, bars: (s.end - s.start) / BAR }]));
 for (const s of PLAN) {
@@ -101,11 +107,11 @@ const CHART = [];
   fill('intro', fromEnd(['Bm', 'G', 'Asus'])); // vi IV Vsus
   fill('drop', (i, n) => (i === n - 1 ? halves('G', 'A') : whole(['D', 'Bm'][i % 2])));
   fill('groove', (i) => whole(CYCLE[i % 4]));
-  fill('breakdown', (i, n) => (i === n - 1 ? halves('Asus', 'A') : whole('Em'))); // ii V
-  fill('lift', (i) => whole(CYCLE[i % 4]));
-  fill('dark', (i) => whole(['Bm', 'G', 'Em', 'Fsm'][i % 4])); // vi IV ii iii
+  fill('breakdown', (i, n) => (i === n - 1 ? halves('Asus', 'A') : whole(['Em', 'G'][i % 2]))); // ii IV V
+  fill('lift', (i, n) => (i === n - 1 ? halves('Asus', 'A') : whole(i === n - 2 ? 'Em' : CYCLE[i % 4])));
+  fill('dark', (i) => whole(['Bm', 'G', 'Em', 'Fsm', 'A'][i % 5])); // vi IV ii iii V
   fill('bright', (i, n) => whole(i === n - 1 ? 'D' : CYCLE[i % 4]));
-  fill('calm', fromEnd(['G', 'Em', 'Asus', 'A']));
+  fill('calm', fromEnd(['G', 'Bm', 'Em', 'Asus', 'A']));
   fill('resolve', (i, n) => (i === 0 ? [['Dfin', 0, 16 * n]] : []));
 }
 
@@ -153,48 +159,62 @@ const BELL = [
   ...place(B0('drop', 1), THEME[1], 0.9),
   ...place(B0('drop', 2), [[0, 3, 'B4'], [3, 3, 'D5'], [6, 2, 'F#5'], [8, 4, 'E5'], [12, 4, 'C#5']], 0.9),
   ...place(B0('groove', 0), [[0, 8, 'D5']], 0.75),
-  // Main groove, second phrase (its last four bars): the motif returns, softer.
+  // Main groove: the motif returns softly in the second phrase and again,
+  // quieter, at the start of the fourth (bars 12-15 and 24-27 of the groove).
   ...THEME.flatMap((ph, k) => place(B0('groove', 12 + k), ph, 0.6 - 0.015 * k)),
-  // Breakdown, "theme flip": the opening gesture inverted over Em9.
+  ...THEME.flatMap((ph, k) => place(B0('groove', 24 + k), ph, 0.5 - 0.015 * k)),
+  // Breakdown, "theme flip": the opening gesture inverted over Em9, an answer over G.
   ...place(B0('breakdown', 0), [[0, 3, 'F#5'], [3, 3, 'G5'], [6, 4, 'D5'], [12, 2, 'F#5'], [14, 2, 'G5']], 0.6),
-  ...place(B0('breakdown', 1), [[0, 6, 'E5'], [6, 2, 'D5'], [8, 8, 'E5']], 0.5),
-  // Bright section: the motif back in full, then a closing cadence.
+  ...place(B0('breakdown', 1), [[0, 6, 'D5'], [6, 2, 'E5'], [8, 8, 'B4']], 0.5),
+  // Bright section: the motif in full, its first half again, then a closing cadence.
   ...THEME.flatMap((ph, k) => place(B0('bright', k), ph, 0.75 - 0.015 * k)),
-  ...place(B0('bright', 4), [[0, 3, 'F#5'], [3, 3, 'E5'], [6, 6, 'D5']], 0.65),
+  ...place(B0('bright', 4), THEME[0], 0.66),
+  ...place(B0('bright', 5), THEME[1], 0.64),
+  ...place(B0('bright', SEC.bright.bars - 1), [[0, 3, 'F#5'], [3, 3, 'E5'], [6, 6, 'D5']], 0.65),
 ];
 
-// The small lift at LIFT_CUE: a rising Gmaj9 flourish in 16ths.
+// The small lift at LIFT_CUE: a rising flourish in 16ths (chord tones of Bm7 and Gmaj9).
 const FLOURISH = ['D5', 'F#5', 'A5', 'B5', 'D6'].map((n, k) => [LIFT_CUE + k * STEP, k === 4 ? 6 * STEP : STEP, nm(n), 0.5 + 0.06 * k]);
 
 const BELL_SOFT = [
-  // Calm: the motif's answer phrase, slow and soft.
-  ...place(B0('calm', 0), THEME[2], 0.55),
-  ...place(B0('calm', 1), [[0, 6, 'G5'], [6, 4, 'F#5'], [10, 6, 'D5']], 0.5),
-  ...place(B0('calm', 2), [[0, 8, 'E5'], [8, 8, 'B4']], 0.48),
-  ...place(B0('calm', 3), [[0, 6, 'C#5'], [6, 10, 'E5']], 0.5),
+  // Calm: the motif's answer phrase, slow and soft (aligned to the section's end).
+  ...[
+    THEME[2], // G
+    [[0, 3, 'D5'], [3, 3, 'C#5'], [6, 10, 'F#5']], // Bm
+    [[0, 6, 'G5'], [6, 4, 'F#5'], [10, 6, 'D5']], // Em
+    [[0, 8, 'E5'], [8, 8, 'B4']], // Asus
+    [[0, 6, 'C#5'], [6, 10, 'E5']], // A
+  ].slice(-SEC.calm.bars).flatMap((ph, k, all) => place(B0('calm', SEC.calm.bars - all.length + k), ph, 0.55 - 0.015 * k)),
   // Resolve: callback to the opening gesture over the final chord, held to the end.
   ...place(B0('resolve', 0), [[0, 3, 'F#5'], [3, 3, 'E5'], [6, 16 * SEC.resolve.bars - 6, 'A5']], 0.62),
 ];
 
 // Counter-melody for the Genie section: long, airy notes above the groove.
-// One phrase per bar of the lift (12 bars over D Bm G A x3).
+// One phrase per bar of the lift (18 bars: D Bm G A x4, then Em, Asus|A).
 const COUNTER_BARS = [
-  [[4, 4, 'A5'], [8, 8, 'C#6']],
-  [[0, 6, 'D6'], [6, 4, 'C#6'], [10, 6, 'A5']],
-  [[0, 12, 'B5'], [12, 4, 'A5']],
-  [[0, 10, 'E6'], [10, 6, 'C#6']],
-  [[4, 4, 'A5'], [8, 4, 'C#6'], [12, 4, 'E6']],
-  [[0, 10, 'F#6'], [10, 6, 'E6']],
-  [[0, 7, 'D6']], // the flourish answers in the second half of this bar
-  [[4, 12, 'C#6']],
-  [[0, 6, 'F#6'], [6, 4, 'E6'], [10, 6, 'C#6']],
-  [[0, 6, 'D6'], [6, 4, 'E6'], [10, 6, 'F#6']],
-  [[0, 8, 'F#6'], [8, 8, 'D6']],
-  [[0, 8, 'E6'], [8, 8, 'C#6']],
+  [[4, 4, 'A5'], [8, 8, 'C#6']], // D (ask)
+  [[0, 6, 'D6'], [6, 4, 'C#6'], [10, 6, 'A5']], // Bm
+  [[0, 12, 'B5'], [12, 4, 'A5']], // G
+  [[0, 10, 'E6'], [10, 6, 'C#6']], // A (video tab)
+  [[4, 4, 'A5'], [8, 4, 'C#6'], [12, 4, 'E6']], // D
+  [[0, 10, 'F#6'], [10, 6, 'E6']], // Bm
+  [[0, 8, 'D6'], [8, 8, 'B5']], // G (answer waiting)
+  [[0, 12, 'C#6'], [12, 4, 'B5']], // A
+  [[0, 16, 'A5']], // D: a breath
+  [[0, 7, 'B5']], // Bm: the flourish answers in the second half (doc paste)
+  [[4, 12, 'D6']], // G
+  [[0, 6, 'E6'], [6, 4, 'C#6'], [10, 6, 'E6']], // A
+  [[0, 6, 'F#6'], [6, 4, 'E6'], [10, 6, 'C#6']], // D
+  [[0, 6, 'D6'], [6, 4, 'E6'], [10, 6, 'F#6']], // Bm (switch agent)
+  [[0, 8, 'F#6'], [8, 8, 'D6']], // G
+  [[0, 8, 'E6'], [8, 8, 'C#6']], // A (switch workspace)
+  [[0, 8, 'D6'], [8, 8, 'B5']], // Em
+  [[0, 8, 'E6'], [8, 8, 'C#6']], // Asus | A
 ];
 const COUNTER = COUNTER_BARS.slice(0, SEC.lift.bars).flatMap((ph, i) => place(B0('lift', i), ph, 1));
 
 // Arpeggio patterns: [step, chord-tone index, velocity]. Index 6+ = next octave.
+const P0 = [[0, 0, 1], [3, 2, 0.7], [6, 4, 0.8], [8, 1, 0.85], [11, 3, 0.7], [14, 5, 0.75]];
 const P1 = [[0, 0, 1], [2, 2, 0.7], [4, 4, 0.85], [6, 2, 0.7], [8, 1, 0.9], [10, 3, 0.7], [12, 5, 0.85], [14, 3, 0.7]];
 const P2 = [...P1, [7, 3, 0.4], [15, 4, 0.4]];
 const P3 = [[0, 0, 1], [3, 3, 0.8], [6, 5, 0.9], [8, 1, 0.8], [11, 4, 0.8], [14, 2, 0.85], [15, 3, 0.45]];
@@ -207,7 +227,7 @@ const BUILD = Array.from({ length: 16 }, (_, i) => [i, i % 6, 0.35 + (0.65 * i) 
 function arpFor(bar) {
   const { id, i, n } = where(bar);
   switch (id) {
-    case 'groove': return [P1, P2, P3][Math.min(2, Math.floor(i / 8))];
+    case 'groove': return [P0, P1, P2, P3][Math.min(3, Math.floor(i / 8))];
     case 'breakdown': return i === n - 1 ? BUILD : P1;
     case 'lift': return [...P3, ...P4.filter((h) => !P3.includes(h))].filter(([s, , v]) => v > 0.33 || at(bar, s) >= LIFT_CUE);
     case 'dark': return P5;
@@ -227,18 +247,23 @@ function drumSpec(bar) {
     case 'drop':
       return { kick: [0, 8], clap: [4, 12], hats: 'off8' };
     case 'groove': {
+      // Relaxed and spacious: kick on 1 and 3 for the first two phrases, 8th
+      // hats at most, a soft shaker from the second phrase, small fills only.
       const phrase = Math.floor(i / 8);
       const phraseEnd = i % 8 === 7;
-      if (last) return { kick: [0, 6, 8], clap: [4, 12, 13, 14, 15], hats: '16', shaker: true, until: 12 };
+      if (last) return { kick: [0, 6, 8], clap: [4, 12, 13, 14, 15], hats: '8', shaker: true, shakerVel: 0.7, until: 12 };
+      const kick = phrase < 2 ? (phraseEnd ? [0, 8, 11] : [0, 8]) : phraseEnd ? [0, 6, 8, 11] : [0, 6, 8];
       return {
-        kick: phraseEnd ? [0, 6, 8, 11] : phrase === 2 && i % 2 ? [0, 6, 8, 14] : [0, 6, 8],
+        kick,
         clap: phraseEnd ? [4, 12, 15] : [4, 12],
-        hats: phrase === 0 ? '8' : '16',
-        shaker: phrase > 0 || i >= 4,
+        clapVel: phrase === 0 ? 0.85 : 1,
+        hats: phrase === 0 ? 'off8' : '8',
+        shaker: phrase >= 1,
+        shakerVel: 0.7,
       };
     }
     case 'lift':
-      return { kick: last ? [0, 4, 8] : [0, 4, 8, 12], kickVel: 0.82, clap: [4, 12], hats: 'lift', shaker: true };
+      return { kick: last ? [0, 4, 8] : [0, 4, 8, 12], kickVel: 0.76, clap: [4, 12], hats: 'lift', shaker: true, shakerVel: 0.8 };
     case 'dark':
       if (last) return { kick: [0, 6, 8, 10], clap: [4, 12, 14, 15], hats: 'dark8' };
       return { kick: i % 2 ? [0, 6, 8, 14] : [0, 6, 8], clap: [4, 12], hats: 'dark8' };
@@ -281,12 +306,14 @@ function bassFor(bar) {
       return last ? [[0, 8, 0, 0.9], [8, 8, 0, 0.9]] : [[0, 12, 0, 0.9], [12, 4, 0, 0.7]];
     case 'groove': {
       if (last) return [[0, 3, 0, 1], [3, 3, 0, 0.75], [6, 2, 12, 0.6], [8, 8, 0, 0.9]];
-      const pop = i >= 8 ? 12 : 0;
-      const end = i >= 16 ? 7 : 0;
-      return [[0, 3, 0, 1], [3, 3, 0, 0.75], [6, 2, pop, pop ? 0.6 : 0.8], [8, 3, 0, 0.95], [11, 3, 0, 0.75], [14, 2, end, 0.75]];
+      const phrase = Math.floor(i / 8);
+      if (phrase === 0) return [[0, 6, 0, 1], [6, 2, 0, 0.7], [8, 8, 0, 0.9]];
+      if (phrase === 1) return [[0, 3, 0, 1], [3, 3, 0, 0.75], [6, 2, 0, 0.8], [8, 6, 0, 0.95], [14, 2, 0, 0.7]];
+      const end = phrase === 3 ? 7 : 0;
+      return [[0, 3, 0, 1], [3, 3, 0, 0.75], [6, 2, 12, 0.6], [8, 3, 0, 0.95], [11, 3, 0, 0.75], [14, 2, end, 0.75]];
     }
     case 'breakdown':
-      return i === 0 ? [[0, 16, 0, 0.55]] : [];
+      return i < n - 1 ? [[0, 16, 0, i === 0 ? 0.55 : 0.45]] : [];
     case 'lift': {
       const top = at(bar) >= LIFT_CUE && i % 2 === 1 ? 12 : 0;
       return [[2, 2, 0, 1], [6, 2, 0, 0.95], [10, 2, 0, 1], [14, 2, top, 0.9]];
@@ -363,7 +390,7 @@ export function render() {
       }
       d.clap.forEach((s, k) => {
         const roll = k >= 2 && d.clap.length > 3;
-        const vel = roll ? 0.3 + 0.12 * (k - 2) : k >= 2 ? 0.45 : 1;
+        const vel = (roll ? 0.3 + 0.12 * (k - 2) : k >= 2 ? 0.45 : 1) * (d.clapVel ?? 1);
         S.clap(B.clap, at(b, s), { gain: 0.54, vel, tail: roll ? 0.07 : 0.12 }, r);
       });
       for (const [s, vel, open] of hatHits(b, d.hats, d.until ?? 16)) {
@@ -372,7 +399,7 @@ export function render() {
       }
       if (d.shaker) {
         for (let s = 0; s < (d.until ?? 16); s++) {
-          const vel = [0.55, 0.3, 0.8, 0.35][s % 4] * (0.9 + r() * 0.2);
+          const vel = [0.55, 0.3, 0.8, 0.35][s % 4] * (0.9 + r() * 0.2) * (d.shakerVel ?? 1);
           S.shaker(B.hats, at(b, s) + (s % 2 ? 0.012 : 0), { gain: 0.09, vel, pan: 0.35 }, r);
         }
       }
@@ -472,9 +499,15 @@ export function render() {
     S.toneRiser(B.fx, drop - 3, drop - 0.04, { gain: 0.045, m0: nm('A2'), m1: nm('A4'), cut0: 300, cut1: 4000 }, r);
     S.boom(B.fx, drop, { gain: 0.3 }, r);
     fall(drop, 3, 0.11);
-    // Reverse swells into scene cuts and phrase changes.
-    for (const t of [12, 20, 30, 40, 48, 100]) swell(t, 1, 0.055);
-    for (const t of [st('groove') + 16, st('groove') + 32]) swell(t, 2, 0.08, 600, 8000);
+    // Reverse swells into the main-groove phrase changes, into bar-aligned scene
+    // cuts (not section starts, which have their own transitions), and the lift.
+    const phrases = [16, 32, 48].map((d) => st('groove') + d).filter((t) => t < st('breakdown'));
+    for (const t of phrases) swell(t, 2, 0.075, 600, 8000);
+    const starts = new Set(PLAN.map((p) => p.start));
+    for (const { time } of CUES) {
+      if (time % BAR || starts.has(time) || phrases.includes(time)) continue;
+      swell(time, 1, sectionAt(time) === 'lift' ? 0.04 : 0.05);
+    }
     swell(LIFT_CUE, 1.2, 0.07, 900, 8000);
     // Breakdown: drums out with a downlifter, then a riser into the lift.
     const bd = st('breakdown');
@@ -504,8 +537,8 @@ export function render() {
   const g0 = st('groove');
   const padCut = cut([
     [0, 280], [1.5, 420], [st('drop') - 0.3, 1700], [st('drop'), 2300],
-    [g0, 2700], [g0 + 16, 2900], [g0 + 16.01, 3100], [g0 + 32, 3300], [g0 + 32.01, 3700],
-    [st('breakdown') - 0.1, 3700], [st('breakdown'), 600], [st('lift') - 0.1, 5200], [st('lift'), 3900],
+    [g0, 2600], [g0 + 16, 2800], [g0 + 16.01, 3000], [g0 + 32, 3200], [g0 + 32.01, 3500], [g0 + 48, 3600], [g0 + 48.01, 3800],
+    [st('breakdown') - 0.1, 3800], [st('breakdown'), 600], [st('lift') - 0.1, 5200], [st('lift'), 3900],
     [LIFT_CUE, 3900], [LIFT_CUE + 0.5, 4400],
     [st('dark') - 0.1, 4400], [st('dark'), 1900], [st('bright') - 0.1, 1800], [st('bright'), 4000],
     [st('calm') - 0.1, 4000], [st('calm'), 1200], [st('resolve') - 0.1, 1000], [st('resolve'), 1100],
@@ -640,8 +673,11 @@ export function markers() {
     musicEndSeconds: MUSIC_END,
     drop: st('drop'),
     sections: SECTIONS.map((s) => ({ id: s.id, start: s.start, end: s.end, bar: s.start / BAR, scene: s.scene, plan: s.plan })),
-    phrases: [0, 16, 32].map((d) => ({ start: st('groove') + d, bar: (st('groove') + d) / BAR, note: 'main-groove 8-bar variation' })),
-    cues: CUES.map((t) => ({ time: t, bar: Math.floor(t / BAR), beat: (t % BAR) / BEAT + 1, lift: t === LIFT_CUE || undefined })),
+    phrases: [0, 16, 32, 48]
+      .map((d) => st('groove') + d)
+      .filter((t) => t < st('breakdown'))
+      .map((t) => ({ start: t, bar: t / BAR, note: 'main-groove 8-bar variation' })),
+    cues: CUES.map(({ time, label }) => ({ time, label, bar: Math.floor(time / BAR), beat: (time % BAR) / BEAT + 1, lift: time === LIFT_CUE || undefined })),
     files: {
       master: 'dist/video/music/lakeline-theme.wav',
       raw: 'dist/video/music/lakeline-theme-raw.wav',
