@@ -16,7 +16,8 @@
     "storage",
     "activeTab",
     "scripting",
-    "alarms"
+    "alarms",
+    "identity"
   ],
   "optional_permissions": [
     "notifications"

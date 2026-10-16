@@ -1,37 +1,14 @@
 /*
- * "How costs are calculated" guide. Offline: no external fonts, images or scripts.
- * Neutral surfaces, one accent (#0F766E), visible focus, print-friendly.
+ * "How costs are calculated" guide. Builds on ../ui/brand.css (tokens, bundled fonts, light and
+ * dark). Offline: no external fonts, images or scripts. Navy panel header, hairline tables and
+ * callouts, numbered sections, visible focus, print-friendly.
  */
 :root {
-  color-scheme: light;
-  --accent: #0f766e;
-  --accent-strong: #0b5d56;
-  --accent-tint: #e8f4f2;
-  --text: #1f2933;
-  --muted: #52606d;
-  --surface: #ffffff;
-  --surface-alt: #f5f7f9;
-  --border: #d9dee3;
-  --border-strong: #c4ccd4;
-  --warn-bg: #fff8e6;
-  --warn-border: #d4a72c;
-  --warn-text: #5c3d00;
-  --code-bg: #f2f5f7;
-  --radius: 6px;
   --measure: 72ch;
-  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-}
-
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
 }
 
 html {
   scroll-behavior: smooth;
-  -webkit-text-size-adjust: 100%;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -41,10 +18,16 @@ html {
 }
 
 body {
-  margin: 0;
-  font: 16px/1.6 var(--sans);
-  color: var(--text);
-  background: var(--surface);
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+/* brand.css resets block margins for app pages; long-form text needs them back. */
+main p,
+main ul,
+main ol,
+main dl {
+  margin: 0 0 12px;
 }
 
 /* ------------------------------------------------------------------ skip link + focus */
@@ -53,11 +36,11 @@ body {
   left: 8px;
   top: -48px;
   z-index: 100;
-  padding: 8px 12px;
-  background: var(--accent);
-  color: #ffffff;
-  border-radius: var(--radius);
-  font-weight: 600;
+  padding: 8px 16px;
+  font-weight: 500;
+  color: var(--dcc-pill-text);
+  background: var(--dcc-pill-bg);
+  border-radius: 999px;
   text-decoration: none;
 }
 
@@ -68,86 +51,78 @@ body {
 a:focus-visible,
 summary:focus-visible,
 [tabindex]:focus-visible {
-  outline: 3px solid var(--accent);
+  outline: 2px solid var(--dcc-accent);
   outline-offset: 2px;
-  border-radius: 2px;
+  border-radius: 4px;
 }
 
 main:focus {
   outline: none;
 }
 
-/* ------------------------------------------------------------------ header */
-.site-header {
-  border-bottom: 1px solid var(--border);
-  background: var(--surface-alt);
-}
-
+/* ------------------------------------------------------------------ header (navy panel) */
 .site-header .inner {
+  position: relative;
   max-width: 1200px;
   margin: 0 auto;
-  padding: 28px 24px 22px;
+  padding: 44px 24px 36px;
 }
 
-.eyebrow {
-  margin: 0 0 4px;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--accent-strong);
+.site-header .eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 14px;
+  font-size: 12px;
 }
 
-.eyebrow .mark {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  margin-right: 8px;
-  border-radius: 2px;
-  background: var(--accent);
-  vertical-align: 0;
+.site-header .mark {
+  width: 22px;
+  height: 22px;
+  box-shadow: 0 0 0 1px rgba(199, 213, 255, 0.28);
 }
 
 h1 {
-  margin: 0 0 8px;
-  font-size: 2rem;
-  line-height: 1.2;
-  letter-spacing: -0.01em;
+  margin: 0 0 12px;
+  font-size: 2.5rem;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
 }
 
 .lede {
   max-width: var(--measure);
-  margin: 0 0 14px;
+  margin: 0 0 18px;
   font-size: 1.0625rem;
-  color: var(--text);
+  color: var(--dcc-panel-sub);
 }
 
 .notice {
   display: inline-block;
   max-width: 100%;
-  margin: 0 0 10px;
-  padding: 8px 12px;
-  border-left: 4px solid var(--accent);
-  background: var(--surface);
-  border-radius: 0 var(--radius) var(--radius) 0;
-  font-weight: 600;
+  margin: 0 0 14px;
+  padding: 6px 14px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--dcc-panel-text);
+  border: 1px solid rgba(199, 213, 255, 0.4);
+  border-radius: 999px;
 }
 
 .independent {
   max-width: var(--measure);
   margin: 0;
-  font-size: 14px;
-  color: var(--muted);
+  font-size: 13px;
+  color: var(--dcc-panel-sub);
 }
 
 /* ------------------------------------------------------------------ layout */
 .layout {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0 24px 48px;
+  padding: 0 24px 56px;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 0 40px;
+  gap: 0 48px;
 }
 
 @media (min-width: 980px) {
@@ -158,7 +133,7 @@ h1 {
 
 /* ------------------------------------------------------------------ table of contents */
 .toc {
-  padding: 20px 0 8px;
+  padding: 24px 0 8px;
   font-size: 14px;
 }
 
@@ -169,22 +144,26 @@ h1 {
     align-self: start;
     max-height: 100vh;
     overflow-y: auto;
-    padding: 24px 4px 24px 0;
+    padding: 32px 4px 24px 0;
   }
 }
 
 .toc h2 {
-  margin: 0 0 8px;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--muted);
+  margin: 0 0 10px;
+  font-size: 11px;
+  letter-spacing: 0.12em;
 }
 
 .toc ol {
   margin: 0;
-  padding: 0 0 0 2.1em;
+  padding: 0 0 0 2.6em;
+  list-style: decimal-leading-zero;
+}
+
+.toc li::marker {
+  font-family: var(--dcc-mono);
+  font-size: 12px;
+  color: var(--dcc-accent);
 }
 
 @media (max-width: 979px) {
@@ -194,23 +173,23 @@ h1 {
   }
 
   .toc {
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid var(--dcc-line);
     padding-bottom: 16px;
   }
 }
 
 .toc li {
-  margin: 0 0 4px;
+  margin: 0 0 5px;
   break-inside: avoid;
 }
 
 .toc a {
-  color: var(--text);
+  color: var(--dcc-body);
   text-decoration: none;
 }
 
 .toc a:hover {
-  color: var(--accent-strong);
+  color: var(--dcc-text);
   text-decoration: underline;
 }
 
@@ -218,11 +197,12 @@ h1 {
 main {
   min-width: 0;
   padding-top: 8px;
+  counter-reset: guide;
 }
 
 section {
-  padding: 8px 0 12px;
-  border-bottom: 1px solid var(--border);
+  padding: 8px 0 16px;
+  border-bottom: 1px solid var(--dcc-line);
   scroll-margin-top: 12px;
 }
 
@@ -231,20 +211,34 @@ section:last-of-type {
 }
 
 h2 {
-  margin: 28px 0 10px;
-  font-size: 1.5rem;
-  line-height: 1.3;
+  margin: 32px 0 12px;
+  font-size: 1.625rem;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+}
+
+/* Numbered eyebrow above each section heading, matching the table of contents. */
+main section > h2::before {
+  counter-increment: guide;
+  content: counter(guide, decimal-leading-zero) / "";
+  display: block;
+  margin-bottom: 6px;
+  font-family: var(--dcc-mono);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  color: var(--dcc-accent);
 }
 
 h3 {
-  margin: 24px 0 8px;
+  margin: 28px 0 8px;
   font-size: 1.1875rem;
   line-height: 1.35;
   scroll-margin-top: 12px;
 }
 
 h4 {
-  margin: 18px 0 6px;
+  margin: 20px 0 6px;
   font-size: 1rem;
 }
 
@@ -253,6 +247,10 @@ ul,
 ol,
 dl {
   max-width: var(--measure);
+}
+
+main {
+  color: var(--dcc-text);
 }
 
 ul,
@@ -270,86 +268,87 @@ li > ol {
 }
 
 a {
-  color: var(--accent-strong);
-  text-underline-offset: 2px;
-}
-
-a:hover {
-  color: var(--text);
-}
-
-strong {
-  font-weight: 650;
+  color: var(--dcc-accent);
 }
 
 code,
 kbd,
 samp {
-  font: 0.875em/1.4 var(--mono);
-  background: var(--code-bg);
-  padding: 1px 4px;
-  border-radius: 3px;
+  font: 0.86em/1.4 var(--dcc-mono);
+  padding: 1px 5px;
+  color: var(--dcc-text);
+  background: var(--dcc-surface2);
+  border: 1px solid var(--dcc-line);
+  border-radius: 4px;
   overflow-wrap: anywhere;
 }
 
 kbd {
-  border: 1px solid var(--border-strong);
+  border-color: var(--dcc-line2);
   border-bottom-width: 2px;
 }
 
 pre {
   max-width: 100%;
   margin: 12px 0 16px;
-  padding: 12px 14px;
+  padding: 14px 16px;
   overflow-x: auto;
-  background: var(--code-bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  font: 13.5px/1.5 var(--mono);
+  background: var(--dcc-surface);
+  border: 1px solid var(--dcc-line);
+  border-radius: 12px;
+  font: 13.5px/1.5 var(--dcc-mono);
 }
 
 pre code {
   padding: 0;
   background: none;
+  border: 0;
   font-size: inherit;
   overflow-wrap: normal;
 }
 
 dl dt {
-  font-weight: 650;
-  margin-top: 10px;
+  font-weight: 600;
+  margin-top: 12px;
 }
 
 dl dd {
   margin: 2px 0 0 0;
+  color: var(--dcc-body);
 }
 
+/* Label chips: the exact words the extension shows. */
 .label {
   display: inline-block;
-  padding: 0 6px;
-  border: 1px solid var(--accent);
-  border-radius: 999px;
-  color: var(--accent-strong);
+  padding: 0 8px;
   font-size: 0.8125em;
-  font-weight: 600;
+  font-weight: 500;
+  line-height: 1.6;
   white-space: nowrap;
+  color: var(--dcc-accent-text);
+  background: var(--dcc-accent-soft);
+  border: 1px solid var(--dcc-accent-line);
+  border-radius: 999px;
 }
 
 .callout {
   max-width: var(--measure);
-  margin: 14px 0;
-  padding: 10px 14px;
-  border: 1px solid var(--border);
-  border-left: 4px solid var(--accent);
-  border-radius: 0 var(--radius) var(--radius) 0;
-  background: var(--accent-tint);
+  margin: 16px 0;
+  padding: 12px 16px;
+  background: var(--dcc-accent-soft);
+  border: 1px solid var(--dcc-accent-line);
+  border-radius: 12px;
 }
 
 .callout.warn {
-  border-left-color: var(--warn-border);
-  background: var(--warn-bg);
-  color: var(--warn-text);
+  background: var(--dcc-warm-soft);
+  border-color: var(--dcc-warm-line);
 }
+
+.callout.warn strong:first-child {
+  color: var(--dcc-warm);
+}
+
 
 .callout > :first-child {
   margin-top: 0;
@@ -362,21 +361,25 @@ dl dd {
 .formula {
   max-width: var(--measure);
   margin: 12px 0;
-  padding: 10px 14px;
-  background: var(--surface-alt);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  font: 14px/1.6 var(--mono);
+  padding: 12px 16px;
+  background: var(--dcc-surface);
+  border: 1px solid var(--dcc-line);
+  border-radius: 12px;
+  font: 14px/1.6 var(--dcc-mono);
   overflow-x: auto;
+}
+
+main p.formula {
+  margin: 12px 0;
 }
 
 /* ------------------------------------------------------------------ tables */
 .table-wrap {
   max-width: 100%;
-  margin: 12px 0 18px;
+  margin: 14px 0 20px;
   overflow-x: auto;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border: 1px solid var(--dcc-line);
+  border-radius: 12px;
 }
 
 table {
@@ -388,25 +391,27 @@ table {
 }
 
 caption {
-  padding: 8px 12px;
+  padding: 10px 14px;
   text-align: left;
-  font-weight: 650;
-  background: var(--surface-alt);
-  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+  border-bottom: 1px solid var(--dcc-line);
 }
 
 th,
 td {
-  padding: 7px 12px;
+  padding: 8px 14px;
   text-align: left;
   vertical-align: top;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--dcc-line);
 }
 
 thead th {
-  background: var(--surface-alt);
-  color: var(--text);
-  font-weight: 650;
+  font-family: var(--dcc-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dcc-muted);
   white-space: nowrap;
 }
 
@@ -416,47 +421,56 @@ tbody tr:last-child td {
 }
 
 tbody th {
-  font-weight: 600;
+  font-weight: 500;
+}
+
+td {
+  color: var(--dcc-body);
 }
 
 td.num,
 th.num {
+  font-family: var(--dcc-mono);
+  font-size: 13.5px;
   text-align: right;
   white-space: nowrap;
 }
 
+thead th.num {
+  font-size: 11px;
+}
+
 tr.idle td,
 tr.idle th {
-  color: var(--muted);
-  background: var(--surface-alt);
+  color: var(--dcc-muted);
+  background: var(--dcc-surface);
 }
 
 tfoot td,
 tfoot th {
-  border-top: 2px solid var(--border-strong);
-  font-weight: 650;
+  border-top: 1px solid var(--dcc-line2);
+  font-weight: 600;
+  color: var(--dcc-text);
 }
 
 /* ------------------------------------------------------------------ details (always open) */
 details {
   max-width: var(--measure);
-  margin: 12px 0;
-  padding: 0 14px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  margin: 14px 0;
+  padding: 0 16px;
+  border: 1px solid var(--dcc-line);
+  border-radius: 12px;
 }
 
 details > summary {
-  margin: 0 -14px;
-  padding: 8px 14px;
-  cursor: pointer;
-  font-weight: 600;
-  color: var(--accent-strong);
+  margin: 0 -16px;
+  padding: 10px 16px;
+  font-weight: 500;
 }
 
 details[open] > summary {
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 8px;
+  border-bottom: 1px solid var(--dcc-line);
+  margin-bottom: 10px;
 }
 
 /* ------------------------------------------------------------------ references */
@@ -466,26 +480,28 @@ details[open] > summary {
 
 .refs .what {
   display: block;
-  color: var(--muted);
+  color: var(--dcc-muted);
   font-size: 14px;
 }
 
 /* ------------------------------------------------------------------ footer */
 .site-footer {
-  border-top: 1px solid var(--border);
-  background: var(--surface-alt);
-  font-size: 14px;
-  color: var(--muted);
+  border-top: 1px solid var(--dcc-line);
+  font-size: 13px;
+  color: var(--dcc-muted);
 }
 
 .site-footer .inner {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 18px 24px 28px;
+  padding: 20px 24px 32px;
 }
 
 .site-footer p {
   margin: 4px 0;
+  font-family: var(--dcc-mono);
+  font-size: 12px;
+  letter-spacing: 0.02em;
 }
 
 /* ------------------------------------------------------------------ small screens */
@@ -495,11 +511,11 @@ details[open] > summary {
   }
 
   h1 {
-    font-size: 1.625rem;
+    font-size: 1.875rem;
   }
 
   h2 {
-    font-size: 1.3125rem;
+    font-size: 1.375rem;
   }
 
   .site-header .inner,
@@ -509,9 +525,14 @@ details[open] > summary {
     padding-right: 16px;
   }
 
+  .site-header .inner {
+    padding-top: 32px;
+    padding-bottom: 28px;
+  }
+
   th,
   td {
-    padding: 6px 8px;
+    padding: 7px 10px;
   }
 }
 
@@ -525,11 +546,12 @@ details[open] > summary {
     font-size: 11pt;
     line-height: 1.45;
     color: #000000;
-    background: #ffffff;
+    background: #FFFFFF;
   }
 
   .skip-link,
-  .toc {
+  .toc,
+  .dcc-waves {
     display: none !important;
   }
 
@@ -541,7 +563,16 @@ details[open] > summary {
 
   .site-header,
   .site-footer {
+    color: #000000;
     background: none;
+  }
+
+  .site-header h1,
+  .site-header .lede,
+  .site-header .independent,
+  .site-header .notice,
+  .site-header .eyebrow {
+    color: #000000;
   }
 
   .site-header .inner,

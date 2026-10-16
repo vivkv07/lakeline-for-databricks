@@ -3,19 +3,20 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
   <title>Databricks Cost Companion</title>
   <link rel="stylesheet" href="brand.css">
   <link rel="stylesheet" href="popup.css">
   <link rel="stylesheet" href="workspace-appearance.css">
 </head>
-<body>
+<body class="pp">
   <header class="pp-header">
-    <svg class="dcc-mark" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect width="16" height="16" rx="4" fill="#0f766e"/><rect x="3.5" y="8.5" width="2" height="4" fill="#fff"/><rect x="7" y="5.5" width="2" height="7" fill="#fff"/><rect x="10.5" y="3.5" width="2" height="9" fill="#fff"/></svg>
+    <svg class="dcc-mark pp-mark" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect width="16" height="16" rx="4" fill="#000000"/><rect x="3.5" y="8.5" width="2" height="4" fill="#FFFFFF"/><rect x="7" y="5.5" width="2" height="7" fill="#FFFFFF"/><rect x="10.5" y="3.5" width="2" height="9" fill="#5B8CFF"/></svg>
     <div class="pp-title">
       <h1>Cost Companion</h1>
       <p class="pp-sub" id="mode-summary" aria-live="polite">Loading…</p>
     </div>
-    <button type="button" class="dcc-btn dcc-btn--quiet pp-icon-btn" id="open-options" aria-label="Connection preferences" title="Connection preferences">
+    <button type="button" class="dcc-btn pp-icon-btn" id="open-options" aria-label="Connection preferences" title="Connection preferences">
       <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 4h7.5M12.5 4H14M2 8h2.5M7.5 8H14M2 12h8.5M13.5 12H14"/><circle cx="11" cy="4" r="1.5"/><circle cx="6" cy="8" r="1.5"/><circle cx="12" cy="12" r="1.5"/></svg>
     </button>
   </header>
@@ -24,15 +25,30 @@
   <div id="page-alert" class="pp-alert-slot"></div>
 
   <section class="pp-section" aria-labelledby="h-workspace">
-    <h2 id="h-workspace">Databricks workspace</h2>
+    <h2 id="h-workspace" class="dcc-eyebrow pp-h">Workspace</h2>
     <div id="tab-status" class="pp-tab-status" aria-live="polite"></div>
     <div class="pp-actions">
       <button type="button" class="dcc-btn dcc-btn--primary" id="connect-btn">Connect Databricks</button>
     </div>
+    <div id="oauth-setup" class="pp-oauth-setup dcc-card" hidden>
+      <p class="pp-line"><strong>One-time setup.</strong> An account admin registers Cost Companion in Databricks once. After that, Connect is one click for every workspace in the account.</p>
+      <ol class="pp-steps">
+        <li>Account console, Settings, App connections, Add connection.</li>
+        <li>Redirect URL: <code id="oauth-redirect" class="pp-code"></code> <button type="button" class="dcc-btn pp-copy" id="oauth-copy">Copy</button></li>
+        <li>Scopes: SQL and All APIs. Leave "Generate a client secret" off.</li>
+        <li>Paste the client ID below. New connections can take about 30 minutes to activate.</li>
+      </ol>
+      <label class="pp-label" for="oauth-client-id">OAuth client ID</label>
+      <input type="text" class="dcc-input" id="oauth-client-id" autocomplete="off" spellcheck="false" placeholder="Client ID from App connections">
+      <div class="pp-actions">
+        <button type="button" class="dcc-btn dcc-btn--primary" id="oauth-save-connect">Save and connect</button>
+        <button type="button" class="dcc-btn pp-link-btn" id="oauth-guide">Step-by-step guide</button>
+      </div>
+    </div>
   </section>
 
   <section class="pp-section" aria-labelledby="h-source">
-    <h2 id="h-source">Data source</h2>
+    <h2 id="h-source" class="dcc-eyebrow pp-h">Data source</h2>
     <fieldset class="dcc-fieldset">
       <legend class="dcc-visually-hidden">Data source</legend>
       <div class="dcc-segmented pp-segmented-full">
@@ -48,7 +64,7 @@
   </section>
 
   <section class="pp-section" aria-labelledby="h-display">
-    <h2 id="h-display">Inside Databricks</h2>
+    <h2 id="h-display" class="dcc-eyebrow pp-h">Inside Databricks</h2>
     <div class="pp-row">
       <label for="show-costs">Show costs inside Databricks</label>
       <input type="checkbox" role="switch" class="dcc-switch" id="show-costs" aria-describedby="show-costs-desc">
@@ -72,7 +88,7 @@
 
   <section class="pp-section" aria-labelledby="h-monitor">
     <div class="pp-section-head">
-      <h2 id="h-monitor">Run monitor</h2>
+      <h2 id="h-monitor" class="dcc-eyebrow pp-h">Run monitor</h2>
       <button type="button" class="dcc-btn dcc-btn--small" id="monitor-open">Open monitor</button>
     </div>
     <div id="monitor-status" class="pp-alert-slot" role="status"></div>
@@ -94,7 +110,7 @@
 
   <section class="pp-section" aria-label="Diagnostics">
     <details id="diag-details" class="pp-diag">
-      <summary>Diagnostics <span id="diag-count" class="pp-count"></span></summary>
+      <summary><span class="dcc-eyebrow pp-h">Diagnostics</span> <span id="diag-count" class="pp-count"></span></summary>
       <p class="pp-hint">Recent errors, with secrets removed. No query text or results are recorded.</p>
       <ul id="diag-list" class="pp-diag-list"></ul>
       <div class="pp-actions">

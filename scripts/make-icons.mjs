@@ -1,10 +1,13 @@
-// Generates the extension's original toolbar icons (rounded accent square with three bars).
+// Generates the extension's toolbar icons: a pure black rounded square with three bars, two in
+// white and the tallest in the accent blue. Geometry sits on a 16-unit grid, so every size that is
+// a multiple of 16 has pixel-aligned bar edges (crisp at 16px).
 // Usage: node scripts/make-icons.mjs  → extension/icons/icon-{16,32,48,128}.png
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
 
-const ACCENT = [15, 118, 110]; // #0F766E
+const BLACK = [0, 0, 0];
 const WHITE = [255, 255, 255];
+const ACCENT = [91, 140, 255]; // #5B8CFF
 
 function crc32(buf) {
   let c, crc = 0xffffffff;
@@ -27,9 +30,11 @@ function png(size) {
   const ss = 4; // supersampling
   const raw = Buffer.alloc(size * (size * 4 + 1));
   const r = size * 0.22;
-  const bars = [ // x0, x1, top (fractions of size), bottom 0.78
-    [0.24, 0.36, 0.52], [0.44, 0.56, 0.34], [0.64, 0.76, 0.22],
+  const u = 1 / 16; // grid unit
+  const bars = [ // x0, x1, top (fractions of size); bottom at 13/16
+    [3 * u, 5 * u, 9 * u, WHITE], [7 * u, 9 * u, 6 * u, WHITE], [11 * u, 13 * u, 3 * u, ACCENT],
   ];
+  const bottom = 13 * u;
   for (let y = 0; y < size; y++) {
     raw[y * (size * 4 + 1)] = 0;
     for (let x = 0; x < size; x++) {
@@ -40,8 +45,8 @@ function png(size) {
         const inside = (px - cx) ** 2 + (py - cy) ** 2 <= r * r;
         if (!inside) continue;
         const fx = px / size, fy = py / size;
-        const onBar = bars.some(([a, b, t]) => fx >= a && fx <= b && fy >= t && fy <= 0.78);
-        const col = onBar ? WHITE : ACCENT;
+        const bar = bars.find(([a, b, t]) => fx >= a && fx < b && fy >= t && fy < bottom);
+        const col = bar ? bar[3] : BLACK;
         acc[0] += col[0]; acc[1] += col[1]; acc[2] += col[2]; acc[3] += 255;
       }
       const n = ss * ss, o = y * (size * 4 + 1) + 1 + x * 4;

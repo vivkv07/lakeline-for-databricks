@@ -20,7 +20,7 @@
     },
     import: {
       short: 'Imported',
-      note: 'From a local costs.json import. Contains only the summaries that were imported — no query history or run detail.',
+      note: 'From a local costs.json import. Contains only the summaries that were imported (no query history or run detail).',
     },
     demo: {
       short: 'DEMO',

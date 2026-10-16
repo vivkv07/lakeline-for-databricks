@@ -12,11 +12,37 @@
   'use strict';
   const NODE = typeof module === 'object' && module && module.exports;
   const SVG = 'http://www.w3.org/2000/svg';
-  const INK = '#1f2933';
-  const MUTED = '#52606d';
-  const GRID = '#e4e7eb';
-  const ACCENT = '#0f766e';
-  const UNAVAILABLE = '#c4ccd4';
+  const T = NODE ? require('../core/theme.js') : root.DCC && root.DCC.theme;
+
+  /**
+   * Chart colors per theme, from the shared tokens: ink and grid from the text and line tokens,
+   * accent blue for the primary series, warm amber for prior-period overlays. Marks are drawn on
+   * the theme's bg; segment gaps and rings use bg so they read as spacing in both themes.
+   */
+  function paletteFor(name) {
+    const t = T ? T.tokens(name) : null;
+    const dark = name === 'dark';
+    return Object.freeze({
+      ink: t ? t.text : '#0A0A0A',
+      muted: t ? t.muted : '#6B6B74',
+      grid: t ? t.line : '#E4E4E7',
+      axis: t ? (dark ? t.muted : t.faint) : '#A1A1AA',
+      accent: t ? t.accent : '#2F5BEA',
+      warm: t ? t.warm : '#B45309',
+      bg: t ? t.bg : '#FFFFFF',
+      selFill: t ? t.accentSoft : '#EEF2FF',
+      unavailable: dark ? '#6E6E76' : '#8A8A93',
+      hatchBg: t ? t.surface2 : '#EFEFF1',
+    });
+  }
+  const PALETTES = Object.freeze({ light: paletteFor('light'), dark: paletteFor('dark') });
+  const colors = (theme) => (theme === 'dark' ? PALETTES.dark : PALETTES.light);
+  // Light-theme values, kept for callers that don't pass a theme.
+  const INK = PALETTES.light.ink;
+  const MUTED = PALETTES.light.muted;
+  const ACCENT = PALETTES.light.accent;
+  const WARM = PALETTES.light.warm;
+  const UNAVAILABLE = PALETTES.light.unavailable;
   let uid = 0;
 
   function s(doc, tag, attrs, children) {
@@ -34,6 +60,7 @@
 
   function text(doc, x, y, str, attrs = {}) {
     const t = s(doc, 'text', Object.assign({ x, y, fill: MUTED, 'font-size': 10 }, attrs));
+    // fill comes from attrs (theme palette) whenever the caller passes one.
     t.textContent = str;
     return t;
   }
@@ -71,12 +98,12 @@
     return { lo, hi, ticks };
   }
 
-  function hatch(doc, defs) {
+  function hatch(doc, defs, P = PALETTES.light) {
     const id = 'dcc-hatch-' + ++uid;
     defs.appendChild(
       s(doc, 'pattern', { id, width: 4, height: 4, patternUnits: 'userSpaceOnUse', patternTransform: 'rotate(45)' }, [
-        s(doc, 'rect', { width: 4, height: 4, fill: '#f5f7fa' }),
-        s(doc, 'line', { x1: 0, y1: 0, x2: 0, y2: 4, stroke: UNAVAILABLE, 'stroke-width': 1.5 }),
+        s(doc, 'rect', { width: 4, height: 4, fill: P.hatchBg }),
+        s(doc, 'line', { x1: 0, y1: 0, x2: 0, y2: 4, stroke: P.unavailable, 'stroke-width': 1.5 }),
       ])
     );
     return 'url(#' + id + ')';
@@ -159,11 +186,11 @@
     });
   }
 
-  function yAxis(doc, f, d, x0, x1, yOf, fmt) {
+  function yAxis(doc, f, d, x0, x1, yOf, fmt, P = PALETTES.light) {
     for (const t of d.ticks) {
       const y = yOf(t);
-      f.base.appendChild(s(doc, 'line', { x1: x0, x2: x1, y1: y, y2: y, stroke: t === 0 ? '#9aa5b1' : GRID, 'stroke-width': 1 }));
-      f.base.appendChild(text(doc, x0 - 4, y + 3, fmt(t), { 'text-anchor': 'end' }));
+      f.base.appendChild(s(doc, 'line', { x1: x0, x2: x1, y1: y, y2: y, stroke: t === 0 ? P.axis : P.grid, 'stroke-width': 1 }));
+      f.base.appendChild(text(doc, x0 - 4, y + 3, fmt(t), { 'text-anchor': 'end', fill: P.muted }));
     }
   }
 
@@ -174,11 +201,12 @@
    *   onInspect, onLeave, onActivate}
    */
   function stackedBars(doc, o) {
+    const P = colors(o.theme);
     const W = o.width || 720;
     const H = o.height || 230;
     const m = { l: 56, r: 10, t: 16, b: 26 };
     const f = frame(doc, W, H, o.title, o.summary, 'stacked');
-    const fill = hatch(doc, f.defs);
+    const fill = hatch(doc, f.defs, P);
     const n = Math.max(1, o.days.length);
     const band = (W - m.l - m.r) / n;
     const bw = Math.max(2, Math.min(28, band * 0.72));
@@ -192,16 +220,16 @@
     }
     const dom = domain(vals);
     const yOf = (v) => m.t + ((dom.hi - v) / (dom.hi - dom.lo)) * (H - m.t - m.b);
-    yAxis(doc, f, dom, m.l, W - m.r, yOf, o.formatAxis || String);
+    yAxis(doc, f, dom, m.l, W - m.r, yOf, o.formatAxis || String, P);
     const every = Math.max(1, Math.ceil(n / (W / 64)));
     const marks = [];
     o.days.forEach((d, i) => {
       const cx = m.l + i * band + band / 2;
-      if (i % every === 0) f.base.appendChild(text(doc, cx, H - 8, d.axisLabel, { 'text-anchor': 'middle' }));
+      if (i % every === 0) f.base.appendChild(text(doc, cx, H - 8, d.axisLabel, { 'text-anchor': 'middle', fill: P.muted }));
       const g = s(doc, 'g', { class: 'col' + (d.selected ? ' selected' : ''), 'data-date': d.date });
       g.appendChild(s(doc, 'rect', { class: 'hit', x: cx - band / 2, y: m.t, width: band, height: H - m.t - m.b, fill: 'transparent' }));
       if (d.status === 'unavailable') {
-        g.appendChild(s(doc, 'rect', { x: cx - bw / 2, y: yOf(0) - 8, width: bw, height: 8, fill, stroke: UNAVAILABLE, 'stroke-width': 1 }));
+        g.appendChild(s(doc, 'rect', { x: cx - bw / 2, y: yOf(0) - 8, width: bw, height: 8, fill, stroke: P.unavailable, 'stroke-width': 1 }));
       } else {
         let pos = 0;
         let neg = 0;
@@ -213,7 +241,7 @@
           else neg = to;
           const y = Math.min(yOf(from), yOf(to));
           const h = Math.max(0.5, Math.abs(yOf(from) - yOf(to)));
-          const seg = s(doc, 'rect', { class: 'seg', x: cx - bw / 2, y, width: bw, height: h, fill: sg.color, stroke: '#ffffff', 'stroke-width': 1, 'data-key': sg.key });
+          const seg = s(doc, 'rect', { class: 'seg', x: cx - bw / 2, y, width: bw, height: h, fill: sg.color, stroke: P.bg, 'stroke-width': 1, 'data-key': sg.key });
           seg.addEventListener('mouseenter', (e) => {
             e.stopPropagation();
             if (o.onInspect) o.onInspect(Object.assign({}, d.info, { segment: sg }), g, { via: 'hover' });
@@ -221,10 +249,10 @@
           g.appendChild(seg);
         }
         if (d.status === 'partial' || d.status === 'unpriced') {
-          g.appendChild(s(doc, 'rect', { x: cx - bw / 2 - 1, y: Math.min(yOf(pos), yOf(0)) - 1, width: bw + 2, height: Math.abs(yOf(pos) - yOf(neg)) + 2, fill: 'none', stroke: INK, 'stroke-width': 1, 'stroke-dasharray': '2 2' }));
+          g.appendChild(s(doc, 'rect', { x: cx - bw / 2 - 1, y: Math.min(yOf(pos), yOf(0)) - 1, width: bw + 2, height: Math.abs(yOf(pos) - yOf(neg)) + 2, fill: 'none', stroke: P.ink, 'stroke-width': 1, 'stroke-dasharray': '2 2' }));
         }
       }
-      if (d.selected) g.appendChild(s(doc, 'rect', { x: cx - band / 2 + 0.5, y: m.t - 4, width: band - 1, height: H - m.t - m.b + 4, fill: 'none', stroke: ACCENT, 'stroke-width': 2, rx: 2 }));
+      if (d.selected) g.appendChild(s(doc, 'rect', { x: cx - band / 2 + 0.5, y: m.t - 4, width: band - 1, height: H - m.t - m.b + 4, fill: 'none', stroke: P.accent, 'stroke-width': 2, rx: 2 }));
       f.marks.appendChild(g);
       marks.push({ el: g, info: d.info, x: cx });
     });
@@ -243,13 +271,13 @@
       });
       flush();
     };
-    if (o.showPrior) line((d) => d.prior && d.prior.cost, { stroke: MUTED, 'stroke-width': 1.5, 'stroke-dasharray': '4 3', class: 'prior-line' });
-    if (o.showTrend !== false) line((d) => d.cost, { stroke: INK, 'stroke-width': 1.5, class: 'trend-line' });
+    if (o.showPrior) line((d) => d.prior && d.prior.cost, { stroke: P.warm, 'stroke-width': 1.5, 'stroke-dasharray': '4 3', class: 'prior-line' });
+    if (o.showTrend !== false) line((d) => d.cost, { stroke: P.ink, 'stroke-width': 1.5, class: 'trend-line' });
     o.days.forEach((d, i) => {
       if (!d.flagged) return;
       const cx = m.l + i * band + band / 2;
       const y = Math.min(yOf(typeof d.cost === 'number' ? Math.max(d.cost, 0) : 0), yOf(0)) - 7;
-      f.overlay.appendChild(s(doc, 'path', { d: `M${cx} ${y - 4} L${cx + 4} ${y} L${cx} ${y + 4} L${cx - 4} ${y} Z`, fill: INK, class: 'flag' }));
+      f.overlay.appendChild(s(doc, 'path', { d: `M${cx} ${y - 4} L${cx + 4} ${y} L${cx} ${y + 4} L${cx - 4} ${y} Z`, fill: P.ink, class: 'flag' }));
     });
     const sel = o.days.findIndex((d) => d.selected);
     bindMarks(marks, o, sel >= 0 ? sel : 0);
@@ -262,6 +290,7 @@
    *   formatValue, labelWidth, onInspect, onLeave, onActivate}
    */
   function hBars(doc, o) {
+    const P = colors(o.theme);
     const W = o.width || 720;
     const row = o.rowHeight || 20;
     const lw = o.labelWidth || 190;
@@ -274,28 +303,28 @@
     const xOf = (v) => m.l + ((v - dom.lo) / (dom.hi - dom.lo)) * (W - m.l - m.r);
     for (const t of dom.ticks) {
       const x = xOf(t);
-      f.base.appendChild(s(doc, 'line', { x1: x, x2: x, y1: m.t - 4, y2: H - m.b, stroke: t === 0 ? '#9aa5b1' : GRID }));
-      f.base.appendChild(text(doc, x, m.t - 7, (o.formatAxis || String)(t), { 'text-anchor': 'middle' }));
+      f.base.appendChild(s(doc, 'line', { x1: x, x2: x, y1: m.t - 4, y2: H - m.b, stroke: t === 0 ? P.axis : P.grid }));
+      f.base.appendChild(text(doc, x, m.t - 7, (o.formatAxis || String)(t), { 'text-anchor': 'middle', fill: P.muted }));
     }
     const marks = [];
     o.items.forEach((it, i) => {
       const y = m.t + i * row;
       const g = s(doc, 'g', { class: 'hrow' + (it.selected ? ' selected' : '') });
-      g.appendChild(s(doc, 'rect', { class: 'hit', x: 0, y, width: W, height: row, fill: it.selected ? '#e6f4f1' : 'transparent' }));
-      g.appendChild(text(doc, lw - 6, y + row / 2 + 3.5, truncate(it.label, Math.floor((lw - 8) / 7), it.truncateStart), { 'text-anchor': 'end', fill: INK, 'font-size': 11 }));
+      g.appendChild(s(doc, 'rect', { class: 'hit', x: 0, y, width: W, height: row, fill: it.selected ? P.selFill : 'transparent' }));
+      g.appendChild(text(doc, lw - 6, y + row / 2 + 3.5, truncate(it.label, Math.floor((lw - 8) / 7), it.truncateStart), { 'text-anchor': 'end', fill: P.ink, 'font-size': 11 }));
       const hasPrior = typeof it.prior === 'number' && Number.isFinite(it.prior);
       const xp = hasPrior ? xOf(it.prior) : -Infinity;
       if (typeof it.value === 'number' && Number.isFinite(it.value)) {
         const x0 = xOf(0);
         const x1 = xOf(it.value);
-        g.appendChild(s(doc, 'rect', { class: 'bar', x: Math.min(x0, x1), y: y + 4, width: Math.max(1, Math.abs(x1 - x0)), height: row - 8, fill: it.color || ACCENT, rx: 2 }));
+        g.appendChild(s(doc, 'rect', { class: 'bar', x: Math.min(x0, x1), y: y + 4, width: Math.max(1, Math.abs(x1 - x0)), height: row - 8, fill: it.color || P.accent, rx: 2 }));
         // Value label sits past both the bar end and the prior tick so they never overlap.
-        g.appendChild(text(doc, Math.max(x0, x1, xp) + 5, y + row / 2 + 3.5, it.valueLabel || (o.formatValue || String)(it.value), { fill: INK }));
+        g.appendChild(text(doc, Math.max(x0, x1, xp) + 5, y + row / 2 + 3.5, it.valueLabel || (o.formatValue || String)(it.value), { fill: P.ink }));
       } else {
-        g.appendChild(text(doc, Math.max(xOf(0), xp) + 5, y + row / 2 + 3.5, it.valueLabel || 'unavailable', { fill: MUTED, 'font-style': 'italic' }));
+        g.appendChild(text(doc, Math.max(xOf(0), xp) + 5, y + row / 2 + 3.5, it.valueLabel || 'unavailable', { fill: P.muted, 'font-style': 'italic' }));
       }
-      if (hasPrior) g.appendChild(s(doc, 'line', { class: 'prior-tick', x1: xp, x2: xp, y1: y + 2, y2: y + row - 2, stroke: INK, 'stroke-width': 2 }));
-      if (it.flagged) g.appendChild(s(doc, 'circle', { cx: 6, cy: y + row / 2, r: 3.5, fill: INK }));
+      if (hasPrior) g.appendChild(s(doc, 'line', { class: 'prior-tick', x1: xp, x2: xp, y1: y + 2, y2: y + row - 2, stroke: P.warm, 'stroke-width': 2 }));
+      if (it.flagged) g.appendChild(s(doc, 'circle', { cx: 6, cy: y + row / 2, r: 3.5, fill: P.ink }));
       f.marks.appendChild(g);
       marks.push({ el: g, info: it.info });
     });
@@ -311,6 +340,7 @@
    *   xLabel, yLabel, onInspect(group, el, {member}), onLeave, onActivate(group)}
    */
   function scatter(doc, o) {
+    const P = colors(o.theme);
     const W = o.width || 720;
     const H = o.height || 260;
     const m = { l: 60, r: 14, t: 14, b: 34 };
@@ -319,14 +349,14 @@
     const dy = domain(o.points.map((p) => p.y), 4);
     const xOf = (v) => m.l + ((v - dx.lo) / (dx.hi - dx.lo)) * (W - m.l - m.r);
     const yOf = (v) => m.t + ((dy.hi - v) / (dy.hi - dy.lo)) * (H - m.t - m.b);
-    yAxis(doc, f, dy, m.l, W - m.r, yOf, o.formatY || String);
+    yAxis(doc, f, dy, m.l, W - m.r, yOf, o.formatY || String, P);
     for (const t of dx.ticks) {
       const x = xOf(t);
-      f.base.appendChild(s(doc, 'line', { x1: x, x2: x, y1: m.t, y2: H - m.b, stroke: GRID }));
-      f.base.appendChild(text(doc, x, H - m.b + 12, (o.formatX || String)(t), { 'text-anchor': 'middle' }));
+      f.base.appendChild(s(doc, 'line', { x1: x, x2: x, y1: m.t, y2: H - m.b, stroke: P.grid }));
+      f.base.appendChild(text(doc, x, H - m.b + 12, (o.formatX || String)(t), { 'text-anchor': 'middle', fill: P.muted }));
     }
-    f.base.appendChild(text(doc, (m.l + W - m.r) / 2, H - 4, o.xLabel || '', { 'text-anchor': 'middle', fill: INK }));
-    f.base.appendChild(text(doc, 10, m.t + (H - m.t - m.b) / 2, o.yLabel || '', { 'text-anchor': 'middle', fill: INK, transform: `rotate(-90 10 ${m.t + (H - m.t - m.b) / 2})` }));
+    f.base.appendChild(text(doc, (m.l + W - m.r) / 2, H - 4, o.xLabel || '', { 'text-anchor': 'middle', fill: P.ink }));
+    f.base.appendChild(text(doc, 10, m.t + (H - m.t - m.b) / 2, o.yLabel || '', { 'text-anchor': 'middle', fill: P.ink, transform: `rotate(-90 10 ${m.t + (H - m.t - m.b) / 2})` }));
     const cell = o.cell || 7;
     const groups = new Map();
     for (const p of o.points) {
@@ -346,9 +376,9 @@
       const g = s(doc, 'g', { class: 'pt' + (gr.selected ? ' selected' : '') + (gr.flagged ? ' flagged' : ''), 'data-count': count });
       const r = count > 1 ? 6.5 : 4.5;
       g.appendChild(s(doc, 'circle', { class: 'hit', cx: gr.px, cy: gr.py, r: 10, fill: 'transparent' }));
-      g.appendChild(s(doc, 'circle', { cx: gr.px, cy: gr.py, r, fill: gr.flagged ? '#ffffff' : ACCENT, 'fill-opacity': gr.flagged ? 1 : 0.75, stroke: gr.flagged ? INK : '#ffffff', 'stroke-width': gr.flagged ? 2.5 : 1 }));
-      if (count > 1) g.appendChild(text(doc, gr.px, gr.py + 3, String(count), { 'text-anchor': 'middle', fill: gr.flagged ? INK : '#ffffff', 'font-size': 8, 'font-weight': 700 }));
-      if (gr.selected) g.appendChild(s(doc, 'circle', { cx: gr.px, cy: gr.py, r: r + 3.5, fill: 'none', stroke: ACCENT, 'stroke-width': 2 }));
+      g.appendChild(s(doc, 'circle', { cx: gr.px, cy: gr.py, r, fill: gr.flagged ? P.bg : P.accent, 'fill-opacity': gr.flagged ? 1 : 0.85, stroke: gr.flagged ? P.ink : P.bg, 'stroke-width': gr.flagged ? 2.5 : 1 }));
+      if (count > 1) g.appendChild(text(doc, gr.px, gr.py + 3, String(count), { 'text-anchor': 'middle', fill: gr.flagged ? P.ink : P.bg, 'font-size': 8, 'font-weight': 700 }));
+      if (gr.selected) g.appendChild(s(doc, 'circle', { cx: gr.px, cy: gr.py, r: r + 3.5, fill: 'none', stroke: P.accent, 'stroke-width': 2 }));
       f.marks.appendChild(g);
       const info = o.groupInfo ? o.groupInfo(gr) : { key: gr.key, label: count + ' points', members: gr.members };
       cursor.set(g, 0);
@@ -377,29 +407,30 @@
    *   cellInfo(cell) → info, selectedDate, flagged:Set, onInspect, onLeave, onActivate, cellSize}
    */
   function heatmap(doc, o) {
+    const P = colors(o.theme);
     const c = o.cellSize || 22;
     const gap = 3;
     const m = { l: 52, t: 18, r: 6, b: 6 };
     const W = m.l + 7 * (c + gap) + m.r;
     const H = m.t + o.weeks.length * (c + gap) + m.b;
     const f = frame(doc, W, H, o.title, o.summary, 'heatmap', true);
-    const fill = hatch(doc, f.defs);
-    o.weekdayLabels.forEach((lab, i) => f.base.appendChild(text(doc, m.l + i * (c + gap) + c / 2, m.t - 6, lab, { 'text-anchor': 'middle' })));
+    const fill = hatch(doc, f.defs, P);
+    o.weekdayLabels.forEach((lab, i) => f.base.appendChild(text(doc, m.l + i * (c + gap) + c / 2, m.t - 6, lab, { 'text-anchor': 'middle', fill: P.muted })));
     const marks = [];
     const byDate = new Map();
     o.weeks.forEach((week, wi) => {
       const y = m.t + wi * (c + gap);
-      f.base.appendChild(text(doc, m.l - 6, y + c / 2 + 3.5, o.weekLabel ? o.weekLabel(week) : '', { 'text-anchor': 'end' }));
+      f.base.appendChild(text(doc, m.l - 6, y + c / 2 + 3.5, o.weekLabel ? o.weekLabel(week) : '', { 'text-anchor': 'end', fill: P.muted }));
       week.forEach((cellData, di) => {
         if (!cellData.inPeriod) return;
         const x = m.l + di * (c + gap);
         const unavailable = cellData.status === 'unavailable';
         const g = s(doc, 'g', { class: 'cell' + (cellData.date === o.selectedDate ? ' selected' : ''), 'data-date': cellData.date });
-        g.appendChild(s(doc, 'rect', { x, y, width: c, height: c, rx: 3, fill: unavailable ? fill : o.fillFor(cellData), stroke: unavailable ? UNAVAILABLE : cellData.status === 'partial' || cellData.status === 'unpriced' ? INK : 'none', 'stroke-width': 1, 'stroke-dasharray': cellData.status === 'partial' || cellData.status === 'unpriced' ? '2 2' : null }));
-        if (o.flagged && o.flagged.has(cellData.date)) g.appendChild(s(doc, 'path', { d: `M${x + c - 8} ${y + 1} L${x + c - 1} ${y + 1} L${x + c - 1} ${y + 8} Z`, fill: INK, class: 'flag' }));
+        g.appendChild(s(doc, 'rect', { x, y, width: c, height: c, rx: 3, fill: unavailable ? fill : o.fillFor(cellData), stroke: unavailable ? P.unavailable : cellData.status === 'partial' || cellData.status === 'unpriced' ? P.ink : 'none', 'stroke-width': 1, 'stroke-dasharray': cellData.status === 'partial' || cellData.status === 'unpriced' ? '2 2' : null }));
+        if (o.flagged && o.flagged.has(cellData.date)) g.appendChild(s(doc, 'path', { d: `M${x + c - 8} ${y + 1} L${x + c - 1} ${y + 1} L${x + c - 1} ${y + 8} Z`, fill: P.ink, class: 'flag' }));
         // Selected: white inset ring (visible on any fill). Focus: ink ring outside the cell.
-        if (cellData.date === o.selectedDate) g.appendChild(s(doc, 'rect', { class: 'sel-ring', x: x + 2.5, y: y + 2.5, width: c - 5, height: c - 5, rx: 2, fill: 'none', stroke: '#ffffff', 'stroke-width': 2 }));
-        g.appendChild(s(doc, 'rect', { class: 'focus-ring', x: x - 2, y: y - 2, width: c + 4, height: c + 4, rx: 4, fill: 'none', stroke: INK, 'stroke-width': 2 }));
+        if (cellData.date === o.selectedDate) g.appendChild(s(doc, 'rect', { class: 'sel-ring', x: x + 2.5, y: y + 2.5, width: c - 5, height: c - 5, rx: 2, fill: 'none', stroke: P.bg, 'stroke-width': 2 }));
+        g.appendChild(s(doc, 'rect', { class: 'focus-ring', x: x - 2, y: y - 2, width: c + 4, height: c + 4, rx: 4, fill: 'none', stroke: P.ink, 'stroke-width': 2 }));
         f.marks.appendChild(g);
         const info = o.cellInfo(cellData);
         byDate.set(cellData.date, marks.length);
@@ -422,21 +453,22 @@
 
   /** Legend swatch (HTML-free SVG square) for use inside buttons. */
   function swatch(doc, color, opts = {}) {
+    const P = colors(opts.theme);
     const svg = s(doc, 'svg', { width: 10, height: 10, viewBox: '0 0 10 10', 'aria-hidden': 'true', class: 'swatch' });
     if (opts.kind === 'line') svg.appendChild(s(doc, 'line', { x1: 0, x2: 10, y1: 5, y2: 5, stroke: color, 'stroke-width': 2, 'stroke-dasharray': opts.dashed ? '3 2' : null }));
     else if (opts.kind === 'hatch') {
       const defs = s(doc, 'defs');
       svg.appendChild(defs);
-      svg.appendChild(s(doc, 'rect', { width: 10, height: 10, rx: 2, fill: hatch(doc, defs), stroke: UNAVAILABLE }));
-    } else if (opts.kind === 'dashed') svg.appendChild(s(doc, 'rect', { x: 0.5, y: 0.5, width: 9, height: 9, fill: 'none', stroke: INK, 'stroke-dasharray': '2 2' }));
-    else if (opts.kind === 'diamond') svg.appendChild(s(doc, 'path', { d: 'M5 0 L10 5 L5 10 L0 5 Z', fill: INK }));
-    else if (opts.kind === 'ring') svg.appendChild(s(doc, 'circle', { cx: 5, cy: 5, r: 3.6, fill: '#ffffff', stroke: INK, 'stroke-width': 2 }));
+      svg.appendChild(s(doc, 'rect', { width: 10, height: 10, rx: 2, fill: hatch(doc, defs, P), stroke: P.unavailable }));
+    } else if (opts.kind === 'dashed') svg.appendChild(s(doc, 'rect', { x: 0.5, y: 0.5, width: 9, height: 9, fill: 'none', stroke: P.ink, 'stroke-dasharray': '2 2' }));
+    else if (opts.kind === 'diamond') svg.appendChild(s(doc, 'path', { d: 'M5 0 L10 5 L5 10 L0 5 Z', fill: P.ink }));
+    else if (opts.kind === 'ring') svg.appendChild(s(doc, 'circle', { cx: 5, cy: 5, r: 3.6, fill: P.bg, stroke: P.ink, 'stroke-width': 2 }));
     else if (opts.kind === 'dot') svg.appendChild(s(doc, 'circle', { cx: 5, cy: 5, r: 4, fill: color }));
     else svg.appendChild(s(doc, 'rect', { width: 10, height: 10, rx: 2, fill: color }));
     return svg;
   }
 
-  const api = Object.freeze({ SVG, ACCENT, INK, MUTED, UNAVAILABLE, s, truncate, domain, niceStep, bindMarks, stackedBars, hBars, scatter, heatmap, swatch });
+  const api = Object.freeze({ SVG, ACCENT, INK, MUTED, WARM, UNAVAILABLE, colors, paletteFor, s, truncate, domain, niceStep, bindMarks, stackedBars, hBars, scatter, heatmap, swatch });
   if (NODE) module.exports = api;
   else (root.DCC || (root.DCC = {})).exploreCharts = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

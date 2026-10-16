@@ -58,7 +58,7 @@
     PRICE_FIELD_MISMATCH: {
       title: 'Price table and price field do not match',
       steps: [
-        'The query read pricing.effective_list from a table that does not have it — an account-price table was queried by a list-price adapter.',
+        'The query read pricing.effective_list from a table that does not have it: an account-price table was queried by a list-price adapter.',
         'Reload the extension and reconnect; if you use the local helper, restart it so both use the same price adapter.',
         'Only system.billing.list_prices and system.billing.account_prices are supported. Do not create a custom price view.',
       ],
@@ -78,6 +78,21 @@
     AUTH_INVALID: {
       title: 'Databricks rejected the credentials',
       steps: ['Check the token or sign in again from Connection preferences.'],
+    },
+    OAUTH_CLIENT_MISSING: {
+      title: 'One-time sign-in setup needed',
+      steps: [
+        'An account admin registers Cost Companion once: account console, Settings, App connections, Add connection. Redirect URL: the one shown in the extension. Scopes: SQL and All APIs. No client secret.',
+        'Paste the resulting client ID in the extension. After that, Connect is one click for every workspace in that account.',
+      ],
+    },
+    OAUTH_CLIENT_INVALID: {
+      title: 'Databricks did not accept the OAuth client ID',
+      steps: ['Check the client ID, and that the app connection lists the redirect URL shown in the extension. New app connections can take about 30 minutes to activate.'],
+    },
+    AUTH_CANCELLED: {
+      title: 'Sign-in was cancelled',
+      steps: ['Click Connect again and finish signing in to Databricks.'],
     },
     NETWORK: {
       title: 'Could not reach Databricks',

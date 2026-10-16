@@ -1,8 +1,10 @@
 <!--
-  Fixture fragment: pipeline detail page with its update history (route
-  /pipelines/0a1b2c3d-1111-4a2b-8c3d-000000000001). Synthetic data only (workspace 1234567890).
-  The title gets "Pipeline total: … · 30d est." Each update row (role="listitem") shows that
-  update's execution cost. The "Triggered by" job-run link and the graph status dots stay native.
+  Fixture fragment: pipeline detail page with its update history (route /pipelines/<P1 id> on the
+  fixture server). Synthetic data only (workspace 1234567890). The title gets "Pipeline total: …
+  · 30d est." Each update row (role="listitem") shows that update's execution cost. The
+  "Triggered by" job-run link (job 102's run, whose refresh_pipeline task started the update) and
+  the graph status dots stay native. Double-brace placeholders (PIPELINE_P1_UPDATE_D1, …) are
+  filled by the fixture server from local/fixture-data.mjs; statuses are illustrative.
 -->
 <style data-fixture="pipeline-updates">
   .fx-pipe { font: 13px/1.4 system-ui, sans-serif; color: #11171c; padding: 0 16px; display: grid; grid-template-columns: 1fr 320px; gap: 16px; }
@@ -15,34 +17,34 @@
   .fx-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #3ba65e; }
 </style>
 <section data-testid="pipeline-detail-page">
-  <nav aria-label="Breadcrumb"><a href="/jobs?o=1234567890">Jobs &amp; Pipelines</a> / <a href="/pipelines/0a1b2c3d-1111-4a2b-8c3d-000000000001?o=1234567890">bronze_ingest</a></nav>
-  <h1 data-testid="page-title">bronze_ingest</h1>
+  <nav aria-label="Breadcrumb"><a href="/jobs?o=1234567890">Jobs &amp; Pipelines</a> / <a href="/pipelines/{{PIPELINE_P1}}?o=1234567890">{{PIPELINE_P1_NAME}}</a></nav>
+  <h1 data-testid="page-title">{{PIPELINE_P1_NAME}}</h1>
   <div class="fx-pipe">
     <div class="fx-graph" role="img" aria-label="Pipeline graph">
-      <a class="fx-node" href="/pipelines/0a1b2c3d-1111-4a2b-8c3d-000000000001/updates/0a1b2c3d-2222-4a2b-8c3d-000000000011?o=1234567890">raw_events</a>
+      <a class="fx-node" href="/pipelines/{{PIPELINE_P1}}/updates/{{PIPELINE_P1_UPDATE_D1}}?o=1234567890">raw_events</a>
       <span class="fx-node">clean_events</span>
     </div>
     <div>
       <h2>Update history</h2>
       <div class="fx-updates" role="list" aria-label="Pipeline updates">
         <div role="listitem" data-fx-update="11">
-          <a href="/pipelines/0a1b2c3d-1111-4a2b-8c3d-000000000001/updates/0a1b2c3d-2222-4a2b-8c3d-000000000011?o=1234567890">Oct 14, 2026, 03:00 AM</a>
+          <a href="/pipelines/{{PIPELINE_P1}}/updates/{{PIPELINE_P1_UPDATE_D1}}?o=1234567890">{{PIPELINE_P1_UPDATE_D1_START}}</a>
           <span class="fx-dot" aria-label="Completed"></span>
-          <div class="fx-sub">Triggered by <a href="/jobs/1001/runs/50101?o=1234567890">nightly_sales_etl</a></div>
+          <div class="fx-sub">Triggered by <a href="/jobs/{{PIPELINE_P1_TRIGGER_JOB}}/runs/{{PIPELINE_P1_TRIGGER_RUN}}?o=1234567890">{{PIPELINE_P1_TRIGGER_JOB_NAME}}</a></div>
         </div>
         <div role="listitem" data-fx-update="12">
-          <a href="/pipelines/0a1b2c3d-1111-4a2b-8c3d-000000000001/updates/0a1b2c3d-2222-4a2b-8c3d-000000000012?o=1234567890">Oct 13, 2026, 03:00 AM</a>
+          <a href="/pipelines/{{PIPELINE_P1}}/updates/{{PIPELINE_P1_UPDATE_D2}}?o=1234567890">{{PIPELINE_P1_UPDATE_D2_START}}</a>
           <span class="fx-dot" aria-label="Completed"></span>
           <div class="fx-sub">Manual</div>
         </div>
         <div role="listitem" data-fx-update="13">
-          <a href="/#joblist/pipelines/0a1b2c3d-1111-4a2b-8c3d-000000000001/updates/0a1b2c3d-2222-4a2b-8c3d-000000000013">Oct 12, 2026, 03:00 AM</a>
+          <a href="/#joblist/pipelines/{{PIPELINE_P1}}/updates/{{PIPELINE_P1_UPDATE_D3}}">{{PIPELINE_P1_UPDATE_D3_START}}</a>
           <span class="fx-dot" aria-label="Failed"></span>
           <div class="fx-sub">Scheduled</div>
         </div>
         <div role="listitem" data-fx-update="other-pipeline">
           <!-- Another pipeline's update (e.g. a "see also" link): not this page's update. -->
-          <a href="/pipelines/0a1b2c3d-1111-4a2b-8c3d-000000000002/updates/0a1b2c3d-2222-4a2b-8c3d-000000000021?o=1234567890">silver_rollup update</a>
+          <a href="/pipelines/{{PIPELINE_P2}}/updates/{{PIPELINE_P2_UPDATE_D1}}?o=1234567890">{{PIPELINE_P2_NAME}} update</a>
         </div>
       </div>
     </div>

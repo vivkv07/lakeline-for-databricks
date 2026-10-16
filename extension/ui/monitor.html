@@ -3,71 +3,86 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
   <title>Run monitor · Databricks Cost Companion</title>
+  <link rel="stylesheet" href="brand.css">
   <link rel="stylesheet" href="monitor.css">
 </head>
 <body>
   <div id="host" class="host">
     <main id="app" class="app" aria-labelledby="mon-title">
-      <header class="hdr">
-        <div class="bar">
-          <svg class="mark" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect width="16" height="16" rx="4" fill="#0f766e"/><rect x="3.5" y="8.5" width="2" height="4" fill="#fff"/><rect x="7" y="5.5" width="2" height="7" fill="#fff"/><rect x="10.5" y="3.5" width="2" height="9" fill="#fff"/></svg>
-          <h1 id="mon-title">Run monitor</h1>
-          <span class="spacer"></span>
-          <button type="button" id="float" class="btn" aria-pressed="false">Float on top</button>
-          <button type="button" id="refresh" class="btn">Refresh</button>
+      <header class="hdr dcc-panel">
+        <svg class="dcc-waves" viewBox="0 0 400 140" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+          <path class="w3" d="M0 58 C 70 44, 140 78, 220 60 S 350 36, 400 50"/>
+          <path class="w1" d="M0 92 C 60 74, 130 110, 210 90 S 340 66, 400 82"/>
+          <path class="w2" d="M0 108 C 80 92, 150 126, 240 106 S 360 86, 400 100"/>
+          <path class="w1" d="M0 124 C 90 110, 170 138, 260 120 S 370 104, 400 114"/>
+        </svg>
+        <div class="hdr-in">
+          <div class="bar">
+            <svg class="dcc-mark mark" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect width="16" height="16" rx="4" fill="#000000"/><rect x="3.5" y="8.5" width="2" height="4" fill="#FFFFFF"/><rect x="7" y="5.5" width="2" height="7" fill="#FFFFFF"/><rect x="10.5" y="3.5" width="2" height="9" fill="#5B8CFF"/></svg>
+            <div class="ttl">
+              <p class="dcc-eyebrow">Cost Companion</p>
+              <h1 id="mon-title">Run monitor</h1>
+            </div>
+            <span class="spacer"></span>
+            <button type="button" id="float" class="btn" aria-pressed="false">Float on top</button>
+            <button type="button" id="refresh" class="btn">Refresh</button>
+          </div>
+          <div class="bar ws-bar">
+            <label for="ws" class="lbl">Workspace</label>
+            <select id="ws"></select>
+          </div>
+          <p id="updated" class="meta" role="status" aria-live="polite">Loading…</p>
         </div>
-        <div class="bar">
-          <label for="ws" class="lbl">Workspace</label>
-          <select id="ws"></select>
-        </div>
-        <p id="updated" class="meta" role="status" aria-live="polite">Loading…</p>
       </header>
 
-      <p id="float-note" class="note" role="status" hidden></p>
-      <div id="notice" class="notice" hidden></div>
+      <div class="body">
+        <p id="float-note" class="note" role="status" hidden></p>
+        <div id="notice" class="notice" hidden></div>
 
-      <section id="counts" class="counts" aria-label="Job runs summary"></section>
+        <section id="counts" class="counts" aria-label="Job runs summary"></section>
 
-      <section class="sec" aria-labelledby="runs-h">
-        <h2 id="runs-h">Job runs</h2>
-        <div id="runs"></div>
-      </section>
+        <section class="sec" aria-labelledby="runs-h">
+          <h2 id="runs-h" class="dcc-eyebrow"><span class="eb-n" aria-hidden="true">01 · </span>Job runs</h2>
+          <div id="runs"></div>
+        </section>
 
-      <section class="sec" aria-labelledby="pipes-h">
-        <h2 id="pipes-h">Pipelines</h2>
-        <div id="pipelines"></div>
-      </section>
+        <section class="sec" aria-labelledby="pipes-h">
+          <h2 id="pipes-h" class="dcc-eyebrow"><span class="eb-n" aria-hidden="true">02 · </span>Pipelines</h2>
+          <div id="pipelines"></div>
+        </section>
 
-      <section class="sec" aria-labelledby="wh-h">
-        <h2 id="wh-h">SQL warehouses</h2>
-        <div id="warehouses"></div>
-      </section>
+        <section class="sec" aria-labelledby="wh-h">
+          <h2 id="wh-h" class="dcc-eyebrow"><span class="eb-n" aria-hidden="true">03 · </span>SQL warehouses</h2>
+          <div id="warehouses"></div>
+        </section>
 
-      <section class="sec" aria-labelledby="cl-h">
-        <h2 id="cl-h">Clusters</h2>
-        <div id="clusters"></div>
-      </section>
+        <section class="sec" aria-labelledby="cl-h">
+          <h2 id="cl-h" class="dcc-eyebrow"><span class="eb-n" aria-hidden="true">04 · </span>Clusters</h2>
+          <div id="clusters"></div>
+        </section>
 
-      <section class="sec cost" aria-labelledby="cost-h">
-        <h2 id="cost-h">Workspace cost</h2>
-        <div id="cost" aria-live="polite"></div>
-        <p id="disclaimer" class="disclaimer">Estimated costs. Billing can be delayed; final invoices may differ.</p>
-      </section>
+        <section class="sec cost" aria-labelledby="cost-h">
+          <h2 id="cost-h" class="dcc-eyebrow"><span class="eb-n" aria-hidden="true">05 · </span>Workspace cost</h2>
+          <div id="cost" aria-live="polite"></div>
+          <p id="disclaimer" class="disclaimer">Estimated costs. Billing can be delayed; final invoices may differ.</p>
+        </section>
 
-      <footer class="ftr">
-        <div class="bar">
-          <label for="interval" class="lbl">Check every</label>
-          <select id="interval" class="narrow">
-            <option value="60">1 minute</option>
-            <option value="120">2 minutes</option>
-            <option value="300">5 minutes</option>
-          </select>
-          <span class="spacer"></span>
-          <button type="button" id="settings" class="link">Connection preferences</button>
-        </div>
-        <p class="ftr-note">Read-only checks; never starts a warehouse on its own. Turn monitoring on or off, auto-open and failure notifications in the toolbar popup.</p>
-      </footer>
+        <footer class="ftr">
+          <div class="bar">
+            <label for="interval" class="lbl">Check every</label>
+            <select id="interval" class="narrow">
+              <option value="60">1 minute</option>
+              <option value="120">2 minutes</option>
+              <option value="300">5 minutes</option>
+            </select>
+            <span class="spacer"></span>
+            <button type="button" id="settings" class="link">Connection preferences</button>
+          </div>
+          <p class="ftr-note">Read-only checks; never starts a warehouse on its own. Turn monitoring on or off, auto-open and failure notifications in the toolbar popup.</p>
+        </footer>
+      </div>
     </main>
   </div>
 

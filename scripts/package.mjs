@@ -21,6 +21,7 @@ const ALLOW = [
   ['extension/manifest.json'],
   ['extension/EXTENSION_ID'],
   ['extension/icons', { recursive: true, ext: ['.png'] }],
+  ['extension/fonts', { recursive: false, ext: ['.woff2', '.txt'] }],
   ['extension/src', { recursive: true, ext: ['.js'] }],
   ['extension/ui', { recursive: true, ext: ['.html', '.js', '.css'] }],
   ['extension/docs', { recursive: true, ext: ['.html', '.css'] }],

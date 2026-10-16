@@ -1,6 +1,6 @@
 /*
  * Cost Explorer inside the expandable banner (shadow DOM). DCC.explorer.mount(panel, ctx,
- * bannerState) renders six views — Products, Top drivers, Runs, Calendar, SKUs, Daily detail —
+ * bannerState) renders six views (Products, Top drivers, Runs, Calendar, SKUs, Daily detail)
  * with keyboard-operable tabs, drilldowns (product, resource, run, SKU, day), breadcrumbs,
  * removable filter chips, search, sort, share of total where valid, reset, compact/expanded
  * layouts, exact values on hover/tap/focus, and CSV export of the current table.
@@ -22,6 +22,7 @@
   const C = dep('exploreCharts', './charts.js');
   const CSV = dep('exploreCsv', './csv.js');
   const STYLE = dep('explorerCss', './explorer.css.js').CSS;
+  const theme = dep('theme', '../core/theme.js');
 
   const VIEWS = Object.freeze([
     { id: 'products', label: 'Products' },
@@ -40,7 +41,11 @@
     ['name', 'desc', 'Name: Z to A'],
   ]);
   const FILTER_NAMES = Object.freeze({ owner: 'Owner type', product: 'Product', sku: 'SKU', resource: 'Resource', run: 'Run', day: 'Day' });
-  const RAMP = Object.freeze(['#eef2f1', '#cdeae5', '#9bd3c9', '#5fb5a8', '#2a9284', '#0f766e']);
+  // Calendar intensity: one blue hue, index 0 = no cost; light steps darken, dark steps brighten.
+  const RAMPS = Object.freeze({
+    light: Object.freeze(['#F6F6F7', '#DCE5FF', '#B9C8FA', '#8DA6F4', '#5F80EF', '#2F5BEA']),
+    dark: Object.freeze(['#141416', '#132447', '#1E3A7A', '#2F5BC2', '#4677F0', '#8FB0FF']),
+  });
   const COMPACT_BELOW_PX = 700;
   const OWNERSHIP_NOTE =
     'Explorer ownership is exclusive: each billing record counts once, for the first of job → pipeline → SQL warehouse → notebook → app → cluster → unattributed. Native badges can show broader related-workload attribution (for example, a job badge can include pipelines that job triggered), so Explorer and badge amounts can differ. Badge amounts are never added into workspace totals.';
@@ -67,7 +72,7 @@
   }
 
   function statusText(status) {
-    return { complete: 'complete', partial: 'priced subtotal — some usage unpriced', unpriced: 'no priced usage', unavailable: 'unavailable', 'no-usage': 'no usage recorded' }[status] || status || '';
+    return { complete: 'complete', partial: 'priced subtotal (some usage unpriced)', unpriced: 'no priced usage', unavailable: 'unavailable', 'no-usage': 'no usage recorded' }[status] || status || '';
   }
 
   function pct(v) {
@@ -103,6 +108,22 @@
     if (min < 60) return Math.round(min) + 'm';
     const hrs = min / 60;
     return (Number.isInteger(hrs) ? String(hrs) : hrs.toFixed(hrs < 10 ? 1 : 0)) + 'h';
+  }
+
+  /**
+   * Light or dark, matching the Databricks page behind the banner: the banner's own pick when it
+   * sets one on its host, otherwise the luminance rule on the element the banner sits in.
+   */
+  function themeOf(panel, doc) {
+    if (!theme) return 'light';
+    const rootNode = panel && panel.getRootNode ? panel.getRootNode() : null;
+    const host = rootNode && rootNode.host;
+    if (host) {
+      const picked = host.getAttribute('data-dcc-theme');
+      if (picked === 'dark' || picked === 'light') return picked;
+      return theme.pickForElement(host.parentElement || doc.body);
+    }
+    return theme.pickForPage(doc);
   }
 
   /* ------------------------------------------------------------------ mount */
@@ -161,10 +182,20 @@
       ro = new win.ResizeObserver(check);
       ro.observe(panel);
     } else if (win) win.setTimeout(check, 0);
+    // Follow the banner when the page switches between light and dark.
+    let mo = null;
+    const host = panel.getRootNode && panel.getRootNode().host;
+    if (host && win && typeof win.MutationObserver === 'function') {
+      mo = new win.MutationObserver(() => {
+        if (!app.destroyed && app.root.isConnected && themeOf(app.panel, app.doc) !== app.theme) render(app);
+      });
+      mo.observe(host, { attributes: true, attributeFilter: ['data-dcc-theme'] });
+    }
     return {
       destroy() {
         app.destroyed = true;
         if (ro) ro.disconnect();
+        if (mo) mo.disconnect();
         if (sess.app === app) sess.app = null;
         rootEl.remove();
         style.remove();
@@ -288,6 +319,9 @@
     app.compact = compact;
     app.table = null;
     app.root.className = 'dcc-x ' + (compact ? 'compact' : 'expanded');
+    app.theme = themeOf(app.panel, app.doc);
+    if (app.root.getAttribute('data-theme') !== app.theme) app.root.setAttribute('data-theme', app.theme);
+    app.colors = C.colors(app.theme);
     app.root.textContent = '';
     app.tip = h(app, 'div', { class: 'tip', 'aria-hidden': 'true', hidden: true });
     app.inspectEl = null;
@@ -393,7 +427,7 @@
         ])
       );
     }
-    return h(app, 'div', { class: 'x-chips', role: 'group', 'aria-label': 'Active filters' }, list.length ? list : h(app, 'span', { class: 'muted' }, 'No filters — whole workspace.'));
+    return h(app, 'div', { class: 'x-chips', role: 'group', 'aria-label': 'Active filters' }, list.length ? list : h(app, 'span', { class: 'muted' }, 'No filters: whole workspace.'));
   }
 
   function tabs(app) {
@@ -521,6 +555,7 @@
 
   function chartHandlers(app) {
     return {
+      theme: app.theme,
       onInspect: (info, el, extra) => inspect(app, info, el, extra),
       onLeave: () => leave(app),
       onActivate: (info, el) => {
@@ -576,7 +611,7 @@
     const body = o.rows.map((r) =>
       h(app, 'tr', { class: o.isSelected && o.isSelected(r) ? 'selected' : null }, shown.map((c) => {
         const v = c.cell(r);
-        return h(app, c.rowHeader ? 'th' : 'td', { class: (c.num ? 'num ' : '') + (c.opt ? 'opt' : ''), scope: c.rowHeader ? 'row' : null }, v === null || v === undefined ? '—' : v);
+        return h(app, c.rowHeader ? 'th' : 'td', { class: (c.num ? 'num ' : '') + (c.opt ? 'opt' : ''), scope: c.rowHeader ? 'row' : null }, v === null || v === undefined ? 'n/a' : v);
       }))
     );
     app.table = { title: o.caption, columns: o.columns.map((c) => ({ label: c.csvLabel || c.label, type: c.type || 'text', value: c.csv })), rows: o.rows, scope: o.scope || null, limit: o.limit || null };
@@ -601,7 +636,7 @@
 
   function legendKeys(app, extra) {
     const out = [];
-    for (const k of extra) out.push(h(app, 'span', { class: 'key' }, [C.swatch(app.doc, k.color || C.INK, { kind: k.kind, dashed: k.dashed }), k.label]));
+    for (const k of extra) out.push(h(app, 'span', { class: 'key' }, [C.swatch(app.doc, k.color || app.colors.ink, { kind: k.kind, dashed: k.dashed, theme: app.theme }), k.label]));
     return out;
   }
 
@@ -661,7 +696,7 @@
       h(app, 'div', { class: 'tbl-wrap' }, h(app, 'table', {}, [
         h(app, 'caption', { class: 'sr-only' }, 'Breakdown for ' + fmtDate(date)),
         h(app, 'thead', {}, h(app, 'tr', {}, [h(app, 'th', { scope: 'col' }, dimension === 'owner' ? 'Owner type' : dimension === 'sku' ? 'SKU' : 'Product'), h(app, 'th', { class: 'num', scope: 'col' }, 'Day'), h(app, 'th', { class: 'num', scope: 'col' }, 'Prior day'), h(app, 'th', { class: 'num', scope: 'col' }, 'Change'), h(app, 'th', { class: 'num opt', scope: 'col' }, 'Share of day')])),
-        h(app, 'tbody', {}, items.map((it) => h(app, 'tr', {}, [h(app, 'th', { scope: 'row' }, it.name), h(app, 'td', { class: 'num' }, amountCell(app, it.cost, it.status)), h(app, 'td', { class: 'num' }, amountCell(app, it.prevCost, it.prevStatus)), h(app, 'td', { class: 'num' }, f.change(it.change) || '—'), h(app, 'td', { class: 'num opt' }, shareCell(app, it.share, dd.validity))]))),
+        h(app, 'tbody', {}, items.map((it) => h(app, 'tr', {}, [h(app, 'th', { scope: 'row' }, it.name), h(app, 'td', { class: 'num' }, amountCell(app, it.cost, it.status)), h(app, 'td', { class: 'num' }, amountCell(app, it.prevCost, it.prevStatus)), h(app, 'td', { class: 'num' }, f.change(it.change) || 'n/a'), h(app, 'td', { class: 'num opt' }, shareCell(app, it.share, dd.validity))]))),
       ])),
       dd.validity.valid ? null : note(app, 'Share of day not shown: ' + dd.validity.reason),
       h(app, 'button', { type: 'button', 'data-fk': 'clear-day', onclick: () => {
@@ -723,7 +758,7 @@
     const all = M.groupTotals(model, dim, filters);
     const allKeys = M.groupTotals(model, dim, {}).items;
     const weights = new Map(allKeys.map((it) => [it.key, it.cost || 0]));
-    const colors = M.colorMap(allKeys.map((it) => it.key), weights, dim === 'owner' ? M.OWNER_TYPES : null);
+    const colors = M.colorMap(allKeys.map((it) => it.key), weights, dim === 'owner' ? M.OWNER_TYPES : null, M.paletteFor(app.theme));
     const searched = M.search(all.items, s.search, ['name', 'key']);
     const keySet = new Set(searched.map((it) => it.key));
     const rows = model.rows.filter((r) => {
@@ -774,11 +809,11 @@
     const totals = M.aggregate(rows.filter((r) => r.period === 'cur'));
     const title = 'Daily cost by ' + (dim === 'owner' ? 'owner type' : 'product');
     const summaryText = title + ', ' + periods.periodLabel(model.period.start, model.period.endExclusive) + '. Period ' + f.amount(totals.cost, totals.status) + '. ' + days.filter((d) => d.status === 'unavailable').length + ' unavailable date(s). Solid line: daily total; dashed line: aligned prior period.';
-    const legend = h(app, 'div', { class: 'legend', role: 'group', 'aria-label': 'Legend — select to drill down' }, []);
+    const legend = h(app, 'div', { class: 'legend', role: 'group', 'aria-label': 'Legend: select to drill down' }, []);
     const legendKeysList = [...new Set(visibleKeys.map((k) => colors.groupOf(k)))];
     for (const g of legendKeysList) {
       if (g === M.OTHER_KEY) {
-        legend.appendChild(h(app, 'span', { class: 'key' }, [C.swatch(app.doc, M.OTHER_COLOR), 'Other (' + colors.folded.length + ' smaller)']));
+        legend.appendChild(h(app, 'span', { class: 'key' }, [C.swatch(app.doc, M.OTHER_COLOR, { theme: app.theme }), 'Other (' + colors.folded.length + ' smaller)']));
         continue;
       }
       const filterName = dim === 'owner' ? 'owner' : 'product';
@@ -786,9 +821,9 @@
       legend.appendChild(h(app, 'button', { type: 'button', 'aria-pressed': String(pressed), 'data-fk': 'legend:' + g, onclick: () => {
         setFilter(s, filterName, pressed ? null : g);
         rerender(app, 'legend:' + g);
-      } }, [C.swatch(app.doc, colors.colorOf(g)), nameOf(g)]));
+      } }, [C.swatch(app.doc, colors.colorOf(g), { theme: app.theme }), nameOf(g)]));
     }
-    for (const k of legendKeys(app, [{ label: 'Daily total', kind: 'line' }, { label: 'Aligned prior period', kind: 'line', color: C.MUTED, dashed: true }, { label: 'Unavailable', kind: 'hatch' }, { label: 'Partial (priced subtotal)', kind: 'dashed' }, { label: 'Spike flag (heuristic)', kind: 'diamond' }])) legend.appendChild(k);
+    for (const k of legendKeys(app, [{ label: 'Daily total', kind: 'line' }, { label: 'Aligned prior period', kind: 'line', color: app.colors.warm, dashed: true }, { label: 'Unavailable', kind: 'hatch' }, { label: 'Partial (priced subtotal)', kind: 'dashed' }, { label: 'Spike flag (heuristic)', kind: 'diamond' }])) legend.appendChild(k);
     const chart = C.stackedBars(app.doc, Object.assign({ width: chartWidth(app), height: app.compact ? 210 : 240, title, summary: summaryText, days, showPrior: model.hasPrior, formatAxis: f.axis }, chartHandlers(app)));
     view.append(legend, h(app, 'div', { class: 'chart-wrap' }, chart), inspector(app));
     for (const n of coverageNotes(app, series)) view.appendChild(n);
@@ -833,7 +868,7 @@
     }
     const v = st.value;
     view.appendChild(loadedMeta(app, st, { kind: 'exploreEntities', args, scope: 'entities' }));
-    const limitText = 'Showing the top ' + v.items.length + ' of ' + v.candidateCount + ' resources with usage in the period' + (v.limited ? ' — results are limited to ' + v.limit + '; the remaining ' + (v.candidateCount - v.items.length) + ' are not listed.' : '.');
+    const limitText = 'Showing the top ' + v.items.length + ' of ' + v.candidateCount + ' resources with usage in the period' + (v.limited ? '. Results are limited to ' + v.limit + '; the remaining ' + (v.candidateCount - v.items.length) + ' are not listed.' : '.');
     view.appendChild(note(app, limitText, v.limited ? 'x-warn' : 'x-note'));
     const ignored = ['product', 'sku', 'day'].filter((n) => s.filters[n]);
     if (ignored.length) view.appendChild(note(app, ignored.map((n) => FILTER_NAMES[n]).join(', ') + ' filter(s) do not apply to Top drivers: a resource can span several products, SKUs and days.'));
@@ -851,7 +886,7 @@
     const sorted = M.sortItems(list, s.sort, { name: (it) => it.label });
     const selKey = s.filters.resource && s.filters.resource.key;
     const ranked = list.slice().sort((a, b) => a.rank - b.rank).slice(0, app.compact ? 10 : 15);
-    const ownerColors = M.colorMap(M.OWNER_TYPES, new Map(), M.OWNER_TYPES);
+    const ownerColors = M.colorMap(M.OWNER_TYPES, new Map(), M.OWNER_TYPES, M.paletteFor(app.theme));
     const drill = (it) => {
       setFilter(s, 'resource', { key: it.key, ownerType: it.ownerType, id: it.id, name: it.name });
       setFilter(s, 'run', null);
@@ -868,7 +903,7 @@
         formatValue: f.money,
         items: ranked.map((it) => ({ key: it.key, label: it.label, truncateStart: it.ownerType === 'notebook' && Boolean(it.name), value: it.amount, prior: it.prevAmount, color: ownerColors.colorOf(it.ownerType), selected: it.key === selKey, valueLabel: it.amount === null ? 'unpriced' : f.money(it.amount) + (it.status === 'partial' ? '*' : ''), info: { key: it.key, label: resTip(it).join('. ') + '. Press Enter to drill down.', tip: resTip(it).join('\n'), activate: () => drill(it) } })),
       }, chartHandlers(app)));
-      const legend = h(app, 'div', { class: 'legend', 'aria-label': 'Owner type colors' }, legendKeys(app, typesPresent.map((t) => ({ label: M.OWNER_LABELS[t], color: ownerColors.colorOf(t) })).concat([{ label: 'Prior period', kind: 'line' }])));
+      const legend = h(app, 'div', { class: 'legend', 'aria-label': 'Owner type colors' }, legendKeys(app, typesPresent.map((t) => ({ label: M.OWNER_LABELS[t], color: ownerColors.colorOf(t) })).concat([{ label: 'Prior period', kind: 'line', color: app.colors.warm }])));
       view.append(legend, h(app, 'div', { class: 'chart-wrap' }, chart), inspector(app));
     }
     const sel = selKey ? withCalc.find((it) => it.key === selKey) : null;
@@ -931,7 +966,7 @@
     const v = st.value;
     view.appendChild(loadedMeta(app, st, { kind: 'exploreRuns', args, scope }));
     for (const w of v.warnings || []) view.appendChild(note(app, w.text, w.code === 'DURATION_UNAVAILABLE' ? 'x-warn' : 'x-note'));
-    const limitText = 'Showing the ' + v.items.length + ' highest-cost of ' + v.candidateCount + ' runs' + (jobId ? ' of this job' : '') + (v.limited ? ' — limited to ' + v.limit + '.' : '.');
+    const limitText = 'Showing the ' + v.items.length + ' highest-cost of ' + v.candidateCount + ' runs' + (jobId ? ' of this job' : '') + (v.limited ? ' (limited to ' + v.limit + ').' : '.');
     view.appendChild(note(app, limitText, v.limited ? 'x-warn' : 'x-note'));
     const heur = M.highCostRuns(v.items);
     const runLabel = (r) => (r.jobName || 'Job ' + r.jobId) + ' · run ' + r.runId;
@@ -979,7 +1014,7 @@
         },
       }, chartHandlers(app)));
       view.append(
-        h(app, 'div', { class: 'legend' }, legendKeys(app, [{ label: 'Run (number = runs at the same spot)', color: C.ACCENT, kind: 'dot' }, { label: 'High cost vs the job\'s runs (heuristic)', kind: 'ring' }])),
+        h(app, 'div', { class: 'legend' }, legendKeys(app, [{ label: 'Run (number = runs at the same spot)', color: app.colors.accent, kind: 'dot' }, { label: 'High cost vs the job\'s runs (heuristic)', kind: 'ring' }])),
         h(app, 'div', { class: 'chart-wrap' }, chart),
         inspector(app)
       );
@@ -996,7 +1031,7 @@
         h(app, 'ul', {}, runs.map((r) => h(app, 'li', {}, [h(app, 'button', { type: 'button', class: 'linkish', 'data-fk': 'ov:' + r.key, onclick: () => {
           s.overlap = null;
           selectRun(r);
-        } }, runLabel(r)), ' — ' + f.amount(r.amount, r.status === 'ok' ? 'complete' : r.status) + ', ' + (r.durationMs ? labels.formatDuration(r.durationMs) : 'duration unavailable') + ' ', nativeLink(app, M.runRef(r), 'Open run ' + r.runId)]))),
+        } }, runLabel(r)), ': ' + f.amount(r.amount, r.status === 'ok' ? 'complete' : r.status) + ', ' + (r.durationMs ? labels.formatDuration(r.durationMs) : 'duration unavailable') + ' ', nativeLink(app, M.runRef(r), 'Open run ' + r.runId)]))),
         h(app, 'button', { type: 'button', 'data-fk': 'ov-close', onclick: () => {
           s.overlap = null;
           rerender(app, 'view');
@@ -1040,7 +1075,8 @@
     const series = M.dailySeries(model, filters);
     const spikes = M.spikeFlags(series, M.priorDailySeries(model, filters), { latestUsageMs: model.latestUsageMs, nowMs: model.nowMs });
     const cal = M.calendar(model, series);
-    const fillFor = (c) => RAMP[M.intensity(c.cost, cal.max, 5)];
+    const ramp = RAMPS[app.theme] || RAMPS.light;
+    const fillFor = (c) => ramp[M.intensity(c.cost, cal.max, 5)];
     const chart = C.heatmap(app.doc, Object.assign({
       title: 'Calendar of daily cost (UTC, weeks start Monday)',
       summary: 'Calendar heatmap, ' + periods.periodLabel(model.period.start, model.period.endExclusive) + '. Darker is higher cost' + (cal.max !== null ? ', up to ' + f.money(cal.max) : '') + '. Hatched days are unavailable.',
@@ -1057,9 +1093,9 @@
         return { key: c.date, label: lines.join('. ') + '. Press Enter to ' + (s.filters.day === c.date ? 'clear the selection.' : 'select this day.'), tip: lines.join('\n'), activate: () => selectDay(app, c.date) };
       },
     }, chartHandlers(app)));
-    const ramp = h(app, 'span', { class: 'ramp', 'aria-hidden': 'true' }, RAMP.slice(1).map((c) => h(app, 'span', { style: { background: c } })));
+    const rampKey = h(app, 'span', { class: 'ramp', 'aria-hidden': 'true' }, ramp.slice(1).map((c) => h(app, 'span', { style: { background: c } })));
     view.append(
-      h(app, 'div', { class: 'legend' }, [h(app, 'span', { class: 'key' }, ['Lower', ramp, 'Higher' + (cal.max !== null ? ' (max ' + f.money(cal.max) + ')' : '')])].concat(legendKeys(app, [{ label: 'Unavailable', kind: 'hatch' }, { label: 'Partial (priced subtotal)', kind: 'dashed' }, { label: 'Spike flag (heuristic)', kind: 'diamond' }]))),
+      h(app, 'div', { class: 'legend' }, [h(app, 'span', { class: 'key' }, ['Lower', rampKey, 'Higher' + (cal.max !== null ? ' (max ' + f.money(cal.max) + ')' : '')])].concat(legendKeys(app, [{ label: 'Unavailable', kind: 'hatch' }, { label: 'Partial (priced subtotal)', kind: 'dashed' }, { label: 'Spike flag (heuristic)', kind: 'diamond' }]))),
       h(app, 'div', { class: 'chart-wrap' }, chart),
       inspector(app)
     );
@@ -1107,7 +1143,7 @@
     const tipLines = (it) => [it.key, 'Product: ' + it.product, 'Selected period: ' + f.amount(it.cost, it.status), 'Prior period: ' + f.amount(it.prevCost, it.prevStatus), 'Change: ' + (f.change(it.change) || 'no comparison'), it.share !== null ? 'Share: ' + f.share(it.share) : null].filter(Boolean);
     const top = M.sortItems(list, { key: 'cost', dir: 'desc' }).slice(0, app.compact ? 8 : 12);
     if (top.length) {
-      const productColors = M.colorMap(M.groupTotals(model, 'product', {}).items.map((it) => it.key));
+      const productColors = M.colorMap(M.groupTotals(model, 'product', {}).items.map((it) => it.key), new Map(), null, M.paletteFor(app.theme));
       const chart = C.hBars(app.doc, Object.assign({
         width: chartWidth(app),
         labelWidth: app.compact ? 150 : 260,
@@ -1117,14 +1153,14 @@
         formatValue: f.money,
         items: top.map((it) => ({ key: it.key, label: it.key, value: it.cost, prior: it.prevCost, color: productColors.colorOf(it.product), selected: it.key === sel, valueLabel: f.amount(it.cost, it.status).replace(' (priced subtotal)', '*'), info: { key: it.key, label: tipLines(it).join('. ') + '. Press Enter to ' + (it.key === sel ? 'clear the SKU.' : 'show its daily cost.'), tip: tipLines(it).join('\n'), activate: () => drill(it) } })),
       }, chartHandlers(app)));
-      view.append(h(app, 'div', { class: 'legend' }, legendKeys(app, [{ label: 'Selected period (colored by product)', color: C.ACCENT }, { label: 'Prior period', kind: 'line' }])), h(app, 'div', { class: 'chart-wrap' }, chart), inspector(app));
+      view.append(h(app, 'div', { class: 'legend' }, legendKeys(app, [{ label: 'Selected period (colored by product)', color: app.colors.accent }, { label: 'Prior period', kind: 'line', color: app.colors.warm }])), h(app, 'div', { class: 'chart-wrap' }, chart), inspector(app));
     }
     if (sel) {
       const skuModelFilters = { sku: sel };
       const series = M.dailySeries(model, skuModelFilters, 'sku');
       const days = series.map((d) => {
         const lines = dayTip(app, d);
-        return { date: d.date, axisLabel: fmtDate(d.date, false, false), cost: d.cost, status: d.status, prior: d.prior, segments: d.cost === null ? [] : [{ key: sel, label: sel, color: C.ACCENT, cost: d.cost }], flagged: false, selected: s.filters.day === d.date, info: { key: 'sku-day:' + d.date, label: lines.join('. ') + '. Press Enter to select this day.', tip: lines.join('\n'), activate: () => selectDay(app, d.date, 'mark:sku-day:' + d.date) } };
+        return { date: d.date, axisLabel: fmtDate(d.date, false, false), cost: d.cost, status: d.status, prior: d.prior, segments: d.cost === null ? [] : [{ key: sel, label: sel, color: app.colors.accent, cost: d.cost }], flagged: false, selected: s.filters.day === d.date, info: { key: 'sku-day:' + d.date, label: lines.join('. ') + '. Press Enter to select this day.', tip: lines.join('\n'), activate: () => selectDay(app, d.date, 'mark:sku-day:' + d.date) } };
       });
       const tt = M.periodTotals(model, skuModelFilters);
       view.appendChild(h(app, 'section', { class: 'card', 'aria-label': 'SKU daily drilldown' }, [
@@ -1208,9 +1244,9 @@
     if (s.search) scope.push('Search = "' + s.search + '"');
     if (t.scope) scope.push(t.scope);
     return [
-      ['Source', 'Databricks Cost Companion — Cost Explorer: ' + viewLabel + (t.title ? ' — ' + t.title : '')],
+      ['Source', 'Databricks Cost Companion · Cost Explorer: ' + viewLabel + (t.title ? ' · ' + t.title : '')],
       ['Data', dataLabel],
-      ['Pricing basis', basis ? basis.short + ' — ' + basis.note : m.pricingBasis || 'unknown'],
+      ['Pricing basis', basis ? basis.short + ': ' + basis.note : m.pricingBasis || 'unknown'],
       ['Price table', m.priceTable || 'n/a'],
       ['Currency', m.currency],
       ['Period start (UTC, inclusive)', m.period.start],

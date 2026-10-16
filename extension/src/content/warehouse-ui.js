@@ -7,7 +7,7 @@
  *   serverless table applies, only on Azure, only when Serverless is detectably selected, and never
  *   for real-time warehouses. Anything else shows "Rate unavailable". Autoscaling multiplies it.
  * Interactive compute create/edit: the native DBU/h value or range (driver included only when the
- *   native estimate includes it — we never add or remove anything) × one unambiguous all-purpose
+ *   native estimate includes it; we never add or remove anything) × one unambiguous all-purpose
  *   rate (computeRates 'allPurpose', filtered by Photon when detectable). Never a SQL rate.
  *
  * Read-only: never clicks, saves or resizes anything, and never changes native inputs. Inserted
@@ -41,11 +41,17 @@
   const CLUSTER_IN_HASH = /^#setting\/clusters\/([0-9]{4}-[0-9]{6}-[a-z0-9]{8})(?:\/|$)/;
   const WAREHOUSE_IN_PATH = /\/(?:sql\/warehouses|compute\/sql-warehouses|sql-warehouses)\/([0-9a-f]{16})(?:\/|$)/;
 
+  const theme = DCC.theme || null;
+  const vars = (name) => (theme ? theme.cssVars(name, 'dcc-') : '');
+
+  // Theme tokens as custom properties on each preview; data-dcc-theme follows the page.
   const CSS = `
-.dcc-wh-preview { display: inline-block; margin-left: 8px; padding: 0 5px; border-radius: 4px; background: #eef7f6; color: #0f5f57;
-  font: 600 11px/18px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; white-space: nowrap;
+.dcc-wh-preview { ${vars('light')} }
+.dcc-wh-preview[data-dcc-theme="dark"] { ${vars('dark')} }
+.dcc-wh-preview { display: inline-block; margin-left: 8px; padding: 0 8px; border: 1px solid var(--dcc-accent-line); border-radius: 999px;
+  background: var(--dcc-accent-soft); color: var(--dcc-accent-text); font: 500 11px/18px var(--dcc-font); white-space: nowrap;
   font-variant-numeric: tabular-nums; vertical-align: middle; }
-.dcc-wh-preview.dcc-wh-muted { background: #f2f5f7; color: #52606d; font-weight: 500; }
+.dcc-wh-preview.dcc-wh-muted { border-color: var(--dcc-line2); background: var(--dcc-bg); color: var(--dcc-muted); font-weight: 400; }
 `;
 
   const state = { rates: new Map(), listening: false, lastCtx: null };
@@ -193,7 +199,7 @@
   }
 
   /** Place (or update) a preview as the last child of `host` or right after `after`. */
-  function place(doc, where, view, rendered) {
+  function place(doc, where, view, rendered, themeName) {
     let el = null;
     if (where.inside) {
       for (const c of where.inside.children) if (c.matches(PREVIEW)) el = c;
@@ -201,7 +207,7 @@
       const next = where.after.nextElementSibling;
       if (next && next.matches(PREVIEW)) el = next;
     }
-    const sig = JSON.stringify([view.text, view.title, view.muted]);
+    const sig = JSON.stringify([view.text, view.title, view.muted, themeName]);
     if (!el) {
       el = doc.createElement('span');
       el.setAttribute('data-dcc', FEATURE);
@@ -212,6 +218,7 @@
     if (el.getAttribute('data-dcc-sig') === sig) return;
     el.setAttribute('data-dcc-sig', sig);
     el.className = 'dcc-wh-preview' + (view.muted ? ' dcc-wh-muted' : '');
+    el.setAttribute('data-dcc-theme', themeName || 'light');
     el.textContent = view.text;
     el.setAttribute('title', view.title);
   }
@@ -261,7 +268,7 @@
     return out;
   }
 
-  function handleWarehouse(ctx, rendered) {
+  function handleWarehouse(ctx, rendered, themeName) {
     const doc = ctx.doc;
     const loc = doc.defaultView.location;
     const m = WAREHOUSE_IN_PATH.exec(loc.pathname);
@@ -298,7 +305,7 @@
     const needsRate = targets.some((t) => t.dbu);
     const key = 'wh:' + (warehouseId || 'new') + ':' + String(type.serverless);
     const entry = needsRate ? rateFor(ctx, key, { target: 'warehouse', warehouseId, serverless: type.serverless }) : null;
-    for (const t of targets) place(doc, t.where, warehouseView(t.dbu, t.source, entry), rendered);
+    for (const t of targets) place(doc, t.where, warehouseView(t.dbu, t.source, entry), rendered, themeName);
   }
 
   /* ------------------------------------------------------------------ interactive compute */
@@ -320,7 +327,7 @@
     return out.filter((x) => !out.some((y) => y !== x && x.el.contains(y.el)));
   }
 
-  function handleCompute(ctx, rendered) {
+  function handleCompute(ctx, rendered, themeName) {
     const doc = ctx.doc;
     const loc = doc.defaultView.location;
     const cm = CLUSTER_IN_PATH.exec(loc.pathname) || CLUSTER_IN_HASH.exec(loc.hash || '');
@@ -337,8 +344,8 @@
     const photon = detectPhoton(doc);
     const key = 'ap:' + String(photon) + ':' + (clusterId || '-');
     const entry = rateFor(ctx, key, Object.assign({ target: 'allPurpose', photon }, clusterId ? { clusterId } : {}));
-    for (const s of summaries) place(doc, { after: s.el }, computeView(s.dbu, entry, photon), rendered);
-    for (const o of options) place(doc, { inside: o.el }, computeView(o.dbu, entry, photon), rendered);
+    for (const s of summaries) place(doc, { after: s.el }, computeView(s.dbu, entry, photon), rendered, themeName);
+    for (const o of options) place(doc, { inside: o.el }, computeView(o.dbu, entry, photon), rendered, themeName);
   }
 
   /* ------------------------------------------------------------------ hooks */
@@ -365,8 +372,10 @@
     }
     listen(doc);
     const rendered = new Set();
-    if (mode === 'warehouse') handleWarehouse(ctx, rendered);
-    else handleCompute(ctx, rendered);
+    // Light or dark tokens, matching the page's main container (re-checked every tick).
+    const themeName = theme ? theme.pickForPage(doc) : 'light';
+    if (mode === 'warehouse') handleWarehouse(ctx, rendered, themeName);
+    else handleCompute(ctx, rendered, themeName);
     for (const el of doc.querySelectorAll(PREVIEW)) if (!rendered.has(el)) el.remove();
   }
 

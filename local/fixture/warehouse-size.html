@@ -1,6 +1,6 @@
 <!--
   Fixture fragment: SQL warehouse edit form with an open cluster-size dropdown (route
-  /sql/warehouses/a1b2c3d4e5f60001/edit, or /sql/warehouses/create for a new warehouse).
+  /sql/warehouses/<W1 id>/edit, or /sql/warehouses/create for a new warehouse).
   Synthetic data only. Most size options show an explicit DBU/h hint; 5X-Large does not, so it
   shows "Rate unavailable" unless the Azure serverless mapping applies (it never applies to
   5X-Large). Each option gets "≈ $X/h per cluster · DBU only"; the trigger gets the preview for
@@ -19,7 +19,7 @@
 <section class="fx-whf" data-testid="warehouse-edit-page">
   <h1>Edit SQL warehouse</h1>
   <form onsubmit="return false">
-    <div class="fx-field"><label for="fx-wh-name">Name</label><input id="fx-wh-name" value="Shared BI warehouse"></div>
+    <div class="fx-field"><label for="fx-wh-name">Name</label><input id="fx-wh-name" value="{{WAREHOUSE_W1_NAME}}"></div>
     <fieldset>
       <legend>Type</legend>
       <label><input type="radio" name="fx-wh-type" value="serverless" checked> Serverless</label>

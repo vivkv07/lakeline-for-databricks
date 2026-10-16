@@ -3,6 +3,9 @@
   Rows are role="row" inside role="grid". Inline cost badges go next to each job or pipeline
   name link. The "Recent runs" status dots link to runs but have no text and stay native.
   "Create" and edit links are navigation-only and must be ignored.
+  Double-brace placeholders (JOB_101, …) are filled by the fixture server from
+  local/fixture-data.mjs (jobs 101 and 102, pipeline P1 and their recent runs and updates), so
+  connected mode shows simulated amounts. Job 777 and the other-workspace row have no billing.
 -->
 <style data-fixture="jobs">
   .fx-list { font: 13px/1.4 system-ui, sans-serif; color: #11171c; }
@@ -32,24 +35,24 @@
       </div>
     </div>
     <div role="rowgroup">
-      <div role="row" aria-rowindex="2" data-fx-row="job-1001">
-        <div role="gridcell"><a href="/jobs/1001?o=1234567890">nightly_sales_etl</a></div>
+      <div role="row" aria-rowindex="2" data-fx-row="job-{{JOB_101}}">
+        <div role="gridcell"><a href="/jobs/{{JOB_101}}?o=1234567890">{{JOB_101_NAME}}</a></div>
         <div role="gridcell">Job</div>
         <div role="gridcell">
           <span class="fx-dots">
-            <a class="fx-dot" href="/jobs/1001/runs/50101?o=1234567890" aria-label="Run 50101 succeeded"></a>
-            <a class="fx-dot" href="/jobs/1001/runs/50102?o=1234567890" aria-label="Run 50102 succeeded"></a>
-            <a class="fx-dot fail" href="/jobs/1001/runs/50103?o=1234567890" aria-label="Run 50103 failed"></a>
+            <a class="fx-dot" href="/jobs/{{JOB_101}}/runs/{{JOB_101_RUN_D1}}?o=1234567890" aria-label="Run {{JOB_101_RUN_D1}} succeeded"></a>
+            <a class="fx-dot" href="/jobs/{{JOB_101}}/runs/{{JOB_101_RUN_D2}}?o=1234567890" aria-label="Run {{JOB_101_RUN_D2}} succeeded"></a>
+            <a class="fx-dot fail" href="/jobs/{{JOB_101}}/runs/{{JOB_101_RUN_D3}}?o=1234567890" aria-label="Run {{JOB_101_RUN_D3}} failed"></a>
           </span>
         </div>
         <div role="gridcell">owner@example.com</div>
       </div>
-      <div role="row" aria-rowindex="3" data-fx-row="job-1002">
-        <div role="gridcell"><a href="/jobs/1002">hourly_events</a></div>
+      <div role="row" aria-rowindex="3" data-fx-row="job-{{JOB_102}}">
+        <div role="gridcell"><a href="/jobs/{{JOB_102}}">{{JOB_102_NAME}}</a></div>
         <div role="gridcell">Job</div>
         <div role="gridcell">
           <span class="fx-dots">
-            <a class="fx-dot" href="/jobs/1002/runs/60001" aria-label="Run 60001 succeeded"></a>
+            <a class="fx-dot" href="/jobs/{{JOB_102}}/runs/{{JOB_102_RUN_D1}}" aria-label="Run {{JOB_102_RUN_D1}} succeeded"></a>
           </span>
         </div>
         <div role="gridcell">owner@example.com</div>
@@ -61,9 +64,9 @@
         <div role="gridcell">owner@example.com</div>
       </div>
       <div role="row" aria-rowindex="5" data-fx-row="pipeline-1">
-        <div role="gridcell"><a href="/pipelines/0a1b2c3d-1111-4a2b-8c3d-000000000001?o=1234567890">bronze_ingest</a></div>
+        <div role="gridcell"><a href="/pipelines/{{PIPELINE_P1}}?o=1234567890">{{PIPELINE_P1_NAME}}</a></div>
         <div role="gridcell">Pipeline</div>
-        <div role="gridcell"><span class="fx-dots"><a class="fx-dot" href="/pipelines/0a1b2c3d-1111-4a2b-8c3d-000000000001/updates/0a1b2c3d-2222-4a2b-8c3d-000000000011?o=1234567890" aria-label="Update completed"></a></span></div>
+        <div role="gridcell"><span class="fx-dots"><a class="fx-dot" href="/pipelines/{{PIPELINE_P1}}/updates/{{PIPELINE_P1_UPDATE_D1}}?o=1234567890" aria-label="Update completed"></a></span></div>
         <div role="gridcell">owner@example.com</div>
       </div>
       <div role="row" aria-rowindex="6" data-fx-row="other-workspace">

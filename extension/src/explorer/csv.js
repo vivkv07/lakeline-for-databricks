@@ -2,8 +2,8 @@
  * CSV export for the Explorer's currently filtered table (RFC 4180, CRLF).
  *
  * Safety: numeric cells are written as plain unquoted numbers, so legitimate negative costs
- * (signed corrections) stay numbers. Text cells that a spreadsheet could treat as a formula —
- * starting with =, +, -, @, tab or carriage return, also after leading spaces — get a leading
+ * (signed corrections) stay numbers. Text cells that a spreadsheet could treat as a formula
+ * (starting with =, +, -, @, tab or carriage return, also after leading spaces) get a leading
  * single quote. Quotes, commas and newlines are escaped by quoting. Metadata header rows carry
  * source, pricing basis/table, currency, UTC bounds, freshness and scope/limit.
  */

@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { startFixtureServer, FIXTURE_TOKEN, FIXTURE_ORIGIN, mapEngineError } from './fixture-server.mjs';
 import { buildDataset, monitorSnapshot, LIST_PRICES, JOBS_PRICE_AFTER_CHANGE, PRICE_CHANGE_DAYS_AGO, UNPRICED_SKU, SENTINEL_SQL_TEXT as DATA_SENTINEL, WAREHOUSES, PIPELINES } from './fixture-data.mjs';
 import { SENTINEL_SQL_TEXT } from './support/sqlengine.mjs';
+import { fixtureTemplateValues, renderFixtureTemplate, legacyFragment, escapeHtml, LEGACY_TEMPLATE_VALUES, TEMPLATE_PLACEHOLDER, NON_WAREHOUSE_STATEMENT_INDEX, queryHistoryDaysAgo } from './fixture-data.mjs';
 import { startHelper, readExtensionId, FIXTURE_TOKEN as HELPER_FIXTURE_TOKEN } from './server.mjs';
 import { rawRequest, rewriteFetch } from './test-helper-fakes.mjs';
 import { load } from './support/load.mjs';
@@ -21,6 +22,7 @@ const summary = load('databricks/queries/summary.js');
 const warehouses = load('databricks/warehouses.js');
 const periods = load('core/periods.js');
 const errors = load('errors.js');
+const nativeCost = load('content/native-cost-data.js');
 
 const NOW = Date.parse('2026-10-15T17:30:00Z');
 const W1 = WAREHOUSES[0].id;
@@ -302,4 +304,120 @@ test('`node local/server.mjs --fixture-only` starts the fixture on 8765 (skipped
     child.kill('SIGTERM');
     await new Promise((r) => child.once('exit', r));
   }
+});
+
+/* ------------------------------------------------------------------ fixture page templating */
+
+const FIXTURE_DIR = path.join(HERE, 'fixture');
+const fragmentFiles = () => (fs.existsSync(FIXTURE_DIR) ? fs.readdirSync(FIXTURE_DIR).filter((f) => /^[a-z0-9][a-z0-9_.-]*\.html$/.test(f)).sort() : []);
+const placeholdersIn = (text) => [...new Set([...text.matchAll(TEMPLATE_PLACEHOLDER)].map((m) => m[1]))].sort();
+const getFixture = (p) => rawRequest({ port: fx.port, path: p, headers: { Host: '127.0.0.1:' + fx.port } });
+
+test('templating: values are HTML-escaped, unknown names are reported and left in place', () => {
+  const out = renderFixtureTemplate('<a title="{{A}}" href="/x/{{B}}">{{A}}</a>{{NOPE}}{{lower}}{{ B }}', { A: `<b>"Tom's" & co</b>`, B: '101' });
+  assert.equal(out.html, '<a title="&lt;b&gt;&quot;Tom&#39;s&quot; &amp; co&lt;/b&gt;" href="/x/101">&lt;b&gt;&quot;Tom&#39;s&quot; &amp; co&lt;/b&gt;</a>{{NOPE}}{{lower}}{{ B }}');
+  assert.deepEqual(out.used, ['A', 'B']);
+  assert.deepEqual(out.unknown, ['NOPE']);
+  assert.equal(escapeHtml(`&<>"'`), '&amp;&lt;&gt;&quot;&#39;');
+  // Only own string values count (no prototype lookups, no non-strings).
+  assert.deepEqual(renderFixtureTemplate('{{CONSTRUCTOR}}{{N}}', Object.assign(Object.create({ CONSTRUCTOR: 'x' }), { N: 5 })).unknown, ['CONSTRUCTOR', 'N']);
+  assert.throws(() => legacyFragment('{{NOT_A_FIXTURE_VALUE}}'), /NOT_A_FIXTURE_VALUE/);
+});
+
+test('templating: every fragment placeholder has a live and a legacy value; served pages have none left', async () => {
+  const live = fixtureTemplateValues(buildDataset({ nowMs: NOW }));
+  assert.deepEqual(fx.templateValues, live, 'server renders with the values of its own dataset');
+  assert.deepEqual(Object.keys(live).sort(), Object.keys(LEGACY_TEMPLATE_VALUES).sort());
+  for (const v of Object.values(live)) assert.equal(typeof v, 'string');
+  const files = fragmentFiles();
+  assert.ok(files.length >= 10, 'fixture fragments present: ' + files.join(', '));
+  const used = new Set();
+  for (const f of files) {
+    const raw = fs.readFileSync(path.join(FIXTURE_DIR, f), 'utf8');
+    for (const name of placeholdersIn(raw)) {
+      used.add(name);
+      assert.ok(Object.prototype.hasOwnProperty.call(live, name), f + ': {{' + name + '}} has no live value');
+    }
+    assert.doesNotThrow(() => legacyFragment(raw), f);
+    const r = await getFixture('/fixture/' + f + '?JOB_101=evil&x={{JOB_101}}');
+    assert.equal(r.status, 200, f);
+    assert.match(r.headers['content-type'], /text\/html/);
+    assert.ok(!/\{\{[^}]*\}\}/.test(r.text), f + ': placeholder left in the served page');
+    assert.ok(!/evil/.test(r.text), f + ': request input never reaches the page');
+    assert.equal(r.text, renderFixtureTemplate(raw, live).html, f);
+    if (/SENTINEL_SQL_TEXT/.test(raw)) assert.equal((r.text.match(/SENTINEL_SQL_TEXT_MUST_NEVER_BE_READ/g) || []).length, (raw.match(/SENTINEL_SQL_TEXT_MUST_NEVER_BE_READ/g) || []).length, f + ': sentinel cells kept');
+  }
+  // Every value is used somewhere (no dead names), and HEAD works on templated files too.
+  assert.deepEqual([...used].sort(), Object.keys(live).sort());
+  const head = await rawRequest({ port: fx.port, method: 'HEAD', path: '/fixture/' + files[0], headers: { Host: '127.0.0.1:' + fx.port } });
+  assert.equal(head.status, 200);
+});
+
+test('templating: linked IDs exist in the billing data; the Launched workflow and the query-history rows match as documented', async () => {
+  const { tables } = buildDataset({ nowMs: NOW });
+  const v = fx.templateValues;
+  const billedRuns = new Set(tables['billing.usage'].map((u) => u.usage_metadata.job_run_id).filter(Boolean));
+  const billedUpdates = new Set(tables['billing.usage'].map((u) => u.usage_metadata.dlt_update_id).filter(Boolean));
+
+  const runs = (await getFixture('/fixture/job-runs.html')).text;
+  const links = [...runs.matchAll(/href="\/jobs\/(\d+)\/runs\/(\d+)\?o=1234567890"/g)].map((m) => [m[1], m[2]]);
+  const own = links.filter(([j]) => j === '101');
+  assert.deepEqual([...new Set(own.map(([, r]) => r))], [1, 2, 3, 4].map((k) => v['JOB_101_RUN_D' + k]));
+  for (const [, r] of own) assert.ok(billedRuns.has(r), 'run ' + r + ' is billed');
+  // Non-matching "Launched" workflow links are kept and have no billing.
+  const launched = links.filter(([j]) => j !== '101');
+  assert.deepEqual(launched.map(([j]) => j), ['777', '777']);
+  assert.ok(/href="\/jobs\/777\?o=1234567890"/.test(runs));
+  assert.ok(!tables['billing.usage'].some((u) => u.usage_metadata.job_id === '777'));
+  assert.ok(new RegExp('<td role="gridcell">' + v.JOB_101_RUN_D5 + '</td>').test(runs), 'launcher-only row shows the run ID as text');
+  assert.ok(billedRuns.has(v.JOB_102_RUN_D1));
+
+  const pipe = (await getFixture('/fixture/pipeline-updates.html')).text;
+  for (const k of [1, 2, 3]) {
+    assert.ok(pipe.includes('/pipelines/' + v.PIPELINE_P1 + '/updates/' + v['PIPELINE_P1_UPDATE_D' + k]));
+    assert.ok(billedUpdates.has(v['PIPELINE_P1_UPDATE_D' + k]));
+  }
+  // The "Triggered by" link is the job 102 run whose refresh_pipeline task triggered the D1 update.
+  assert.ok(pipe.includes('/jobs/102/runs/' + v.JOB_102_RUN_D1 + '?o=1234567890'));
+  const upd = tables['lakeflow.pipeline_update_timeline'].find((u) => u.update_id === v.PIPELINE_P1_UPDATE_D1);
+  const task = tables['lakeflow.job_task_run_timeline'].find((t) => t.run_id === upd.trigger_details.job_task.job_task_run_id);
+  assert.equal(task.job_run_id, v.JOB_102_RUN_D1);
+
+  const wh = (await getFixture('/fixture/warehouses-list.html')).text;
+  assert.deepEqual([...wh.matchAll(/data-fx-warehouse="([0-9a-f]{16})"/g)].map((m) => m[1]), WAREHOUSES.map((w) => w.id));
+  const apps = (await getFixture('/fixture/apps.html')).text;
+  assert.ok(tables['billing.usage'].some((u) => u.usage_metadata.app_name === v.APP_NAME) && apps.includes('/apps/' + v.APP_NAME + '?o='));
+  const nb = (await getFixture('/fixture/notebooks.html')).text;
+  for (const id of [v.NOTEBOOK_N1, v.NOTEBOOK_N2]) assert.ok(nb.includes('notebooks/' + id) || nb.includes('#notebook/' + id));
+
+  // Query history: statement links exist (FINISHED on W1; one on non-warehouse compute), the
+  // running row's statement is not in history yet, and the metadata-only row parses (with the
+  // extension's own parsers) to exactly one record, in any time zone thanks to the +00:00 offset.
+  const qh = (await getFixture('/fixture/query-history.html')).text;
+  const hist = new Map(tables['query.history'].map((h) => [h.statement_id, h]));
+  const ids = [...qh.matchAll(/queryId=([0-9a-f-]{36})/g)].map((m) => m[1]);
+  assert.deepEqual(ids, [v.STMT_FINISHED, v.STMT_RUNNING, v.STMT_CACHED, v.STMT_NON_WAREHOUSE]);
+  assert.equal(hist.get(v.STMT_FINISHED).compute.warehouse_id, WAREHOUSES[0].id);
+  assert.equal(hist.get(v.STMT_FINISHED).execution_status, 'FINISHED');
+  assert.ok(!hist.has(v.STMT_RUNNING));
+  assert.equal(hist.get(v.STMT_NON_WAREHOUSE).compute.type, 'SERVERLESS_COMPUTE');
+  assert.equal(v.STMT_NON_WAREHOUSE.slice(-2), String(NON_WAREHOUSE_STATEMENT_INDEX));
+  const qhDay = periods.addDays(periods.utcDate(NOW), -queryHistoryDaysAgo(NOW));
+  assert.equal(hist.get(v.STMT_FINISHED).start_time.slice(0, 10), qhDay);
+  const startMs = nativeCost.parseDisplayedTime(v.QH_META_START, { nowMs: NOW });
+  const dur = nativeCost.parseDuration(v.QH_META_DURATION);
+  assert.ok(startMs && dur && dur.toleranceMs === 50, v.QH_META_START + ' / ' + v.QH_META_DURATION);
+  assert.ok(qh.includes('<td>' + v.QH_META_START + '</td>') && qh.includes('<td>' + v.QH_META_DURATION + '</td>'));
+  const lo = Math.ceil(dur.ms - dur.toleranceMs);
+  const hi = Math.floor(dur.ms + dur.toleranceMs);
+  const matches = tables['query.history'].filter((h) => h.compute.warehouse_id === WAREHOUSES[0].id && Date.parse(h.start_time + 'Z') >= startMs && Date.parse(h.start_time + 'Z') < startMs + 1000 && h.total_duration_ms >= lo && h.total_duration_ms <= hi);
+  assert.equal(matches.length, 1, 'metadata row matches exactly one history record');
+  for (const k of ['STMT_FINISHED', 'STMT_NON_WAREHOUSE']) {
+    const h = hist.get(v[k]);
+    assert.equal(nativeCost.parseDisplayedTime(v[k + '_START'], { nowMs: NOW }), Date.parse(h.start_time + 'Z'), k);
+    const d = nativeCost.parseDuration(v[k + '_DURATION']);
+    assert.ok(Math.abs(d.ms - h.total_duration_ms) <= d.toleranceMs, k);
+  }
+  // Statement text never appears in the dataset other than the sentinel.
+  assert.ok(tables['query.history'].every((h) => h.statement_text === SENTINEL_SQL_TEXT));
 });

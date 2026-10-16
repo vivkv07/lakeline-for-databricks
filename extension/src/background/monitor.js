@@ -45,8 +45,8 @@
   const CLUSTER_PAGES = 2;
   const MAX_RECENT_RUNS = 50;
   const WINDOW_SIZE = Object.freeze({ width: 380, height: 600 });
-  // White text on both: #0F766E ≈ 5.5:1, #B42318 ≈ 6.6:1. Failures also add "!" (not color only).
-  const BADGE = Object.freeze({ normal: '#0F766E', failure: '#B42318', text: '#FFFFFF' });
+  // White text on both: #2F5BEA ≈ 5.5:1, #B42318 ≈ 6.6:1. Failures also add "!" (not color only).
+  const BADGE = Object.freeze({ normal: '#2F5BEA', failure: '#B42318', text: '#FFFFFF' });
   const DEFAULT_TITLE = 'Databricks Cost Companion';
   const SECTIONS = Object.freeze(['runsActive', 'runsRecent', 'pipelines', 'warehouses', 'clusters']);
   const CLEARED_STATUSES = new Set(['signin', 'choose-workspace', 'no-connection', 'demo-mode']);
@@ -61,6 +61,11 @@
       code: 'MONITOR_SIGNIN',
       title: 'Sign in for monitor',
       steps: ['Start the local helper, then open Connection preferences and select "Sign in for monitor". The monitor uses its own read-only sign-in, separate from cost queries.'],
+    }),
+    signinOauth: () => ({
+      code: 'MONITOR_SIGNIN',
+      title: 'Sign in for monitor',
+      steps: ['Click Sign in for monitor. Databricks asks once for read access to jobs, pipelines and compute status, separate from cost queries.'],
     }),
     choose: () => ({ code: 'MONITOR_CHOOSE', title: 'Choose a workspace to monitor', steps: ['Pick one of your saved workspaces in the selector above.'] }),
     none: () => ({ code: 'NOT_CONNECTED', title: 'No saved workspace', steps: ['Connect a workspace first from the extension popup or Connection preferences.'] }),
@@ -226,6 +231,24 @@
     /** @returns {{get(path, query)} | {signin: next}} */
     async function clientFor(conn) {
       const host = new URL(conn.origin).host;
+      if (conn.authMode === 'oauth') {
+        if (!deps.oauth) return { signin: NEXT.signinOauth() };
+        let token;
+        try {
+          const settings = await deps.store.getSettings();
+          token = await deps.oauth.getAccessToken(conn.origin, 'monitor', { clientId: conn.oauthClientId || settings.oauth.clientId });
+        } catch (e) {
+          if (e && e.dcc && e.dcc.code === 'AUTH_EXPIRED') return { signin: NEXT.signinOauth() };
+          throw e;
+        }
+        const client = http.create({ origin: conn.origin, token, fetch: doFetch });
+        return {
+          get(path, query) {
+            assertPath(path);
+            return client.get(path, cleanQuery(query));
+          },
+        };
+      }
       if (conn.authMode === 'pat') {
         const token = await deps.secrets.getPat(conn.origin);
         if (!token) return { signin: NEXT.signinPat(host) };
@@ -401,7 +424,7 @@
         st.backoff = { failures, nextAt: nowMs + Math.min(intervalMs(monitorSettings) * Math.pow(2, failures), MAX_BACKOFF_MS) };
         const codes = SECTIONS.map((s) => results[s].error && results[s].error.code);
         if (codes.includes('AUTH_EXPIRED')) {
-          return { state: clearedState(st, target, 'signin', target.conn.authMode === 'pat' ? NEXT.signinPat(new URL(target.origin).host) : NEXT.signinHelper(), nowMs), toNotify: [] };
+          return { state: clearedState(st, target, 'signin', target.conn.authMode === 'oauth' ? NEXT.signinOauth() : target.conn.authMode === 'pat' ? NEXT.signinPat(new URL(target.origin).host) : NEXT.signinHelper(), nowMs), toNotify: [] };
         }
         st.status = 'error';
         st.next = new Set(codes).size === 1 ? results[SECTIONS[0]].error : null;
@@ -524,7 +547,7 @@
 
     async function updateBadge(st, settings) {
       if (!settings.monitor.enabled || !st) return setBadge('', BADGE.normal, DEFAULT_TITLE);
-      if (st.status === 'signin') return setBadge('', BADGE.normal, DEFAULT_TITLE + ' — run monitor needs sign-in');
+      if (st.status === 'signin') return setBadge('', BADGE.normal, DEFAULT_TITLE + ' · run monitor needs sign-in');
       if (st.status !== 'ok' && st.status !== 'error') return setBadge('', BADGE.normal, DEFAULT_TITLE);
       const c = st.counts || {};
       const known = c.running !== null && c.running !== undefined;
@@ -535,7 +558,7 @@
       const parts = [known ? plural(active, 'active run') : 'active runs unknown'];
       if (unseen) parts.push(plural(unseen, 'new failed run') + ' in the last 24 h');
       if (st.status === 'error') parts.push('last refresh failed');
-      return setBadge(text, unseen ? BADGE.failure : BADGE.normal, DEFAULT_TITLE + ' — ' + parts.join(', '));
+      return setBadge(text, unseen ? BADGE.failure : BADGE.normal, DEFAULT_TITLE + ' · ' + parts.join(', '));
     }
 
     async function sendNotifications(list, st, nowMs) {
@@ -548,7 +571,7 @@
           if (r.more) {
             await n.create('dcc-more-' + nowMs, { type: 'basic', iconUrl, title: plural(r.more, 'more job run') + ' failed', message: 'Open the run monitor for details.', contextMessage: host, priority: 0 });
           } else {
-            await n.create('dcc-run-' + r.runId, { type: 'basic', iconUrl, title: 'Databricks job run failed', message: (r.name || 'Run ' + r.runId) + ' — ' + r.statusText, contextMessage: host, priority: 0 });
+            await n.create('dcc-run-' + r.runId, { type: 'basic', iconUrl, title: 'Databricks job run failed', message: (r.name || 'Run ' + r.runId) + ' · ' + r.statusText, contextMessage: host, priority: 0 });
           }
         } catch (e) {
           warn(e);

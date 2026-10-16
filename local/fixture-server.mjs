@@ -7,7 +7,11 @@
  * - App routes (any GET path that is not a static file, /api/ or /fixture/) serve
  *   local/workspace.html, the routed fixture SPA that imitates the native workspace DOM.
  *   Static: /workspace*.{js,css,svg} from local/ and /fixture/<file>.{html,js,css,svg} from
- *   local/fixture/ (no directory traversal).
+ *   local/fixture/ (no directory traversal). Fixture .html fragments are templates: their
+ *   {{NAME}} placeholders are replaced with HTML-escaped values from fixtureTemplateValues()
+ *   (local/fixture-data.mjs, computed once from the dataset; never from request input), so the
+ *   pages link job runs, pipeline updates, warehouses and statements that exist in the billing
+ *   data. A placeholder without a value is a 500, never silently left in the page.
  * - A mock Databricks REST API for the fixture origin. It accepts only the FAKE fixture token
  *   `Authorization: Bearer dapi-fixture-0000000000000000000000000000`, which is not a real
  *   credential (paste it as the personal access token for the fixture workspace).
@@ -27,7 +31,7 @@ import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createEngine, SENTINEL_SQL_TEXT } from './support/sqlengine.mjs';
-import { buildDataset, toInsertSql, monitorSnapshot, WAREHOUSES } from './fixture-data.mjs';
+import { buildDataset, toInsertSql, monitorSnapshot, fixtureTemplateValues, renderFixtureTemplate, WAREHOUSES } from './fixture-data.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const FIXTURE_PORT = 8765;
@@ -115,6 +119,8 @@ function containsSentinel(response) {
  * @param {number} [o.nowMs]           anchor for the synthetic dataset and monitor data
  * @param {number} [o.pendingPolls=0]  GET polls that still report RUNNING before SUCCEEDED
  * @param {Function} [o.log]
+ * @param {Function} [o.onApiRequest]  test hook: ({method, path, body}) for every authorized /api/
+ *                                     request (body = raw request text, '' for GET)
  */
 export async function startFixtureServer(o = {}) {
   const log = o.log || ((line) => process.stderr.write('[dcc-fixture] ' + line + '\n'));
@@ -127,6 +133,8 @@ export async function startFixtureServer(o = {}) {
     for (const sql of toInsertSql(table, rows)) await engine.exec(sql);
   }
   const counts = Object.fromEntries(Object.entries(dataset.tables).map(([t, rows]) => [t, rows.length]));
+  const templateValues = fixtureTemplateValues(dataset);
+  const onApiRequest = typeof o.onApiRequest === 'function' ? o.onApiRequest : null;
 
   const state = {
     warehouses: WAREHOUSES.map((w) => Object.assign({}, w)),
@@ -201,6 +209,7 @@ export async function startFixtureServer(o = {}) {
     if (req.headers.authorization !== 'Bearer ' + FIXTURE_TOKEN) return apiError(res, 401, 'UNAUTHENTICATED', 'Invalid access token. (fixture accepts only the documented fake token)');
     const p = url.pathname;
     const q = url.searchParams;
+    if (onApiRequest && !(req.method === 'POST' && p === '/api/2.0/sql/statements')) onApiRequest({ method: req.method, path: p, body: '' });
     if (req.method === 'GET' && p === '/api/2.0/sql/warehouses') {
       const { items, next } = pageOf(state.warehouses, q, 'page_size', 2, 2);
       return json(res, 200, Object.assign({ warehouses: items.map((w) => Object.assign({ creator_name: 'fixture.user@example.com', num_clusters: w.state === 'RUNNING' ? 1 : 0 }, w)) }, next ? { next_page_token: next } : {}));
@@ -208,7 +217,9 @@ export async function startFixtureServer(o = {}) {
     if (req.method === 'POST' && p === '/api/2.0/sql/statements') {
       let body;
       try {
-        body = JSON.parse((await readBody(req)) || '{}');
+        const raw = await readBody(req);
+        if (onApiRequest) onApiRequest({ method: req.method, path: p, body: raw });
+        body = JSON.parse(raw || '{}');
       } catch (e) {
         if (e && e.status === 413) return apiError(res, 413, 'INVALID_PARAMETER_VALUE', 'Request too large.');
         return apiError(res, 400, 'MALFORMED_REQUEST', 'Request body is not JSON.');
@@ -259,12 +270,20 @@ export async function startFixtureServer(o = {}) {
     return apiError(res, 404, 'ENDPOINT_NOT_FOUND', 'No API found for ' + req.method + ' ' + p.slice(0, 100));
   }
 
-  async function serveFile(res, file, method) {
+  async function serveFile(res, file, method, { template = false } = {}) {
     let data;
     try {
       data = await fsp.readFile(file);
     } catch (_) {
       return send(res, 404, 'Not found', { 'Content-Type': 'text/plain; charset=utf-8' });
+    }
+    if (template) {
+      const out = renderFixtureTemplate(data.toString('utf8'), templateValues);
+      if (out.unknown.length) {
+        log('unknown placeholder(s) in ' + path.basename(file) + ': ' + out.unknown.join(', '));
+        return send(res, 500, 'Unknown fixture placeholder(s): ' + out.unknown.join(', '), { 'Content-Type': 'text/plain; charset=utf-8' });
+      }
+      data = Buffer.from(out.html, 'utf8');
     }
     const type = TYPES[path.extname(file)] || 'application/octet-stream';
     if (method === 'HEAD') {
@@ -298,7 +317,7 @@ export async function startFixtureServer(o = {}) {
     if (p.startsWith('/fixture/')) {
       m = FIXTURE_STATIC.exec(p);
       const file = m && inside(path.join(HERE, 'fixture'), m[1]);
-      return file ? serveFile(res, file, req.method) : send(res, 404, 'Not found', { 'Content-Type': 'text/plain; charset=utf-8' });
+      return file ? serveFile(res, file, req.method, { template: path.extname(file) === '.html' }) : send(res, 404, 'Not found', { 'Content-Type': 'text/plain; charset=utf-8' });
     }
     // Every other path is an app route of the routed fixture SPA.
     const html = path.join(HERE, 'workspace.html');
@@ -331,6 +350,8 @@ export async function startFixtureServer(o = {}) {
     counts,
     dataset,
     engine,
+    /** Values the /fixture/*.html placeholders were rendered with (IDs that exist in `dataset`). */
+    templateValues,
     close: () =>
       new Promise((resolve) => {
         server.close(() => resolve());

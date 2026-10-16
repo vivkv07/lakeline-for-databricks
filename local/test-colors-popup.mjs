@@ -211,7 +211,7 @@ test('popup: Save requests exactly that origin in the click, stores the color, t
   assert.match(p.el.status.textContent, /applied to 2 open tabs/);
   assert.equal(p.el.reset.disabled, false);
   // The new entry appears in the saved list.
-  assert.ok([...p.el.saved.options].some((o) => o.value === ORIGIN + '|42' && /workspace 42 — #B42318/.test(o.textContent)));
+  assert.ok([...p.el.saved.options].some((o) => o.value === ORIGIN + '|42' && /workspace 42 · #B42318/.test(o.textContent)));
   p.close();
 });
 
@@ -289,7 +289,7 @@ test('popup: saved list merges saved colors, cost connections and observed tabs;
   const opts = [...p.el.saved.options].map((o) => [o.value, o.textContent]);
   assert.deepEqual(opts, [
     ['', 'Choose a workspace…'],
-    [ORIGIN + '|42', 'dbc-1.cloud.databricks.com · workspace 42 — #B42318'],
+    [ORIGIN + '|42', 'dbc-1.cloud.databricks.com · workspace 42 · #B42318'],
     ['https://adb-5555.12.azuredatabricks.net|5555', 'adb-5555.12.azuredatabricks.net · workspace 5555 (seen in a tab)'],
     ['https://dbc-2.cloud.databricks.com|77', 'dbc-2.cloud.databricks.com · workspace 77 (cost connection)'],
   ]);

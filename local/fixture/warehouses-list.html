@@ -1,7 +1,8 @@
 <!--
   Fixture fragment: SQL warehouses list (route /sql/warehouses). Synthetic data only (workspace
   1234567890). Each table row links a warehouse by its 16-hex ID; the badge goes next to the
-  name link. Create and monitoring links are navigation-only.
+  name link. Create and monitoring links are navigation-only. Double-brace placeholders
+  (WAREHOUSE_W1, …) are filled by the fixture server from local/fixture-data.mjs.
 -->
 <style data-fixture="warehouses-list">
   .fx-wh { font: 13px/1.4 system-ui, sans-serif; color: #11171c; padding: 0 16px; }
@@ -22,26 +23,26 @@
       <tr><th scope="col">Name</th><th scope="col">State</th><th scope="col">Size</th><th scope="col">Type</th><th scope="col"></th></tr>
     </thead>
     <tbody>
-      <tr data-fx-warehouse="a1b2c3d4e5f60001">
-        <td><a href="/sql/warehouses/a1b2c3d4e5f60001?o=1234567890">Shared BI warehouse</a></td>
+      <tr data-fx-warehouse="{{WAREHOUSE_W1}}">
+        <td><a href="/sql/warehouses/{{WAREHOUSE_W1}}?o=1234567890">{{WAREHOUSE_W1_NAME}}</a></td>
         <td><span class="fx-state" aria-label="Running"></span>Running</td>
-        <td>Small</td>
-        <td>Serverless</td>
-        <td><a href="/sql/warehouses/a1b2c3d4e5f60001/monitoring?o=1234567890">Monitoring</a></td>
+        <td>{{WAREHOUSE_W1_SIZE}}</td>
+        <td>{{WAREHOUSE_W1_TYPE}}</td>
+        <td><a href="/sql/warehouses/{{WAREHOUSE_W1}}/monitoring?o=1234567890">Monitoring</a></td>
       </tr>
-      <tr data-fx-warehouse="a1b2c3d4e5f60002">
-        <td><a href="/sql/warehouses/a1b2c3d4e5f60002?o=1234567890">ETL warehouse</a></td>
+      <tr data-fx-warehouse="{{WAREHOUSE_W2}}">
+        <td><a href="/sql/warehouses/{{WAREHOUSE_W2}}?o=1234567890">{{WAREHOUSE_W2_NAME}}</a></td>
         <td><span class="fx-state off" aria-label="Stopped"></span>Stopped</td>
-        <td>Medium</td>
-        <td>Pro</td>
-        <td><a href="/sql/warehouses/a1b2c3d4e5f60002/monitoring?o=1234567890">Monitoring</a></td>
+        <td>{{WAREHOUSE_W2_SIZE}}</td>
+        <td>{{WAREHOUSE_W2_TYPE}}</td>
+        <td><a href="/sql/warehouses/{{WAREHOUSE_W2}}/monitoring?o=1234567890">Monitoring</a></td>
       </tr>
-      <tr data-fx-warehouse="a1b2c3d4e5f60003">
-        <td><a href="/sql/warehouses/a1b2c3d4e5f60003">Ad hoc analysis</a></td>
+      <tr data-fx-warehouse="{{WAREHOUSE_W3}}">
+        <td><a href="/sql/warehouses/{{WAREHOUSE_W3}}">{{WAREHOUSE_W3_NAME}}</a></td>
         <td><span class="fx-state off" aria-label="Stopped"></span>Stopped</td>
-        <td>2X-Small</td>
-        <td>Serverless</td>
-        <td><a href="/sql/warehouses/a1b2c3d4e5f60003/monitoring">Monitoring</a></td>
+        <td>{{WAREHOUSE_W3_SIZE}}</td>
+        <td>{{WAREHOUSE_W3_TYPE}}</td>
+        <td><a href="/sql/warehouses/{{WAREHOUSE_W3}}/monitoring">Monitoring</a></td>
       </tr>
     </tbody>
   </table>
