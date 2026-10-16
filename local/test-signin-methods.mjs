@@ -162,3 +162,28 @@ test('no method and no client ID asks the user to choose instead of failing', as
   assert.equal(out.needsChoice, true);
   assert.equal(env.sent.length, 0);
 });
+
+test('Genie over browser login: only requests tagged with the Genie scope reach Genie paths', async () => {
+  const calls = [];
+  const { deliver } = bridgeEnv(async (url, init) => (calls.push({ url, init }), { status: 200, headers: { get: () => 'application/json' }, text: async () => '{"conversation_id":"c1"}' }));
+  const fromSw = { id: EXT };
+  const space = '01ef0a1b2c3d4e5f8a9b0c1d2e3f4a5b';
+  const path = '/api/2.0/genie/spaces/' + space + '/start-conversation';
+  const untagged = await deliver({ type: 'dcc:sessionFetch', method: 'POST', path, body: '{"content":"q"}' }, fromSw);
+  const tagged = await deliver({ type: 'dcc:sessionFetch', method: 'POST', path, body: '{"content":"q"}', scope: 'genie' }, fromSw);
+  const genieCannotRunSql = await deliver({ type: 'dcc:sessionFetch', method: 'POST', path: '/api/2.0/sql/statements', body: '{}', scope: 'genie' }, fromSw);
+  if (http.isAllowed('POST', path, { scope: 'genie' })) {
+    assert.equal(untagged.blocked, 'path', 'default allowlist never reaches Genie');
+    assert.equal(tagged.ok, true);
+  }
+  assert.equal(genieCannotRunSql.blocked, 'path', 'a Genie-scoped request cannot reach other APIs');
+});
+
+test('transport tags Genie-scoped requests and leaves others untagged', async () => {
+  const c = chromeWithTab({ ok: true, status: 200, text: '{}' });
+  const t = transportMod.create({ chromeApi: c });
+  await t.fetchFor(ORIGIN, { scope: 'genie' })(ORIGIN + '/api/2.0/genie/spaces', {});
+  await t.fetchFor(ORIGIN)(ORIGIN + '/api/2.0/sql/warehouses', {});
+  assert.equal(c.sent[0].msg.scope, 'genie');
+  assert.equal('scope' in c.sent[1].msg, false);
+});

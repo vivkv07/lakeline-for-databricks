@@ -31,7 +31,7 @@
       return usable[0] || null;
     }
 
-    function fetchFor(origin) {
+    function fetchFor(origin, { scope = null } = {}) {
       const cls = ids.classifyOrigin(origin);
       if (!cls.ok || cls.origin !== origin) throw new errors.DccError({ code: 'UNKNOWN', message: 'Unsupported origin for browser login' });
       return async function sessionFetch(url, init = {}) {
@@ -41,7 +41,9 @@
         if (!tab) throw new errors.DccError({ code: 'SESSION_TAB_REQUIRED', message: 'No open tab for ' + cls.host });
         let reply;
         try {
-          reply = await chromeApi.tabs.sendMessage(tab.id, { type: 'dcc:sessionFetch', method: init.method || 'GET', path: u.pathname + u.search, body: init.body });
+          const relay = { type: 'dcc:sessionFetch', method: init.method || 'GET', path: u.pathname + u.search, body: init.body };
+          if (scope === 'genie') relay.scope = 'genie';
+          reply = await chromeApi.tabs.sendMessage(tab.id, relay);
         } catch (e) {
           throw new errors.DccError({ code: 'SESSION_TAB_REQUIRED', message: 'The Databricks tab could not be reached; reload it' });
         }
