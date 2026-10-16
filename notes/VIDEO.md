@@ -63,12 +63,24 @@ Then they ask Genie, switching workspaces and agents. The run monitor catches a 
 | 12 | 104.0–112.0 | Security and privacy | MG navy panel | "Nothing leaves your Databricks and your browser." Points: read-only SQL on your own system tables; talks only to your workspace, with no Lakeline servers or analytics; sign-in and Genie chats live in your browser session and clear when it closes; your full chat history stays in Genie in Databricks; access granted one workspace at a time. |
 | 13 | 112.0–116.0 | CTA | MG | Icon, "Lakeline for Databricks", "Add to Chrome", small line "Independent project; not affiliated with Databricks, Inc." Music resolves; tail to about 118 s. |
 
+## Framing rules (owner feedback: the browser looked small and far away)
+
+- The browser window fills the stage: at least 92% of the width (about 1770 of 1920 CSS px), with margins of 24 to 48 px. No large empty side areas in product scenes.
+- Camera on every product shot:
+  - Open on the full window for about 0.8 s.
+  - Then an eased push-in (1.3× to 2.2×) to the scene's focus box from the manifest bounding boxes.
+  - Pan between focus points within the scene.
+  - Pull back before the transition.
+  - The cursor, highlight rings and click ripples move with the camera.
+- Captions sit in the lower third, as a compact pill with a subtle scrim. They never push the window smaller and never cover the current focus box (place them on the opposite side).
+- UI text must stay legible at 1080p: at the full-window shot, body text renders at 15 CSS px or more on the 1920×1080 stage.
+
 ## Asset contract
 
 - **Captures:** `dist/video/captures/<scene>/<theme>/<state>.png` (dist/ is git-ignored).
   - Device scale factor 2.
-  - Page viewport 1600×1000 (3200×2000 px).
-  - Side panel 420×1000.
+  - Page viewport 1600×900, 16:9 (3200×1800 px).
+  - In side-panel scenes, page 1180×900 plus side panel 420×900 (together 1600×900, as in Chrome).
   - Popup 360 wide at natural height.
   - Monitor 380×600.
 - **Manifests:** each scene folder has a `manifest.json` listing:
