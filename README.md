@@ -25,6 +25,7 @@ The guide is also linked from the banner (**How costs work**), the popup and Con
 - [Connect a workspace](#connect-a-workspace)
 - [Using it](#using-it)
 - [Monitor widget](#monitor-widget)
+- [Genie side panel](#genie-side-panel)
 - [Local fixture and tests](#local-fixture-and-tests)
 - [Updating: reload or restart?](#updating-reload-or-restart)
 - [Known limitations](#known-limitations)
@@ -53,6 +54,10 @@ The guide is also linked from the banner (**How costs work**), the popup and Con
 - **Monitor widget (optional).** A compact window that shows job runs, pipeline updates, warehouses
   and clusters. It uses read-only REST calls only, and desktop notifications for failed runs are
   opt-in.
+
+- **Genie side panel.** Ask your Genie Agents from a browser side panel and keep working. The
+  answer, with its result table and the generated SQL, waits in the panel, and an opt-in desktop
+  notification says when it's ready.
 
 Every amount is labeled as an estimate, and missing data is never shown as zero.
 
@@ -271,6 +276,53 @@ Details:
   browser, keep using the normal monitor window.
 - **Demo mode.** The monitor is off in Demo mode.
 
+## Genie side panel
+
+Ask a Genie Agent (formerly a Genie space) in a side panel, then go back to what you were doing.
+The service worker sends the question, waits for Genie and keeps the answer for you.
+
+1. Open the popup and select **Ask Genie**. The side panel opens on the right.
+2. Pick a **Workspace** (the active tab's workspace when it's connected) and a **Genie Agent**.
+   The panel remembers your last agent per workspace.
+3. Type a question. **Enter** sends, **Shift + Enter** adds a line. Each message shows its status:
+   Sending, Genie is working, Running query, Answer ready or Failed (with a plain reason).
+4. The answer shows Genie's text, the result table (up to 200 rows, with "showing N of M") and
+   **Show SQL**. **Copy answer** copies the text and the shown rows. Suggested follow-ups appear
+   as buttons. **New** starts a new conversation.
+5. Close the panel at any time. When the answer lands, the toolbar badge counts it (while the run
+   monitor is off; the monitor owns the badge when it's on). Turn on **Notify me when Genie
+   answers** in the popup for a desktop notification that says "Answer ready in <agent>" and
+   nothing else.
+
+**Sign-in.** Connected workspaces only:
+
+- **Sign in with Databricks:** the panel asks once with **Allow Genie and run status**. That is the
+  broader `all-apis` consent, shared with the run monitor; cost queries keep their SQL-only
+  sign-in. Every Genie API needs the `genie` scope, which `all-apis` includes.
+- **Personal access token:** the token is used. A scoped token needs the `genie` scope.
+- **Local helper** and **Use my Databricks login** aren't supported for Genie; the panel says so.
+- **Demo mode** shows synthetic agents and canned answers, labeled DEMO, with no requests.
+  **Local import** mode has no Genie.
+
+**What is sent where.** Only your question text, to your own workspace's Genie Conversation API
+(`/api/2.0/genie/spaces/...`: list agents, start a conversation, send a follow-up, read the
+message, read the query result, and re-run an expired result). The HTTP client allows exactly
+these paths for Genie, and the local helper can't forward them.
+
+**Data handling.** Answers can contain business data. Conversations stay in `chrome.storage.session`
+(memory only, cleared when the browser closes, hidden from content scripts), capped at 8
+conversations, 20 messages each and about 1.5 MB in total (older tables are dropped first). They
+are never written to local storage, diagnostics, logs or notification text. **Clear now** in the
+panel removes them at once. Text is rendered as plain text, never as HTML.
+
+**Limits and cost.** The panel polls only while a question is in flight: every 1 s, slowing to
+every 10 s (up to 60 s after errors), and it stops after 10 minutes. A restarted service worker
+resumes in-flight questions within about 30 seconds. Up to three questions run at once, one per
+conversation. Databricks documents no fixed questions-per-minute limit for this API; when it
+answers "rate limited", the panel says so and doesn't resend. Genie usage beyond a free monthly
+allowance is billed by Databricks, and its SQL runs on the agent's warehouse (a stopped warehouse
+starts). Verified API facts and sources are in `notes/GENIE.md`.
+
 ## Local fixture and tests
 
 The fixture is a synthetic, Databricks-like page for development. It uses no real data.
@@ -303,8 +355,9 @@ npm test            # node --test local/test-*.mjs
 - Content-script tests run in **jsdom**, not a real browser.
 - Query-history fixture rows hold a sentinel value in the SQL-text column, so any accidental read of
   SQL text fails the tests.
-- `npm run test:browser` is reserved for disposable-profile browser tests (Playwright). These need
-  Playwright, which isn't in `devDependencies`.
+- `npm run test:browser` runs the disposable-profile browser tests (Playwright) one file at a
+  time, because each starts the fixture on port 8765. `local/browser/test-genie-e2e.mjs` drives the
+  Genie panel page in a tab against the fixture's simulated Genie API.
 - Live SQL against a real workspace is never part of the automated tests.
 - `npm run package` builds a sanitized ZIP in `dist/` from an explicit allowlist. It refuses files
   that look like tokens, keys, CLI config or real workspace hosts.
@@ -406,7 +459,9 @@ Also delete any `costs.json` you created and the `dist/` folder if you built a p
 - **SQL.** Read-only, parameterized statements. Three-part names are validated and quoted. Only the
   two allowed price tables can be used.
 - **Databricks APIs.** SQL statement execution and cancel, plus read-only `GET` calls for
-  warehouses, job runs, pipelines and clusters. The extension never writes to Databricks.
+  warehouses, job runs, pipelines and clusters. The Genie side panel adds a separate allowlist:
+  listing agents, reading messages and results, and three `POST`s (start a conversation, send a
+  follow-up, re-run an expired result). Nothing else is written to Databricks.
 
 ## Privacy
 

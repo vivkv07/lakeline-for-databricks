@@ -484,6 +484,46 @@ export function monitorSnapshot(nowMs = Date.now(), origin = 'http://127.0.0.1:8
   return { runs, pipelines, clusters };
 }
 
+/* ------------------------------------------------------------------ Genie (Conversation API mock) */
+
+/*
+ * Synthetic Genie Agents for the fixture origin (shapes per notes/GENIE.md). Space IDs are 32 hex
+ * characters like the documented examples. The "Broken" agent always FAILS so the error path is
+ * exercised end to end. Answers are canned and say "(fixture)".
+ */
+export const GENIE_SPACES = Object.freeze([
+  { space_id: 'f1c70000000000000000000000000a01', title: 'Sales analytics (fixture)', description: 'Synthetic orders and revenue by region. Fixture data only.', warehouse_id: WAREHOUSES[0].id },
+  { space_id: 'f1c70000000000000000000000000a02', title: 'Job operations (fixture)', description: 'Synthetic job run history for the fixture jobs.', warehouse_id: WAREHOUSES[0].id },
+  { space_id: 'f1c70000000000000000000000000aff', title: 'Broken agent (fixture)', description: 'Always fails, to exercise the error path.', warehouse_id: WAREHOUSES[0].id },
+]);
+export const GENIE_FAILING_SPACE = GENIE_SPACES[2].space_id;
+export const GENIE_STEPS = Object.freeze(['SUBMITTED', 'FILTERING_CONTEXT', 'ASKING_AI', 'EXECUTING_QUERY', 'COMPLETED']);
+export const GENIE_FAIL_STEPS = Object.freeze(['SUBMITTED', 'ASKING_AI', 'FAILED']);
+
+/** The canned answer for a space: text, query attachment and a small result table. */
+export function genieAnswer(spaceId) {
+  if (spaceId === GENIE_SPACES[1].space_id) {
+    return {
+      text: 'Job 102 (Orders ingest and pipeline refresh) had 1 failed run in the last 5 days; job 101 had none. (fixture)',
+      title: 'Job runs by job, last 5 days',
+      description: 'Counts synthetic fixture runs and failed runs per job.',
+      sql: "SELECT job_name, COUNT(*) AS runs, COUNT_IF(result_state = 'FAILED') AS failed\nFROM fixture.ops.job_runs\nWHERE period_start >= current_date() - INTERVAL 5 DAYS\nGROUP BY job_name\nORDER BY failed DESC",
+      columns: [['job_name', 'STRING'], ['runs', 'LONG'], ['failed', 'LONG']],
+      rows: [[JOBS[1].name, '5', '1'], [JOBS[0].name, '5', '0']],
+      suggested: ['Why did job 102 fail?', 'Which runs took longest?'],
+    };
+  }
+  return {
+    text: 'Revenue last month was $1.24M across 4 regions; EMEA led with $412.3K. (fixture)',
+    title: 'Revenue by region, last month',
+    description: 'Sums synthetic fixture orders per region for the previous calendar month.',
+    sql: "SELECT region, ROUND(SUM(amount_usd), 0) AS revenue_usd, COUNT(*) AS orders\nFROM fixture.sales.orders\nWHERE order_month = date_trunc('month', current_date() - INTERVAL 1 MONTH)\nGROUP BY region\nORDER BY revenue_usd DESC",
+    columns: [['region', 'STRING'], ['revenue_usd', 'DECIMAL'], ['orders', 'LONG']],
+    rows: [['EMEA', '412300', '3120'], ['North America', '398900', '2875'], ['APAC', '301750', '3410'], ['LATAM', '96200', null]],
+    suggested: ['Which products drove EMEA?', 'Show revenue by week'],
+  };
+}
+
 /* ------------------------------------------------------------------ fixture page templating */
 
 /*

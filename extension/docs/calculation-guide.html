@@ -51,6 +51,7 @@
       <li><a href="#helper">Local helper troubleshooting</a></li>
       <li><a href="#colors">Workspace colors</a></li>
       <li><a href="#monitor">Monitor widget</a></li>
+      <li><a href="#genie">Genie side panel</a></li>
       <li><a href="#limits">Limitations</a></li>
       <li><a href="#references">Official references</a></li>
     </ol>
@@ -760,6 +761,39 @@ AND (price.price_end_time IS NULL OR usage.usage_end_time &lt; price.price_end_t
   </ul>
 </section>
 
+<!-- ================================================================== genie -->
+<section id="genie" aria-labelledby="genie-title">
+  <h2 id="genie-title">Genie side panel</h2>
+  <p>Select <strong>Ask Genie</strong> in the popup to open a side panel, pick a workspace and a Genie Agent (formerly a Genie space), and ask a question. You can close the panel and keep working: the extension's background sends the question, waits for Genie and keeps the answer until you come back. Genie decides how to answer and which SQL to run; Lakeline only carries the question and shows the result.</p>
+  <h3 id="genie-sent">What is sent where</h3>
+  <ul>
+    <li>Only your question text, and only to your own workspace's Genie Conversation API under <code>/api/2.0/genie/spaces</code>.</li>
+    <li>Calls used: list agents, start a conversation, send a follow-up, read a message, read the query result, and re-run a result that expired. The extension's HTTP client allows exactly these paths for Genie, and nothing else; the local helper can't forward them.</li>
+    <li>No telemetry. Nothing goes to the extension's authors or any third party.</li>
+  </ul>
+  <h3 id="genie-signin">Sign-in and scopes</h3>
+  <ul>
+    <li><strong>Sign in with Databricks.</strong> Every Genie API needs the <code>genie</code> scope. The panel asks once for <code>all-apis</code>, which includes it (<strong>Allow Genie and run status</strong>). The run monitor uses the same consent, so you grant it once; cost queries keep the narrower <code>sql</code> scope.</li>
+    <li><strong>Personal access token.</strong> The token is used. A token with limited scopes needs <code>genie</code>.</li>
+    <li>The local helper and "Use my Databricks login" aren't supported for Genie. Demo mode shows synthetic agents and canned answers labeled DEMO, with no requests. Local import mode has no Genie.</li>
+  </ul>
+  <h3 id="genie-data">Data handling</h3>
+  <ul>
+    <li>Answers can contain business data. Conversations are kept only in the browser's session storage: in memory, cleared when the browser closes, and not readable by scripts on web pages.</li>
+    <li>At most 8 conversations, 20 messages each and about 1.5 MB in total. Older result tables are dropped first, then older conversations. <strong>Clear now</strong> in the panel removes everything at once.</li>
+    <li>Conversations are never written to local storage, diagnostics, logs or notifications. The optional notification says only "Answer ready in" and the agent's name.</li>
+    <li>Everything is shown as plain text. Tables show up to 200 rows and 40 columns, with "showing N of M rows". The generated SQL stays behind <strong>Show SQL</strong>.</li>
+  </ul>
+  <h3 id="genie-limits">Polling, limits and cost</h3>
+  <ul>
+    <li>The panel and the background poll only while a question is in flight: after 1 second, then gradually less often, up to every 10 seconds (up to 60 seconds after errors). Lakeline stops waiting after 10 minutes, as Databricks recommends.</li>
+    <li>Up to three questions run at once, one per conversation. When Databricks reports a rate limit, the panel says so and never resends the question by itself.</li>
+    <li>If the browser restarts the extension's background mid-question, it picks the question up again within about 30 seconds.</li>
+    <li>Genie usage beyond a free monthly allowance is billed by Databricks, and the SQL it runs uses the agent's SQL warehouse, which starts if it is stopped.</li>
+    <li>The toolbar badge counts answers that arrived while the panel was closed, but only while the run monitor is off, because the monitor owns the badge.</li>
+  </ul>
+</section>
+
 <!-- ================================================================== limits -->
 <section id="limits" aria-labelledby="limits-title">
   <h2 id="limits-title">Limitations</h2>
@@ -798,6 +832,8 @@ AND (price.price_end_time IS NULL OR usage.usage_end_time &lt; price.price_end_t
     <li><a href="https://docs.databricks.com/aws/en/dev-tools/sql-execution-tutorial">Statement Execution API tutorial</a><span class="what">Running SQL on a warehouse over REST.</span></li>
     <li><a href="https://docs.databricks.com/api/workspace/statementexecution/executestatement">Execute a SQL statement</a><span class="what">Named parameters with types, the 25 MiB INLINE limit, and the <code>truncated</code> flag.</span></li>
     <li><a href="https://docs.databricks.com/api/workspace/statementexecution/cancelexecution">Cancel statement execution</a><span class="what">Cancelling long-running statements.</span></li>
+    <li><a href="https://docs.databricks.com/aws/en/genie-agents/conversation-api">Use the Genie Agents API</a><span class="what">Genie Agents were formerly Genie Spaces; polling every 1 to 5 seconds with backoff up to a minute, stopping after 10 minutes.</span></li>
+    <li><a href="https://docs.databricks.com/api/genie/v1/conversation">Genie Conversation API reference</a><span class="what">Start a conversation, send a message, get a message and its status values, get or re-run an attachment's query result; the <code>genie</code> API scope.</span></li>
     <li><a href="https://docs.databricks.com/api/workspace/warehouses/list">List SQL warehouses</a><span class="what"><code>state</code>, <code>cluster_size</code>, <code>enable_serverless_compute</code>, min and max clusters.</span></li>
     <li><a href="https://docs.databricks.com/api/workspace/jobs/listruns">List job runs (Jobs API 2.2)</a><span class="what">The <code>status</code> field, which replaces the deprecated <code>state</code>.</span></li>
     <li><a href="https://docs.databricks.com/api/workspace/pipelines/listpipelines">List pipelines</a> and <a href="https://docs.databricks.com/api/workspace/pipelines/listupdates">List pipeline updates</a><span class="what">Read-only pipeline inventory.</span></li>

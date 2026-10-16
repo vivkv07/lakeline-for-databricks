@@ -30,8 +30,11 @@
     done: { label: 'Answer ready', pill: 'dcc-pill--ok', live: false, step: null },
     failed: { label: 'Failed', pill: 'dcc-pill--danger', live: false, step: null },
   });
-  const STATUS_SUFFIX = { signin: ' · needs Allow Genie', pat: ' · needs a token', helper: ' · helper not supported' };
-  const DEMO_STARTERS = Object.freeze(['What was revenue by region last month?', 'Which jobs failed this week?', 'Show daily orders for the last 5 days']);
+  const STATUS_SUFFIX = { signin: ' · needs Allow Genie', pat: ' · needs a token', helper: ' · helper not supported', unsupported: ' · sign-in not supported' };
+  const DEMO_STARTERS = Object.freeze({
+    revenue: ['What was revenue by region last month?', 'Show daily orders for the last 5 days'],
+    ops: ['Which jobs failed this week?', 'How reliable were our jobs in the last 7 days?'],
+  });
 
   const ui = {
     init: null,
@@ -171,7 +174,7 @@
       const p = errorParts({ code: 'GENIE_PAT_MISSING' });
       setNotice('warn', { title: p.title, steps: p.steps, actions: [{ id: 'options', label: 'Open Connection preferences', onclick: openOptions }] });
     } else {
-      const p = errorParts({ code: 'GENIE_HELPER_MODE' });
+      const p = errorParts({ code: ws.status === 'helper' ? 'GENIE_HELPER_MODE' : 'GENIE_AUTH_UNSUPPORTED' });
       setNotice('warn', { title: p.title, steps: p.steps, actions: [{ id: 'options', label: 'Open Connection preferences', onclick: openOptions }] });
     }
     return true;
@@ -248,7 +251,8 @@
   function onKeyDown(ev) {
     if (ev.key !== 'Enter' || ev.shiftKey || ev.isComposing || ev.keyCode === 229) return;
     ev.preventDefault();
-    if (!$('send').disabled) ask($('question').value);
+    const input = $('question');
+    if (!input.disabled && !threadBusy() && input.value.trim()) ask(input.value);
   }
 
   /* ---------------------------------------------------------------- thread rendering */
@@ -267,7 +271,7 @@
     const space = currentSpace();
     const demo = ui.init && ui.init.mode === 'demo';
     const name = space ? space.title : 'a Genie Agent';
-    const starters = demo && space && !/Unavailable/.test(space.title) ? DEMO_STARTERS : [];
+    const starters = !demo || !space || /Unavailable/.test(space.title) ? [] : /Pipeline/.test(space.title) ? DEMO_STARTERS.ops : DEMO_STARTERS.revenue;
     return h('section', { class: 'gp-empty', 'aria-labelledby': 'empty-title' }, [
       h('p', { class: 'dcc-eyebrow' }, demo ? 'Demo · synthetic answers' : 'New conversation'),
       h('h2', { id: 'empty-title' }, 'Ask ' + name),

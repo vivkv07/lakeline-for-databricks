@@ -12,6 +12,21 @@ Inc. All amounts are estimates: "Estimated costs. Billing can be delayed; final 
 
 ### Added
 
+**Genie side panel**
+- Ask a Genie Agent from a Chrome side panel ("Ask Genie" in the popup) and keep working: the
+  service worker sends the question, polls with backoff under a 10-minute limit, fetches the
+  result table and resumes in-flight questions after a restart.
+- Per-message status (Sending, Genie is working, Running query, Answer ready, Failed with a plain
+  reason), answer text, a capped result table with "showing N of M", Show SQL, Copy answer,
+  suggested follow-ups, New conversation, keyboard sending (Enter, Shift+Enter for a newline).
+- One shared `all-apis` consent for the run monitor and Genie (OAuth purpose `apis`, with
+  `monitor` and `genie` as aliases); PAT mode works too. Helper mode is explained, not supported.
+- Conversations kept only in session storage with size caps; never in local storage, diagnostics,
+  logs or notifications. Opt-in "Notify me when Genie answers" (data-free notification) and a
+  badge count while the panel is closed.
+- Genie paths are a separate HTTP allowlist, used only by the Genie client. New `GENIE_*` error
+  codes with next steps. Demo mode has synthetic DEMO agents; the fixture server mocks the API.
+
 **Extension and data modes**
 - Manifest V3 extension for Chrome and Edge (116+), with a stable extension ID from a public
   manifest key.

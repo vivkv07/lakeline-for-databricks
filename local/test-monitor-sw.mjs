@@ -73,7 +73,9 @@ test('service worker registers monitor handlers and synchronous listeners throug
   assert.equal(ctx.DCC.handlerFactories.length >= 1, true);
   assert.equal(ctx.DCC.backgroundInits.length >= 1, true);
   // Listeners exist right after evaluation (no await), so alarms and startup can wake the worker.
-  assert.equal(chrome.alarms.onAlarm.fns.length, 1);
+  // One alarm listener for the monitor and one for the Genie side panel (it resumes in-flight questions).
+  assert.equal(chrome.alarms.onAlarm.fns.length, 2);
+  assert.equal(typeof ctx.DCC.genie.create, 'function');
   assert.ok(chrome.runtime.onStartup.fns.length >= 2, 'bootstrap + monitor');
   assert.equal(chrome.windows.onRemoved.fns.length, 1);
   assert.equal(chrome.storage.onChanged.fns.length, 1);
