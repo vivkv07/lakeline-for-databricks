@@ -25,7 +25,9 @@
     const method = msg.method === 'POST' ? 'POST' : 'GET';
     const target = new URL(String(msg.path || ''), cls.origin);
     if (target.origin !== cls.origin) return { ok: false, blocked: 'cross-origin' };
-    if (!DCC.http.isAllowed(method, target.pathname)) return { ok: false, blocked: 'path' };
+    // Genie requests carry scope 'genie' and get only the Genie allowlist; everything else the default one.
+    const scope = msg.scope === 'genie' ? 'genie' : null;
+    if (!DCC.http.isAllowed(method, target.pathname, { scope })) return { ok: false, blocked: 'path' };
     // Re-validate query parameters with the same rules as the service-worker client.
     const url = DCC.http.buildUrl(cls.origin, target.pathname, Object.fromEntries(target.searchParams));
     let body;

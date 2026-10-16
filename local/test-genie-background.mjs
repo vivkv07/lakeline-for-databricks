@@ -474,11 +474,12 @@ test('auth and mode gating: helper, missing PAT, import mode, unconnected and un
   assert.equal(init.defaultOrigin, B, 'defaults to the active tab when it is a connected workspace');
   assert.equal(init.fromActiveTab, true);
 
-  // Any other sign-in method (e.g. browser login relayed through a tab) is refused explicitly.
+  // Browser login (relayed through an open tab) is supported through the data service's
+  // Genie-scoped session client; without that client the module refuses explicitly.
   if (load('databricks/config.js').AUTH_MODES.includes('session')) {
     const sess = await env({ authMode: 'session', withPat: false });
+    assert.equal((await sess.h('genie:init', {})).workspaces[0].status, 'ready');
     await assert.rejects(sess.h('genie:ask', { origin: A, spaceId: SALES, question: 'q' }), (e) => e.dcc.code === 'GENIE_AUTH_UNSUPPORTED');
-    assert.equal((await sess.h('genie:init', {})).workspaces[0].status, 'unsupported');
     assert.equal(sess.ws.seen.length, 0);
   }
 

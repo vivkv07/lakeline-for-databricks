@@ -28,12 +28,13 @@
      * HTTP client for direct (non-helper) modes. Browser login relays through an open workspace
      * tab and carries no token; OAuth and PAT send a bearer token from session storage.
      */
-    async function clientFor(origin, authMode, { onHeaders, purpose = 'cost' } = {}) {
+    async function clientFor(origin, authMode, { onHeaders, purpose = 'cost', scope = null } = {}) {
+      const s = scope === 'genie' ? 'genie' : null; // a Genie client reaches only Genie paths
       if (authMode === 'session') {
         if (!sessionTransport) throw new errors.DccError({ code: 'SESSION_TAB_REQUIRED', message: 'Browser login unavailable' });
-        return http.create({ origin, token: null, fetch: sessionTransport.fetchFor(origin), onHeaders });
+        return http.create({ origin, token: null, fetch: sessionTransport.fetchFor(origin, { scope: s }), onHeaders, scope: s });
       }
-      return http.create({ origin, token: await directToken(origin, authMode, purpose), fetch: doFetch, onHeaders });
+      return http.create({ origin, token: await directToken(origin, authMode, purpose), fetch: doFetch, onHeaders, scope: s });
     }
 
     /** Bearer token for direct (non-helper) modes: a session PAT or a Sign in with Databricks token. */
