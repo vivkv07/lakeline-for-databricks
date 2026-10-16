@@ -1,0 +1,97 @@
+/*
+ * SYNTHETIC FIXTURE styles: a neutral, Databricks-like shell (no vendor assets). The main
+ * region is the scroll container, as in the real workspace, so the extension's sticky banner
+ * behaves the same way here. Classes are `ws-*` so fragment styles (`fx-*`) never collide.
+ */
+html, body { height: 100%; margin: 0; }
+body {
+  display: flex; flex-direction: column;
+  font: 13px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: #11171c; background: #ffffff;
+}
+:focus-visible { outline: 2px solid #2272b4; outline-offset: 2px; }
+
+/* ---------------------------------------------------------------- fixture toolbar */
+.ws-fixture-bar {
+  flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px;
+  padding: 4px 12px; background: #fff7e0; color: #4d3800; border-bottom: 1px solid #e9d8a6; font-size: 12px;
+}
+.ws-fixture-label { background: #4d3800; color: #ffffff; padding: 1px 6px; border-radius: 3px; font-weight: 700; letter-spacing: .04em; }
+.ws-fixture-controls { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.ws-fixture-bar button {
+  font: inherit; min-height: 24px; padding: 1px 8px; border: 1px solid #c9b77f; border-radius: 4px;
+  background: #fffdf5; color: #4d3800; cursor: pointer;
+}
+.ws-fixture-bar button:hover { background: #fff1c2; }
+.ws-fixture-bar button[aria-pressed="true"] { background: #4d3800; border-color: #4d3800; color: #ffffff; }
+.ws-fixture-bar button:disabled { opacity: .5; cursor: default; }
+.ws-fixture-status { color: #6b5510; font-variant-numeric: tabular-nums; }
+
+/* ---------------------------------------------------------------- app shell */
+.ws-app { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.ws-topnav {
+  flex: none; display: flex; align-items: center; gap: 8px; height: 48px; padding: 0 12px;
+  background: #ffffff; border-bottom: 1px solid #e0e4e8;
+}
+.ws-iconbtn {
+  display: inline-flex; align-items: center; justify-content: center; min-width: 32px; min-height: 32px; padding: 0 6px;
+  border: 0; border-radius: 4px; background: transparent; color: #5f7281; cursor: pointer;
+}
+.ws-iconbtn:hover { background: rgba(34, 114, 180, 0.08); }
+.ws-brand { display: inline-flex; align-items: center; gap: 6px; color: #11171c; text-decoration: none; font-weight: 600; white-space: nowrap; }
+.ws-search { flex: 1 1 auto; min-width: 0; display: flex; justify-content: center; }
+.ws-field {
+  display: inline-flex; align-items: center; gap: 6px; width: min(520px, 100%); height: 32px; padding: 0 8px;
+  border: 1px solid #d1d9e1; border-radius: 4px; background: #f7f7f7; color: #5f7281;
+}
+.ws-field input { flex: 1 1 auto; min-width: 0; border: 0; background: transparent; color: #11171c; font: inherit; }
+.ws-field input:focus { outline: none; }
+.ws-field:focus-within { outline: 2px solid #2272b4; outline-offset: 1px; }
+.ws-avatar {
+  display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; flex: none;
+  border: 0; border-radius: 50%; background: #2272b4; color: #ffffff; font: 600 12px system-ui, sans-serif; cursor: pointer;
+}
+
+.ws-body { flex: 1 1 auto; min-height: 0; display: flex; }
+.ws-sidenav {
+  flex: none; width: 208px; overflow-y: auto; padding: 8px 6px;
+  background: #f6f7f9; border-right: 1px solid #e0e4e8;
+}
+.ws-sidenav h2 { margin: 14px 10px 4px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: #5f7281; }
+.ws-sidenav a {
+  display: block; padding: 6px 10px; border-radius: 4px; color: #11171c; text-decoration: none;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ws-sidenav a:hover { background: #e8ecf0; }
+.ws-sidenav a[aria-current="page"] { background: #e3edf7; color: #0e538b; font-weight: 600; }
+
+/* The scroll container that hosts the extension banner as its first child. */
+.ws-main { flex: 1 1 auto; min-width: 0; overflow: auto; background: #ffffff; position: relative; }
+.ws-page { padding: 16px 20px 32px; }
+.ws-muted { color: #5f7281; }
+
+.ws-placeholder { max-width: 640px; padding: 24px; margin: 24px auto; border: 1px dashed #c3ccd5; border-radius: 6px; background: #fafbfc; }
+.ws-placeholder h1 { margin: 0 0 8px; font-size: 20px; }
+.ws-placeholder code { font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; background: #eef1f4; padding: 0 4px; border-radius: 3px; }
+.ws-placeholder ul { padding-left: 18px; }
+.ws-placeholder a { color: #2272b4; }
+
+.ws-storm {
+  position: sticky; bottom: 0; margin: 0; padding: 2px 20px;
+  font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; color: #5f7281;
+  background: #f6f7f9; border-top: 1px solid #e0e4e8;
+}
+[data-fx-virtual] { outline: 1px dashed #c9b77f; outline-offset: 4px; }
+
+/* ---------------------------------------------------------------- narrow widths */
+@media (max-width: 760px) {
+  /* Whatever top bar the shell hosts (built-in or /fixture/topbar.html) scrolls inside itself
+     instead of widening the document. */
+  .ws-app > nav[aria-label="Top Navigation"] { min-width: 0; overflow-x: auto; overflow-y: hidden; }
+  .ws-body { flex-direction: column; }
+  .ws-sidenav { width: auto; display: flex; gap: 2px; overflow-x: auto; overflow-y: hidden; padding: 4px; border-right: 0; border-bottom: 1px solid #e0e4e8; }
+  .ws-navgroup { display: contents; }
+  .ws-sidenav h2 { display: none; }
+  .ws-wordmark { display: none; }
+  .ws-page { padding: 12px; }
+}

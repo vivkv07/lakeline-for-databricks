@@ -345,3 +345,16 @@ test('content scripts register only for supported granted patterns', () => {
   assert.equal(registration.isSupportedPattern('https://example.com/*'), false);
   assert.equal(registration.isSupportedPattern('http://127.0.0.1:8766/*'), false);
 });
+
+test('Settings/Resume work without an identified workspace but still require our top-frame script', async () => {
+  const { router, opened, store } = await routerEnv();
+  const noId = { id: EXT_ID, url: ORIGIN + '/jobs', tab: { id: 1 }, frameId: 0 };
+  assert.equal((await router.dispatch({ type: 'dcc:open', page: 'options', origin: ORIGIN }, noId)).ok, true);
+  assert.deepEqual(opened, ['ui/options.html']);
+  await store.updateSettings({ showCosts: false });
+  assert.equal((await router.dispatch({ type: 'dcc:resume', origin: ORIGIN }, noId)).ok, true);
+  assert.equal((await store.getSettings()).showCosts, true);
+  assert.equal((await router.dispatch({ type: 'dcc:resume', origin: ORIGIN }, { ...noId, frameId: 2 })).ok, false);
+  assert.equal((await router.dispatch({ type: 'dcc:resume', origin: ORIGIN }, { ...noId, url: 'https://evil.example/' })).ok, false);
+  assert.equal((await router.dispatch({ type: 'dcc:summary', origin: ORIGIN, workspaceId: '777', periodDays: 7 }, noId)).ok, false, 'data requests still validate the workspace');
+});

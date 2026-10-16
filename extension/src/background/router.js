@@ -32,6 +32,14 @@
       return v;
     }
 
+    /** Our top-frame script on a supported origin; used where the workspace may be unidentified. */
+    function contentOriginCheck(msg, sender) {
+      if (!sender || sender.id !== deps.extensionId || !sender.tab || sender.frameId !== 0) throw new errors.DccError({ code: 'UNKNOWN', message: 'Rejected sender' });
+      const cls = ids.classifyOrigin(sender.url);
+      if (!cls.ok || !msg || cls.origin !== msg.origin) throw new errors.DccError({ code: 'UNKNOWN', message: 'Rejected sender origin' });
+      return cls;
+    }
+
     function pageCheck(sender, admin) {
       const v = senderMod.validatePageSender(sender, ctx, { admin });
       if (!v.ok) throw new errors.DccError({ code: 'UNKNOWN', message: 'Rejected sender: ' + v.reason });
@@ -126,14 +134,15 @@
         },
       },
       'dcc:resume': {
-        trust: 'content',
+        // Must work in unidentified/mismatch states, so it checks origin only (it changes no data scope).
+        trust: 'content-origin',
         async handle() {
           await deps.store.updateSettings({ showCosts: true });
           return { showCosts: true };
         },
       },
       'dcc:open': {
-        trust: 'content',
+        trust: 'content-origin',
         async handle(msg) {
           return openNamedPage(msg.page, msg.anchor, msg.origin);
         },
@@ -359,6 +368,7 @@
         const h = handlers[msg.type];
         if (external !== (h.trust === 'external')) throw new errors.DccError({ code: 'UNKNOWN', message: 'Message not allowed on this channel' });
         if (h.trust === 'content') await contentCheck(msg, sender);
+        else if (h.trust === 'content-origin') contentOriginCheck(msg, sender);
         else if (h.trust === 'page') pageCheck(sender, false);
         else if (h.trust === 'admin') pageCheck(sender, true);
         else if (h.trust === 'external') {

@@ -34,11 +34,19 @@
       generations.set(channel, (generations.get(channel) || 0) + 1);
     }
 
+    // One-off requests get a unique channel that is dropped when they settle, so the
+    // generation map can't grow without bound on long-lived tabs.
+    let miscSeq = 0;
+    function send(msg) {
+      const channel = 'misc:' + ++miscSeq;
+      return request(channel, msg).finally(() => generations.delete(channel));
+    }
+
     return {
-      summary: (periodDays, force) => request('summary', { type: 'dcc:summary', periodDays, force }),
+      summary: (periodDays, force) => request('summary', { type: 'dcc:summary', periodDays, force: force === true }),
       rows: (channel, periodDays, refs) => request('rows:' + channel, { type: 'dcc:rows', periodDays, refs }),
-      query: (channel, kind, args, scope) => request('q:' + channel, { type: 'dcc:query', kind, args, scope }),
-      send: (msg) => request('misc:' + msg.type + ':' + Math.random(), msg),
+      query: (channel, kind, args, scope, force) => request('q:' + channel, { type: 'dcc:query', kind, args, scope, force: force === true }),
+      send,
       invalidate,
     };
   }
