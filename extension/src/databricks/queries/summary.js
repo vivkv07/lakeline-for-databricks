@@ -15,7 +15,8 @@
    * @param {number} periodDays 7|30|90
    * @param {number} nowMs
    */
-  function build(conn, periodDays, nowMs = Date.now()) {
+  function build(conn, args, nowMs = Date.now()) {
+    const periodDays = typeof args === 'number' ? args : args && args.periodDays;
     const period = periods.completePeriod(periodDays, nowMs);
     const { cte, params } = pricing.pricedUsageCte({
       priceTable: conn.priceTable,
