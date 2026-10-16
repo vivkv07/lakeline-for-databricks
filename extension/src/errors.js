@@ -71,6 +71,18 @@
       title: 'Some usage has no matching price',
       steps: ['Amounts are shown as a priced subtotal. See the expanded details for affected SKUs and dates.'],
     },
+    SESSION_TAB_REQUIRED: {
+      title: 'Open a Databricks tab for this workspace',
+      steps: ['"Use my Databricks login" works through an open workspace tab. Open (or reload) a tab for this workspace and try again, or switch to Sign in with Databricks for background features.'],
+    },
+    SESSION_REJECTED: {
+      title: 'This workspace does not allow browser-login access',
+      steps: ['Your workspace blocked API requests that reuse the browser login. Use Sign in with Databricks or a personal access token instead.'],
+    },
+    SESSION_EXPIRED: {
+      title: 'Your Databricks login in this browser has expired',
+      steps: ['Sign in to Databricks again in the workspace tab, then select Refresh.'],
+    },
     AUTH_EXPIRED: {
       title: 'Sign-in expired',
       steps: ['Reconnect from the extension popup. For a personal access token, create a new token and save it under Connection preferences.'],
@@ -145,6 +157,10 @@
     GENIE_HELPER_MODE: {
       title: 'Genie needs Sign in with Databricks or a personal access token',
       steps: ['This workspace connects through the local helper, which runs cost queries only. Reconnect it with Connect in the popup (Sign in with Databricks), or save a personal access token in Connection preferences.'],
+    },
+    GENIE_AUTH_UNSUPPORTED: {
+      title: 'Genie needs Sign in with Databricks or a personal access token',
+      steps: ['This workspace connects with "Use my Databricks login", which relays through an open tab, so Genie can\'t keep working in the background with it. Reconnect with Sign in with Databricks from the popup, or save a personal access token in Connection preferences.'],
     },
     GENIE_MODE: {
       title: 'Genie is off in Local import mode',

@@ -21,7 +21,21 @@
   const cacheMod = dep('cache', './cache.js');
   const registry = NODE ? require('../databricks/queries/index.js') : root.DCC.queries.registry;
 
-  function create({ store, secrets, helper, oauth, fetch: doFetch, now = () => Date.now(), cache = cacheMod.create({ now }) }) {
+  const DIRECT_MODES = Object.freeze(['oauth', 'pat', 'session']);
+
+  function create({ store, secrets, helper, oauth, sessionTransport, fetch: doFetch, now = () => Date.now(), cache = cacheMod.create({ now }) }) {
+    /**
+     * HTTP client for direct (non-helper) modes. Browser login relays through an open workspace
+     * tab and carries no token; OAuth and PAT send a bearer token from session storage.
+     */
+    async function clientFor(origin, authMode, { onHeaders, purpose = 'cost' } = {}) {
+      if (authMode === 'session') {
+        if (!sessionTransport) throw new errors.DccError({ code: 'SESSION_TAB_REQUIRED', message: 'Browser login unavailable' });
+        return http.create({ origin, token: null, fetch: sessionTransport.fetchFor(origin), onHeaders });
+      }
+      return http.create({ origin, token: await directToken(origin, authMode, purpose), fetch: doFetch, onHeaders });
+    }
+
     /** Bearer token for direct (non-helper) modes: a session PAT or a Sign in with Databricks token. */
     async function directToken(origin, authMode, purpose = 'cost') {
       if (authMode === 'oauth') {
@@ -37,8 +51,7 @@
 
     /** Executor for PAT mode: one statement → parsed rows. */
     async function patExec(conn) {
-      const token = await directToken(conn.origin, conn.authMode);
-      const client = http.create({ origin: conn.origin, token, fetch: doFetch });
+      const client = await clientFor(conn.origin, conn.authMode);
       const warehouseId = config.effectiveWarehouseId(conn);
       return async (query) => {
         const res = await http.executeStatement(client, { warehouseId, statement: query.statement, parameters: query.parameters, rowLimit: query.rowLimit });
@@ -47,7 +60,7 @@
     }
 
     async function runConnected(conn, kind, args) {
-      if (conn.authMode === 'pat' || conn.authMode === 'oauth') {
+      if (DIRECT_MODES.includes(conn.authMode)) {
         return registry.run(kind, { conn, args, nowMs: now(), exec: await patExec(conn) });
       }
       await helper.assertCapable(kind, conn, args);
@@ -129,15 +142,12 @@
 
     /** Lists warehouses; `onHeaders` sees response headers (x-databricks-org-id = workspace ID). */
     async function listWarehouses({ origin, authMode, onHeaders }) {
-      if (authMode === 'pat' || authMode === 'oauth') {
-        const token = await directToken(origin, authMode);
-        return warehouses.list(http.create({ origin, token, fetch: doFetch, onHeaders }));
-      }
+      if (DIRECT_MODES.includes(authMode)) return warehouses.list(await clientFor(origin, authMode, { onHeaders }));
       const out = await helper.call('/bridge/warehouses', { origin });
       return (out.warehouses || []).map(warehouses.normalize).filter(Boolean);
     }
 
-    return { summary, rows, connectedOnly, listWarehouses, directToken, cache, runConnected, connectionFor };
+    return { summary, rows, connectedOnly, listWarehouses, directToken, clientFor, cache, runConnected, connectionFor };
   }
 
   const api = Object.freeze({ create });

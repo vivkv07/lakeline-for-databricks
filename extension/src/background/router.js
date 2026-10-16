@@ -210,7 +210,7 @@
         async handle(msg) {
           const cls = ids.classifyOrigin(msg.origin);
           if (!cls.ok) throw new errors.DccError({ code: 'UNKNOWN', message: 'Unsupported origin' });
-          await deps.secrets.setPat(cls.origin, String(msg.token || '').trim());
+          await deps.secrets.setPat(cls.origin, String(msg.token || '').trim(), { remember: msg.remember === true });
           deps.data.cache.clear();
           return { saved: true };
         },

@@ -68,13 +68,15 @@
       try {
         res = await doFetch(url, {
           method,
-          headers: { Authorization: 'Bearer ' + o.token, Accept: 'application/json', ...(body ? { 'Content-Type': 'application/json' } : {}) },
+          // No token = browser-login transport: the tab's own session authenticates the request.
+          headers: { ...(o.token ? { Authorization: 'Bearer ' + o.token } : {}), Accept: 'application/json', ...(body ? { 'Content-Type': 'application/json' } : {}) },
           body: body ? JSON.stringify(body) : undefined,
           redirect: 'error',
           credentials: 'omit',
           cache: 'no-store',
         });
       } catch (e) {
+        if (e && e.dcc) throw e; // already classified by the transport (e.g. browser-login errors)
         throw new errors.DccError({ network: true, message: e && e.message });
       }
       if (o.onHeaders && res.headers && typeof res.headers.get === 'function') o.onHeaders(res.headers);
