@@ -42,7 +42,7 @@
     if (!fixed || fixed.fg !== theme.fg) return null;
     const { bg, fg, line, hover } = fixed; // line/hover are constants chosen per foreground
     return [
-      '/* Databricks Cost Companion: workspace top-bar color (removable; scoped to the native top bar). */',
+      '/* Lakeline for Databricks: workspace top-bar color (removable; scoped to the native top bar). */',
       `${BAR} { background-color: ${bg} !important; background-image: none !important; color: ${fg} !important; border-color: ${line} !important; }`,
       // Text and icon controls follow the chosen foreground; icons drawn with currentColor
       // follow it through inheritance. Explicit SVG fills (logos) are untouched.

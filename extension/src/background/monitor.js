@@ -47,7 +47,7 @@
   const WINDOW_SIZE = Object.freeze({ width: 380, height: 600 });
   // White text on both: #2F5BEA ≈ 5.5:1, #B42318 ≈ 6.6:1. Failures also add "!" (not color only).
   const BADGE = Object.freeze({ normal: '#2F5BEA', failure: '#B42318', text: '#FFFFFF' });
-  const DEFAULT_TITLE = 'Databricks Cost Companion';
+  const DEFAULT_TITLE = 'Lakeline for Databricks';
   const SECTIONS = Object.freeze(['runsActive', 'runsRecent', 'pipelines', 'warehouses', 'clusters']);
   const CLEARED_STATUSES = new Set(['signin', 'choose-workspace', 'no-connection', 'demo-mode']);
 

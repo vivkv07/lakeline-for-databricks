@@ -455,7 +455,7 @@ test('Settings falls back to a visible notice when the extension page cannot be 
   const t = boot({ sw });
   await waitFor(() => t.text().includes(money(1030)));
   t.click('settings');
-  await waitFor(() => t.text().includes('Open the Cost Companion popup'));
+  await waitFor(() => t.text().includes('Open the Lakeline popup'));
   assert.equal(t.sent('dcc:open')[0].page, 'options');
   t.close();
 });

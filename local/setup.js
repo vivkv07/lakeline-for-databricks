@@ -114,8 +114,8 @@
         window.clearTimeout(timer);
         if (lastError) {
           btn.disabled = false;
-          setStatus('error', 'The Databricks Cost Companion extension is not installed in this browser, or it is disabled.');
-          showNoExtension('This browser answered, but not with the Databricks Cost Companion extension. Load the extension (below), or enter the key manually.');
+          setStatus('error', 'The Lakeline for Databricks extension is not installed in this browser, or it is disabled.');
+          showNoExtension('This browser answered, but not with the Lakeline for Databricks extension. Load the extension (below), or enter the key manually.');
           return;
         }
         onPairResponse(resp);

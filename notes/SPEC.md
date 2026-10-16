@@ -1,5 +1,8 @@
 # Databricks Cost Companion — product spec (as provided by the user, 2026-10-15)
 
+The product has since been renamed **Lakeline for Databricks** (see PLAN.md). This file keeps the
+original wording of the spec.
+
 Additions decided with the user are in PLAN.md ("Decisions"): floating monitor widget, run/compute
 monitoring with opt-in notifications, separate all-apis sign-in for the monitor, all three clouds.
 

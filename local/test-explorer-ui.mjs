@@ -386,7 +386,7 @@ test('CSV export of the filtered table carries metadata, filters and safe cells'
   t.$('#dcc-x-tab-skus').click();
   const csv = t.w.DCC.explorer.buildCsv(t.handle);
   const lines = csv.split('\r\n');
-  assert.equal(lines[0], 'Source,Databricks Cost Companion · Cost Explorer: SKUs · SKUs: selected vs prior period (JOBS)');
+  assert.equal(lines[0], 'Source,Lakeline for Databricks · Cost Explorer: SKUs · SKUs: selected vs prior period (JOBS)');
   assert.ok(lines.includes('Pricing basis,List price: Uses system.billing.list_prices (effective list). Private discounts are excluded. Cloud-provider charges are excluded.'));
   assert.ok(lines.includes('Price table,system.billing.list_prices'));
   assert.ok(lines.includes('Currency,USD'));

@@ -1244,7 +1244,7 @@
     if (s.search) scope.push('Search = "' + s.search + '"');
     if (t.scope) scope.push(t.scope);
     return [
-      ['Source', 'Databricks Cost Companion · Cost Explorer: ' + viewLabel + (t.title ? ' · ' + t.title : '')],
+      ['Source', 'Lakeline for Databricks · Cost Explorer: ' + viewLabel + (t.title ? ' · ' + t.title : '')],
       ['Data', dataLabel],
       ['Pricing basis', basis ? basis.short + ': ' + basis.note : m.pricingBasis || 'unknown'],
       ['Price table', m.priceTable || 'n/a'],

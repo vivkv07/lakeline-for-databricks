@@ -1,4 +1,4 @@
-# Databricks Cost Companion
+# Lakeline for Databricks
 
 A Chrome and Edge extension (Manifest V3) that shows estimated Databricks costs inside your existing
 Databricks workspace. It adds a cost banner, badges on jobs, pipelines, warehouses, notebooks and

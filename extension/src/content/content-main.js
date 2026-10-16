@@ -33,7 +33,7 @@
   });
   const HELLO_ERROR = Object.freeze({
     code: 'UNKNOWN',
-    title: 'Cost Companion could not start on this page',
+    title: 'Lakeline could not start on this page',
     steps: ['Reload this page. If the extension was just updated or reloaded, this is expected.'],
   });
 
@@ -76,7 +76,7 @@
   }
 
   function sendMessage(msg) {
-    if (state.stopped) return Promise.reject(new Error('Cost Companion stopped'));
+    if (state.stopped) return Promise.reject(new Error('Lakeline stopped'));
     try {
       return Promise.resolve(chromeApi.runtime.sendMessage(msg)).catch((e) => {
         checkOrphaned();
@@ -188,9 +188,9 @@
     if (anchor) msg.anchor = anchor;
     sendMessage(msg).then(
       (res) => {
-        if (!res || !res.ok) showNotice('Open the Cost Companion popup from the browser toolbar to change settings.');
+        if (!res || !res.ok) showNotice('Open the Lakeline popup from the browser toolbar to change settings.');
       },
-      () => showNotice('Open the Cost Companion popup from the browser toolbar to change settings.')
+      () => showNotice('Open the Lakeline popup from the browser toolbar to change settings.')
     );
   }
 
@@ -308,7 +308,7 @@
   }
 
   function resume() {
-    const failed = () => showNotice('Resume from the Cost Companion popup in the browser toolbar.');
+    const failed = () => showNotice('Resume from the Lakeline popup in the browser toolbar.');
     sendMessage({ type: 'dcc:resume', origin: state.origin, workspaceId: state.workspaceId }).then((res) => {
       if (!res || !res.ok) return failed();
       state.notice = null;
