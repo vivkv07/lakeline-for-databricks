@@ -16,86 +16,76 @@
       <h1>Lakeline</h1>
       <p class="pp-sub" id="mode-summary" aria-live="polite">Loading…</p>
     </div>
-    <button type="button" class="dcc-btn pp-icon-btn" id="open-options" aria-label="Connection preferences" title="Connection preferences">
+    <button type="button" class="dcc-btn dcc-btn--quiet pp-icon-btn" id="open-options" aria-label="Connection preferences" title="Connection preferences">
       <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 4h7.5M12.5 4H14M2 8h2.5M7.5 8H14M2 12h8.5M13.5 12H14"/><circle cx="11" cy="4" r="1.5"/><circle cx="6" cy="8" r="1.5"/><circle cx="12" cy="12" r="1.5"/></svg>
     </button>
   </header>
 
-  <p class="dcc-notice pp-notice" id="disclaimer">Estimated costs. Billing can be delayed; final invoices may differ.</p>
-  <div id="page-alert" class="pp-alert-slot"></div>
+  <div id="page-alert" class="pp-alert-slot pp-page-alert"></div>
 
-  <section class="pp-section" aria-labelledby="h-workspace">
-    <h2 id="h-workspace" class="dcc-eyebrow pp-h">Workspace</h2>
+  <!-- The workspace in the active tab: status, one primary action, alternatives on demand. -->
+  <section class="pp-section pp-workspace" aria-labelledby="h-workspace">
+    <h2 id="h-workspace" class="dcc-visually-hidden">Workspace</h2>
     <div id="tab-status" class="pp-tab-status" aria-live="polite"></div>
-    <div class="pp-actions">
-      <button type="button" class="dcc-btn dcc-btn--primary" id="connect-btn">Connect Databricks</button>
-    </div>
-    <div id="oauth-setup" class="pp-oauth-setup dcc-card" hidden>
-      <p class="pp-line"><strong>Choose how to sign in.</strong></p>
-      <div class="pp-actions pp-choice">
-        <button type="button" class="dcc-btn dcc-btn--primary" id="use-session">Use my Databricks login</button>
-        <button type="button" class="dcc-btn" id="use-token">Use a token</button>
-      </div>
-      <p class="pp-line pp-muted">"Use my Databricks login" needs no setup and works while a tab of this workspace is open. It's experimental: it relies on an undocumented Databricks API.</p>
-      <p class="pp-line"><strong>Or sign in with Databricks (one-time setup).</strong> An account admin registers Lakeline in Databricks once. After that, Connect is one click for every workspace in the account.</p>
-      <ol class="pp-steps">
-        <li>Account console, Settings, App connections, Add connection.</li>
-        <li>Redirect URL: <code id="oauth-redirect" class="pp-code"></code> <button type="button" class="dcc-btn pp-copy" id="oauth-copy">Copy</button></li>
-        <li>Scopes: SQL and All APIs. Leave "Generate a client secret" off.</li>
-        <li>Paste the client ID below. New connections can take about 30 minutes to activate.</li>
-      </ol>
-      <label class="pp-label" for="oauth-client-id">OAuth client ID</label>
-      <input type="text" class="dcc-input" id="oauth-client-id" autocomplete="off" spellcheck="false" placeholder="Client ID from App connections">
-      <div class="pp-actions">
-        <button type="button" class="dcc-btn dcc-btn--primary" id="oauth-save-connect">Save and connect</button>
-        <button type="button" class="dcc-btn pp-link-btn" id="oauth-guide">Step-by-step guide</button>
-      </div>
-    </div>
-  </section>
-
-  <section class="pp-section" aria-labelledby="h-genie">
-    <div class="pp-section-head">
-      <h2 id="h-genie" class="dcc-eyebrow pp-h">Genie</h2>
-      <button type="button" class="dcc-btn dcc-btn--small" id="genie-open" aria-describedby="genie-desc">
+    <div class="pp-actions" id="ws-actions">
+      <button type="button" class="dcc-btn dcc-btn--primary pp-main" id="connect-btn">Connect Databricks</button>
+      <button type="button" class="dcc-btn pp-genie" id="genie-open" aria-describedby="genie-desc">
         <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M2.5 3.5h11v7h-6l-3 2.5v-2.5h-2z"/></svg>
         Ask Genie
       </button>
     </div>
-    <div id="genie-status" class="pp-alert-slot" role="status"></div>
-    <p class="pp-hint" id="genie-desc">Ask your Genie Agents in a side panel and keep working. The answer waits for you there.</p>
-    <div class="pp-row">
-      <label for="genie-notify">Notify me when Genie answers</label>
-      <input type="checkbox" role="switch" class="dcc-switch" id="genie-notify" aria-describedby="genie-notify-desc">
+    <p class="dcc-visually-hidden" id="genie-desc">Ask your Genie Agents in a side panel and keep working. The answer waits for you there.</p>
+    <div class="pp-alt" id="ws-alt">
+      <button type="button" class="dcc-link pp-alt-link" id="signin-alt" aria-expanded="false" aria-controls="oauth-setup" hidden>Other ways to sign in</button>
     </div>
-    <p class="pp-hint" id="genie-notify-desc">Only while the panel is closed. It names the agent and never shows the answer.</p>
-  </section>
+    <div id="genie-status" class="pp-alert-slot" role="status"></div>
 
-  <section class="pp-section" aria-labelledby="h-source">
-    <h2 id="h-source" class="dcc-eyebrow pp-h">Data source</h2>
-    <fieldset class="dcc-fieldset">
-      <legend class="dcc-visually-hidden">Data source</legend>
-      <div class="dcc-segmented pp-segmented-full">
-        <input type="radio" name="mode" id="mode-demo" value="demo" aria-describedby="mode-hint">
-        <label for="mode-demo">Demo</label>
-        <input type="radio" name="mode" id="mode-import" value="import" aria-describedby="mode-hint">
-        <label for="mode-import">Local import</label>
-        <input type="radio" name="mode" id="mode-connected" value="connected" aria-describedby="mode-hint">
-        <label for="mode-connected">Connected</label>
+    <!-- Sign-in chooser: shown only when Databricks sign-in isn't set up yet (or on request). -->
+    <div id="oauth-setup" class="pp-chooser" role="group" aria-labelledby="oauth-setup-title" hidden>
+      <p class="dcc-section-title" id="oauth-setup-title">Choose how to sign in</p>
+
+      <div class="pp-choice">
+        <p class="pp-choice-title">Sign in with Databricks <span class="pp-tag">Recommended</span></p>
+        <p class="pp-choice-desc">Paste the client ID your account admin registered. One setup covers every workspace in the account.</p>
+        <label class="pp-label" for="oauth-client-id">OAuth client ID</label>
+        <input type="text" class="dcc-input dcc-input--mono" id="oauth-client-id" autocomplete="off" spellcheck="false" placeholder="From App connections">
+        <div class="pp-choice-actions">
+          <button type="button" class="dcc-btn dcc-btn--primary" id="oauth-save-connect">Save and connect</button>
+        </div>
+        <details class="pp-setup" id="oauth-admin">
+          <summary>Admin setup, one time</summary>
+          <ol class="pp-steps">
+            <li>Account console: Settings, App connections, Add connection.</li>
+            <li>Redirect URL: <code id="oauth-redirect" class="pp-code"></code> <button type="button" class="dcc-btn dcc-btn--small pp-copy" id="oauth-copy">Copy</button></li>
+            <li>Scopes: SQL and All APIs. Leave "Generate a client secret" off.</li>
+            <li>Paste the client ID above. New connections can take about 30 minutes to activate.</li>
+          </ol>
+          <button type="button" class="dcc-link pp-small-link" id="oauth-guide">Step-by-step guide</button>
+        </details>
       </div>
-    </fieldset>
-    <p class="pp-hint" id="mode-hint"></p>
+
+      <div class="pp-choice">
+        <button type="button" class="pp-choice-btn" id="use-token" aria-describedby="use-token-desc">Use a token</button>
+        <p class="pp-choice-desc" id="use-token-desc">Paste a personal access token in Connection preferences.</p>
+      </div>
+
+      <div class="pp-choice" data-feature="session-login">
+        <button type="button" class="pp-choice-btn" id="use-session" aria-describedby="use-session-desc">Use my Databricks login <span class="pp-tag pp-tag--warn">Experimental</span></button>
+        <p class="pp-choice-desc" id="use-session-desc">No setup, through this open tab. Databricks currently rejects these calls on tested workspaces, so it may not work.</p>
+      </div>
+    </div>
   </section>
 
-  <section class="pp-section" aria-labelledby="h-display">
-    <h2 id="h-display" class="dcc-eyebrow pp-h">Inside Databricks</h2>
+  <!-- Essentials: what shows inside Databricks. -->
+  <section class="pp-section pp-essentials" aria-label="Cost display">
     <div class="pp-row">
       <label for="show-costs">Show costs inside Databricks</label>
       <input type="checkbox" role="switch" class="dcc-switch" id="show-costs" aria-describedby="show-costs-desc">
     </div>
-    <p class="pp-hint" id="show-costs-desc">When off, no new cost requests are made. Workspace colors stay active.</p>
-    <fieldset class="dcc-fieldset pp-period">
-      <legend class="pp-legend">Period</legend>
-      <div class="dcc-segmented">
+    <p class="pp-hint pp-paused-hint" id="show-costs-desc">When off, no new cost requests are made. Workspace colors stay active.</p>
+    <div class="pp-grid">
+      <span class="pp-grid-label" id="period-label">Period</span>
+      <div class="dcc-segmented pp-seg" role="radiogroup" aria-labelledby="period-label">
         <input type="radio" name="period" id="period-7" value="7" aria-describedby="period-desc">
         <label for="period-7">7 days</label>
         <input type="radio" name="period" id="period-30" value="30" aria-describedby="period-desc">
@@ -103,54 +93,85 @@
         <input type="radio" name="period" id="period-90" value="90" aria-describedby="period-desc">
         <label for="period-90">90 days</label>
       </div>
-      <p class="pp-hint" id="period-desc">Complete UTC days, excluding today.</p>
-    </fieldset>
-  </section>
-
-  <section id="appearance-panel" aria-label="Workspace colors"></section>
-
-  <section class="pp-section" aria-labelledby="h-monitor">
-    <div class="pp-section-head">
-      <h2 id="h-monitor" class="dcc-eyebrow pp-h">Run monitor</h2>
-      <button type="button" class="dcc-btn dcc-btn--small" id="monitor-open">Open monitor</button>
-    </div>
-    <div id="monitor-status" class="pp-alert-slot" role="status"></div>
-    <div class="pp-row">
-      <label for="monitor-enabled">Monitor runs and compute</label>
-      <input type="checkbox" role="switch" class="dcc-switch" id="monitor-enabled" aria-describedby="monitor-enabled-desc">
-    </div>
-    <p class="pp-hint" id="monitor-enabled-desc">Read-only status of job runs, pipeline updates, SQL warehouses and clusters. Never starts a stopped warehouse.</p>
-    <div class="pp-row pp-row--sub">
-      <label for="monitor-autoopen">Open the monitor when the browser starts</label>
-      <input type="checkbox" role="switch" class="dcc-switch" id="monitor-autoopen">
-    </div>
-    <div class="pp-row pp-row--sub">
-      <label for="monitor-notify">Desktop notification when a run fails</label>
-      <input type="checkbox" role="switch" class="dcc-switch" id="monitor-notify" aria-describedby="monitor-notify-desc">
-    </div>
-    <p class="pp-hint pp-row--sub" id="monitor-notify-desc">Asks for the browser's notification permission when you turn it on.</p>
-  </section>
-
-  <section class="pp-section" aria-label="Diagnostics">
-    <details id="diag-details" class="pp-diag">
-      <summary><span class="dcc-eyebrow pp-h">Diagnostics</span> <span id="diag-count" class="pp-count"></span></summary>
-      <p class="pp-hint">Recent errors, with secrets removed. No query text or results are recorded.</p>
-      <ul id="diag-list" class="pp-diag-list"></ul>
-      <div class="pp-actions">
-        <button type="button" class="dcc-btn dcc-btn--small" id="diag-clear">Clear diagnostics</button>
+      <span class="pp-grid-label" id="source-label">Data source</span>
+      <div class="dcc-segmented pp-seg" role="radiogroup" aria-labelledby="source-label">
+        <input type="radio" name="mode" id="mode-demo" value="demo" aria-describedby="mode-hint">
+        <label for="mode-demo">Demo</label>
+        <input type="radio" name="mode" id="mode-import" value="import" aria-describedby="mode-hint">
+        <label for="mode-import">Import</label>
+        <input type="radio" name="mode" id="mode-connected" value="connected" aria-describedby="mode-hint">
+        <label for="mode-connected">Connected</label>
       </div>
-    </details>
+    </div>
+    <p class="dcc-visually-hidden" id="period-desc">Complete UTC days, excluding today.</p>
+    <p class="pp-hint" id="mode-hint"></p>
   </section>
+
+  <!-- Everything else, collapsed by default. -->
+  <details class="dcc-disclosure pp-more" id="more">
+    <summary>More <span class="pp-more-meta">Notifications, colors, monitor, diagnostics</span></summary>
+    <div class="pp-more-body">
+      <section class="pp-group" aria-labelledby="h-genie">
+        <h2 id="h-genie" class="dcc-section-title">Genie</h2>
+        <div class="pp-row">
+          <label for="genie-notify">Notify me when Genie answers</label>
+          <input type="checkbox" role="switch" class="dcc-switch" id="genie-notify" aria-describedby="genie-notify-desc">
+        </div>
+        <p class="pp-hint" id="genie-notify-desc">Only while the panel is closed. It names the agent and never shows the answer.</p>
+      </section>
+
+      <section class="pp-group" aria-labelledby="h-monitor">
+        <div class="pp-group-head">
+          <h2 id="h-monitor" class="dcc-section-title">Run monitor</h2>
+          <button type="button" class="dcc-link pp-small-link" id="monitor-open">Open monitor</button>
+        </div>
+        <div id="monitor-status" class="pp-alert-slot" role="status"></div>
+        <div class="pp-row">
+          <label for="monitor-enabled">Monitor runs and compute</label>
+          <input type="checkbox" role="switch" class="dcc-switch" id="monitor-enabled" aria-describedby="monitor-enabled-desc">
+        </div>
+        <p class="pp-hint" id="monitor-enabled-desc">Read-only status of job runs, pipeline updates, SQL warehouses and clusters. Never starts a stopped warehouse.</p>
+        <div class="pp-row pp-row--sub">
+          <label for="monitor-autoopen">Open the monitor when the browser starts</label>
+          <input type="checkbox" role="switch" class="dcc-switch" id="monitor-autoopen">
+        </div>
+        <div class="pp-row pp-row--sub">
+          <label for="monitor-notify">Desktop notification when a run fails</label>
+          <input type="checkbox" role="switch" class="dcc-switch" id="monitor-notify" aria-describedby="monitor-notify-desc">
+        </div>
+        <p class="pp-hint pp-row--sub" id="monitor-notify-desc">Asks for the browser's notification permission when you turn it on.</p>
+      </section>
+
+      <details class="dcc-disclosure pp-nested" id="colors-details">
+        <summary>Workspace colors</summary>
+        <section id="appearance-panel" aria-label="Workspace colors"></section>
+      </details>
+
+      <details class="dcc-disclosure pp-nested" id="diag-details">
+        <summary>Diagnostics <span id="diag-count" class="pp-count"></span></summary>
+        <p class="pp-hint">Recent errors, with secrets removed. No query text or results are recorded.</p>
+        <ul id="diag-list" class="pp-diag-list"></ul>
+        <div class="pp-sub-actions">
+          <button type="button" class="dcc-btn dcc-btn--small" id="diag-clear">Clear diagnostics</button>
+        </div>
+      </details>
+
+      <p class="pp-links">
+        <button type="button" class="dcc-link" id="guide-link">How costs are calculated</button>
+        <a href="http://127.0.0.1:8765/workspace.html" target="_blank" rel="noopener noreferrer" id="fixture-link" title="Requires the local fixture server (npm run fixture)">Local test workspace</a>
+      </p>
+    </div>
+  </details>
 
   <footer class="pp-footer">
-    <button type="button" class="dcc-link" id="guide-link">How costs are calculated</button>
-    <a href="http://127.0.0.1:8765/workspace.html" target="_blank" rel="noopener noreferrer" id="fixture-link" title="Requires the local fixture server (npm run fixture)">Local test workspace</a>
+    <p class="pp-disclaimer" id="disclaimer">Estimated costs. Billing can be delayed; final invoices may differ.</p>
   </footer>
 
   <script src="../src/core/validate.js"></script>
   <script src="../src/core/ids.js"></script>
   <script src="../src/core/labels.js"></script>
   <script src="../src/errors.js"></script>
+  <script src="../src/core/flags.js"></script>
   <script src="popup.js"></script>
   <script src="../src/content/workspace-color.js"></script>
   <script src="workspace-appearance.js"></script>

@@ -1,9 +1,10 @@
 /*
  * Shared tokens, fonts and base components for every extension page (popup, options, monitor,
- * guide). White or black surfaces, Inter for text, IBM Plex Mono for labels and numbers, one
- * blue accent for what matters and warm amber only for data and second things. Light and dark
- * follow prefers-color-scheme. Token values match src/core/theme.js (checked by a test).
- * Page stylesheets build on these and don't redefine them.
+ * side panel, guide). White or black surfaces, Inter for text, IBM Plex Mono only for code, IDs
+ * and numbers, one blue accent for the primary action, selection and links, and warm amber only
+ * for warnings and data. Light and dark follow prefers-color-scheme. Token values match
+ * src/core/theme.js (checked by a test); the "Minimal" tokens below are additions. Page
+ * stylesheets build on these and don't redefine them. See notes/STYLE.md, "Minimal".
  */
 
 /* ------------------------------------------------------------------ fonts (bundled, OFL) */
@@ -105,6 +106,22 @@
   --dcc-success-line: color-mix(in srgb, var(--dcc-success) 38%, var(--dcc-bg));
   --dcc-mark-ring: transparent;
 
+  /*
+   * Minimal system (added). The primary action is a solid blue fill with white text (≥ 4.5:1 in
+   * both schemes); selection is a soft blue fill with deep blue text; status dots pair with text.
+   */
+  --dcc-primary: #2F5BEA;
+  --dcc-primary-hover: #2549C9;
+  --dcc-on-primary: #FFFFFF;
+  --dcc-selected: var(--dcc-accent-fill);
+  --dcc-on-selected: var(--dcc-accent-text);
+  --dcc-hover: var(--dcc-surface);
+  --dcc-dot-idle: var(--dcc-faint);
+  --dcc-dot-ok: var(--dcc-success);
+  --dcc-dot-warn: var(--dcc-warm);
+  --dcc-dot-error: var(--dcc-danger);
+  --dcc-dot-info: var(--dcc-accent);
+
   --dcc-font: "Inter", -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
   --dcc-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
@@ -165,6 +182,11 @@
     --dcc-success-soft: color-mix(in srgb, var(--dcc-success) 9%, var(--dcc-bg));
     --dcc-success-line: color-mix(in srgb, var(--dcc-success) 38%, var(--dcc-bg));
     --dcc-mark-ring: var(--dcc-line2);
+
+    --dcc-primary: #3366FF;
+    --dcc-primary-hover: #2A57E0;
+    --dcc-on-primary: #FFFFFF;
+    --dcc-dot-idle: #6E6E76;
   }
 }
 
@@ -299,6 +321,54 @@ strong {
   color: var(--dcc-accent);
 }
 
+/*
+ * Quiet section title (minimal surfaces): a tiny uppercase Inter label in the muted color. Use
+ * it instead of numbered eyebrows where a section needs a name at all.
+ */
+.dcc-section-title {
+  margin: 0;
+  font-family: var(--dcc-font);
+  font-size: var(--dcc-text-xs);
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dcc-muted);
+}
+
+/* Status: a small dot that always sits next to text saying the same thing. */
+.dcc-dot {
+  display: inline-block;
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--dcc-dot-idle);
+}
+
+.dcc-dot--ok {
+  background: var(--dcc-dot-ok);
+}
+
+.dcc-dot--warn {
+  background: var(--dcc-dot-warn);
+}
+
+.dcc-dot--error {
+  background: var(--dcc-dot-error);
+}
+
+.dcc-dot--info {
+  background: var(--dcc-dot-info);
+}
+
+.dcc-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
 .dcc-mono {
   font-family: var(--dcc-mono);
 }
@@ -379,14 +449,17 @@ strong {
 
 /* ------------------------------------------------------------------ buttons */
 
-/* Secondary: hairline pill. Primary: solid pill (black on light, white on dark). */
+/*
+ * Secondary: hairline button. Primary: solid accent blue, one per view. Radius 10px, no shadow.
+ * A short press scale confirms the click (transform only, removed for reduced motion).
+ */
 .dcc-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
   min-height: 32px;
-  padding: 0 14px;
+  padding: 0 12px;
   font: inherit;
   font-size: var(--dcc-text-md);
   font-weight: 500;
@@ -394,36 +467,37 @@ strong {
   color: var(--dcc-text);
   background: transparent;
   border: 1px solid var(--dcc-line2);
-  border-radius: 999px;
+  border-radius: var(--dcc-radius);
   cursor: pointer;
   text-decoration: none;
   white-space: nowrap;
-  transition: background-color 120ms var(--dcc-ease), border-color 120ms var(--dcc-ease), color 120ms var(--dcc-ease);
+  transition: background-color 120ms var(--dcc-ease), border-color 120ms var(--dcc-ease), color 120ms var(--dcc-ease), transform 120ms var(--dcc-ease);
 }
 
 .dcc-btn:hover {
-  background: var(--dcc-surface);
+  background: var(--dcc-hover);
   border-color: var(--dcc-control);
 }
 
-.dcc-btn:active {
+.dcc-btn:active:not(:disabled) {
   background: var(--dcc-surface2);
+  transform: scale(0.98);
 }
 
 .dcc-btn--primary {
-  color: var(--dcc-pill-text);
-  background: var(--dcc-pill-bg);
-  border-color: var(--dcc-pill-bg);
+  color: var(--dcc-on-primary);
+  background: var(--dcc-primary);
+  border-color: var(--dcc-primary);
 }
 
 .dcc-btn--primary:hover {
-  color: var(--dcc-pill-text);
-  background: color-mix(in srgb, var(--dcc-pill-bg) 84%, var(--dcc-bg));
-  border-color: color-mix(in srgb, var(--dcc-pill-bg) 84%, var(--dcc-bg));
+  color: var(--dcc-on-primary);
+  background: var(--dcc-primary-hover);
+  border-color: var(--dcc-primary-hover);
 }
 
-.dcc-btn--primary:active {
-  background: color-mix(in srgb, var(--dcc-pill-bg) 72%, var(--dcc-bg));
+.dcc-btn--primary:active:not(:disabled) {
+  background: var(--dcc-primary-hover);
 }
 
 .dcc-btn--danger {
@@ -490,6 +564,57 @@ strong {
 
 .dcc-link:hover {
   text-decoration-thickness: 2px;
+}
+
+.dcc-link:disabled {
+  color: var(--dcc-muted);
+  cursor: not-allowed;
+  text-decoration: none;
+}
+
+/*
+ * Disclosure row (minimal surfaces): a <details> whose <summary> is a full-width row with a
+ * chevron. Separate rows with hairlines on the container, not cards.
+ */
+.dcc-disclosure > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px 0;
+  font-weight: 500;
+  color: var(--dcc-text);
+  list-style: none;
+  cursor: pointer;
+}
+
+.dcc-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+.dcc-disclosure > summary:hover {
+  text-decoration: none;
+}
+
+.dcc-disclosure > summary::after {
+  content: "";
+  flex: none;
+  width: 6px;
+  height: 6px;
+  margin: 0 4px 3px auto;
+  border-right: 1.5px solid var(--dcc-muted);
+  border-bottom: 1.5px solid var(--dcc-muted);
+  transform: rotate(45deg);
+  transition: transform 150ms var(--dcc-ease);
+}
+
+.dcc-disclosure[open] > summary::after {
+  margin-bottom: 0;
+  transform: rotate(225deg);
+}
+
+.dcc-disclosure > summary:hover::after {
+  border-color: var(--dcc-text);
 }
 
 /* ------------------------------------------------------------------ form controls */
@@ -593,13 +718,17 @@ input[type="checkbox"] {
   cursor: not-allowed;
 }
 
-/* Segmented control: visually hidden radios followed by their labels, in one hairline pill. */
+/*
+ * Segmented control: visually hidden radios followed by their labels, in one hairline frame.
+ * The selected segment is the soft blue selection fill with deep blue text.
+ */
 .dcc-segmented {
+  position: relative; /* keeps the absolutely positioned radios inside their scroll container */
   display: inline-flex;
   gap: 2px;
   padding: 2px;
   border: 1px solid var(--dcc-line2);
-  border-radius: 999px;
+  border-radius: var(--dcc-radius);
 }
 
 .dcc-segmented input {
@@ -612,12 +741,13 @@ input[type="checkbox"] {
 
 .dcc-segmented label {
   position: relative;
-  padding: 4px 12px;
+  padding: 3px 11px;
   font-size: var(--dcc-text-md);
   font-weight: 500;
   color: var(--dcc-body);
   background: transparent;
-  border-radius: 999px;
+  border: 1px solid transparent;
+  border-radius: calc(var(--dcc-radius) - 3px);
   cursor: pointer;
   white-space: nowrap;
   user-select: none;
@@ -626,12 +756,13 @@ input[type="checkbox"] {
 
 .dcc-segmented label:hover {
   color: var(--dcc-text);
-  background: var(--dcc-surface);
+  background: var(--dcc-hover);
 }
 
 .dcc-segmented input:checked + label {
-  color: var(--dcc-on-accent);
-  background: var(--dcc-accent);
+  color: var(--dcc-on-selected);
+  background: var(--dcc-selected);
+  border-color: var(--dcc-accent); /* ≥ 3:1 against the track, so the state isn't color-fill alone */
 }
 
 .dcc-segmented input:focus-visible + label {
@@ -656,55 +787,85 @@ input[type="checkbox"] {
   padding: 8px 12px;
 }
 
+/*
+ * Inline alert, kept quiet: a soft tint, no border, and a small status dot before a title that
+ * names what happened (status is never color alone). Body text is indented under the title.
+ */
 .dcc-alert {
   font-size: var(--dcc-text-md);
   color: var(--dcc-text);
   background: var(--dcc-surface);
-  border: 1px solid var(--dcc-line);
-  border-radius: 12px;
-  padding: 10px 14px;
+  border: 0;
+  border-radius: var(--dcc-radius);
+  padding: 10px 12px;
 }
 
 .dcc-alert--error {
   background: var(--dcc-danger-soft);
-  border-color: var(--dcc-danger-line);
 }
 
 .dcc-alert--error .dcc-alert__title {
   color: var(--dcc-danger);
 }
 
+.dcc-alert--error .dcc-alert__title::before {
+  background: var(--dcc-dot-error);
+}
+
 .dcc-alert--warn {
   background: var(--dcc-warm-soft);
-  border-color: var(--dcc-warm-line);
 }
 
 .dcc-alert--warn .dcc-alert__title {
   color: var(--dcc-warm);
 }
 
+.dcc-alert--warn .dcc-alert__title::before {
+  background: var(--dcc-dot-warn);
+}
+
 .dcc-alert--ok {
   background: var(--dcc-success-soft);
-  border-color: var(--dcc-success-line);
 }
 
 .dcc-alert--ok .dcc-alert__title {
   color: var(--dcc-success);
 }
 
+.dcc-alert--ok .dcc-alert__title::before {
+  background: var(--dcc-dot-ok);
+}
+
 .dcc-alert__title {
   font-weight: 600;
 }
 
+.dcc-alert__title::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin: 0 8px 1px 0;
+  vertical-align: middle;
+  border-radius: 50%;
+  background: var(--dcc-dot-idle);
+}
+
 .dcc-alert__body {
   margin-top: 2px;
+  padding-left: 15px;
   color: var(--dcc-body);
 }
 
 .dcc-alert__steps {
   margin-top: 4px;
-  padding-left: 18px;
+  padding-left: 31px;
   color: var(--dcc-body);
+}
+
+.dcc-alert > details,
+.dcc-alert > .dcc-tech {
+  padding-left: 15px;
 }
 
 .dcc-alert__steps li + li {
@@ -804,10 +965,10 @@ details > summary:hover {
 }
 
 .dcc-table thead th {
-  font-family: var(--dcc-mono);
+  font-family: var(--dcc-font);
   font-size: var(--dcc-text-xs);
-  font-weight: 500;
-  letter-spacing: 0.08em;
+  font-weight: 600;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--dcc-muted);
   background: var(--dcc-bg);

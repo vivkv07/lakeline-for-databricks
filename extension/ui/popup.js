@@ -3,6 +3,9 @@
  * preferences, diagnostics and links. Talks to the service worker only through sender-validated page:*
  * messages. All DOM is built with textContent, never innerHTML with variable data.
  *
+ * Layout: one primary action for the active tab (Connect until it's connected, then Ask Genie),
+ * the sign-in chooser only when needed or asked for, three essentials, and the rest under More.
+ *
  * The active tab's URL is visible only while the popup is open (activeTab). It is used to offer
  * "Connect this workspace" and is handed to the options page through page:setPendingConnect,
  * which keeps only the origin and a numeric workspace ID.
@@ -159,6 +162,8 @@
     const btn = $('connect-btn');
     box.textContent = '';
     const saved = Object.keys(connections()).length;
+    let connectedHere = false;
+    let canChoose = false;
     if (tab && tab.supported) {
       const conn = connections()[tab.origin] || null;
       box.appendChild(h('p', { class: 'pp-host' }, [h('span', {}, tab.host), tab.kind === 'fixture' ? h('span', { class: 'dcc-pill' }, 'Local test') : null]));
@@ -170,10 +175,12 @@
         } else {
           box.appendChild(h('p', { class: 'pp-line pp-line--ok' }, 'Connected · workspace ' + conn.workspaceId));
           btn.textContent = conn.authMode === 'oauth' ? 'Reconnect' : 'Edit connection';
+          connectedHere = true;
         }
       } else {
-        box.appendChild(h('p', { class: 'pp-line' }, tab.conflict ? 'Not connected. This URL has conflicting workspace IDs; you will choose one.' : 'Not connected yet.'));
+        box.appendChild(h('p', { class: 'pp-line pp-line--idle' }, tab.conflict ? 'Not connected. This URL has conflicting workspace IDs; you will choose one.' : 'Not connected yet.'));
         btn.textContent = 'Connect this workspace';
+        canChoose = tab.kind === 'workspace';
       }
     } else {
       const reason = tab && UNSUPPORTED_TAB[tab.reason];
@@ -181,6 +188,36 @@
       if (saved) box.appendChild(h('p', { class: 'pp-line' }, saved === 1 ? '1 workspace connected.' : saved + ' workspaces connected.'));
       btn.textContent = 'Connect Databricks';
     }
+    placeActions(connectedHere, canChoose);
+  }
+
+  /**
+   * One primary action per state: Connect until this tab's workspace is connected, then Ask Genie,
+   * with the connection button demoted to a text link. Nodes are moved (not cloned), so their
+   * listeners and IDs stay.
+   */
+  function placeActions(connectedHere, canChoose) {
+    const btn = $('connect-btn');
+    const genie = $('genie-open');
+    const actions = $('ws-actions');
+    const alt = $('ws-alt');
+    if (connectedHere) {
+      genie.className = 'dcc-btn dcc-btn--primary pp-main';
+      btn.className = 'dcc-link pp-alt-link';
+      actions.insertBefore(genie, actions.firstChild);
+      alt.insertBefore(btn, alt.firstChild);
+    } else {
+      btn.className = 'dcc-btn dcc-btn--primary pp-main';
+      genie.className = 'dcc-btn pp-genie';
+      actions.insertBefore(btn, actions.firstChild);
+      actions.appendChild(genie);
+    }
+    $('signin-alt').hidden = !canChoose;
+    syncSetupToggle();
+  }
+
+  function syncSetupToggle() {
+    $('signin-alt').setAttribute('aria-expanded', String(!$('oauth-setup').hidden));
   }
 
   /* ---------------------------------------------------------------- one-click connect */
@@ -193,9 +230,11 @@
     if (text) box.appendChild(h('p', { class: 'pp-line' + (kind ? ' pp-line--' + kind : ''), 'data-connect-line': '' }, text));
   }
 
-  async function showSetup(redirectUrl) {
+  /** Open the sign-in chooser. `moveFocus: false` keeps focus on the toggle that opened it. */
+  async function showSetup(redirectUrl, { moveFocus = true } = {}) {
     const panel = $('oauth-setup');
     panel.hidden = false;
+    syncSetupToggle();
     let url = redirectUrl;
     if (!url) {
       const r = await send({ type: 'connect:redirectUrl' });
@@ -204,7 +243,16 @@
     $('oauth-redirect').textContent = url || '';
     const saved = state && state.settings && state.settings.oauth && state.settings.oauth.clientId;
     if (saved && !$('oauth-client-id').value) $('oauth-client-id').value = saved;
-    $('oauth-client-id').focus();
+    if (moveFocus) $('oauth-client-id').focus();
+  }
+
+  function onToggleSetup() {
+    if ($('oauth-setup').hidden) {
+      showSetup(undefined, { moveFocus: false });
+      return;
+    }
+    $('oauth-setup').hidden = true;
+    syncSetupToggle();
   }
 
   /**
@@ -362,6 +410,10 @@
     if (V.isPeriodDays(s.periodDays)) parts.push(s.periodDays + ' days');
     if (s.showCosts === false) parts.push('Paused');
     $('mode-summary').textContent = parts.join(' · ');
+    // The header dot repeats what the text says: connected (ok), needs attention (warn), or idle.
+    const n = Object.keys(connections()).length;
+    const dot = s.showCosts === false ? 'warn' : s.mode === 'connected' ? (n ? 'ok' : 'warn') : s.mode === 'demo' || s.mode === 'import' ? 'info' : 'idle';
+    $('mode-summary').setAttribute('data-state', dot);
   }
 
   /** Patch settings; the response is the full saved settings. Out-of-order replies are ignored. */
@@ -538,12 +590,22 @@
     closePopup();
   }
 
+  /** The store build turns off "Use my Databricks login": its elements are removed, not hidden. */
+  function applyFlags() {
+    const flags = (root.DCC && root.DCC.flags) || DCC.flags;
+    if (!flags || flags.sessionLogin !== false) return;
+    for (const el of doc.querySelectorAll('[data-feature="session-login"]')) el.remove();
+  }
+
   function wire() {
     $('connect-btn').addEventListener('click', onConnect);
     $('oauth-save-connect').addEventListener('click', onSaveAndConnect);
-    $('use-session').addEventListener('click', () => {
-      if (tab && tab.supported && tab.kind === 'workspace') requestAccessThen(() => oneClick(undefined, 'session'));
-    });
+    $('signin-alt').addEventListener('click', onToggleSetup);
+    if ($('use-session')) {
+      $('use-session').addEventListener('click', () => {
+        if (tab && tab.supported && tab.kind === 'workspace') requestAccessThen(() => oneClick(undefined, 'session'));
+      });
+    }
     $('use-token').addEventListener('click', () => openOptionsForConnect());
     $('oauth-copy').addEventListener('click', onCopyRedirect);
     $('oauth-guide').addEventListener('click', () => openPage('guide', 'sign-in'));
@@ -574,6 +636,7 @@
   }
 
   async function init() {
+    applyFlags();
     wire();
     const [res, t] = await Promise.all([send({ type: 'page:state' }), readActiveTab()]);
     tab = t;
