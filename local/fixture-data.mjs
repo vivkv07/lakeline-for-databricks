@@ -500,27 +500,93 @@ export const GENIE_FAILING_SPACE = GENIE_SPACES[2].space_id;
 export const GENIE_STEPS = Object.freeze(['SUBMITTED', 'FILTERING_CONTEXT', 'ASKING_AI', 'EXECUTING_QUERY', 'COMPLETED']);
 export const GENIE_FAIL_STEPS = Object.freeze(['SUBMITTED', 'ASKING_AI', 'FAILED']);
 
-/** The canned answer for a space: text, query attachment and a small result table. */
-export function genieAnswer(spaceId) {
+/*
+ * Canned answers, routed by agent and question keywords so one fixture covers every result shape
+ * the side panel draws. Text is Markdown, like real Genie answers.
+ *   Sales:  default → bars by region (with a null); "week"/"trend"/"daily" → weekly line (with a
+ *           gap); "headline"/"total"/"overall" → one row (KPI tiles).
+ *   Jobs:   default → bars by job; "duration"/"dbu"/"relate" → scatter; "update"/"history"/"latest"
+ *           → a wide table with timestamps, ratios and nulls (no chart).
+ */
+const WEEKS = ['2026-08-10', '2026-08-17', '2026-08-24', '2026-08-31', '2026-09-07', '2026-09-14', '2026-09-21', '2026-09-28', '2026-10-05', '2026-10-12'];
+const WEEKLY = [271400, 268900, 279300, 284100, 276800, null, 291200, 302700, 311900, 318400];
+const FIXTURE_RUNS = [
+  ['5101', '3.6', '2.9'], ['5102', '5.2', '4.8'], ['5103', '6.9', '7.4'], ['5104', '8.8', '7.9'], ['5105', '10.4', '11.6'], ['5106', '13.1', '12.2'],
+  ['5107', '15.7', '17.3'], ['5108', '18.2', '16.1'], ['5109', '22.6', '24.9'], ['5110', '27.4', null], ['5111', '33.0', '30.8'], ['5112', '41.5', '44.0'],
+];
+
+export function genieAnswer(spaceId, question) {
+  const q = String(question || '').toLowerCase();
   if (spaceId === GENIE_SPACES[1].space_id) {
+    if (/duration|dbus?\b|relate|correlat/.test(q)) {
+      return {
+        text: 'Run time and DBUs move together: about **1 DBU per minute**. (fixture)\n\n- The longest run, `5112`, used 44 DBUs.\n- Run `5110` has no DBU figure yet and is left out of the chart.',
+        title: 'Run duration vs DBUs, last 5 days',
+        description: 'One point per synthetic fixture job run.',
+        sql: 'SELECT run_id, ROUND(duration_ms / 60000, 1) AS duration_min, ROUND(dbus, 1) AS dbus\nFROM fixture.ops.job_run_usage\nWHERE period_start >= current_date() - INTERVAL 5 DAYS\nORDER BY duration_min',
+        columns: [['run_id', 'BIGINT'], ['duration_min', 'DOUBLE'], ['dbus', 'DOUBLE']],
+        rows: FIXTURE_RUNS.map((r) => r.slice()),
+        suggested: ['Show the latest pipeline updates', 'Which jobs failed?'],
+      };
+    }
+    if (/updates?\b|history|latest/.test(q)) {
+      return {
+        text: 'The 6 latest pipeline updates. **One failed**: `orders_silver` stopped on a schema change. (fixture)\n\n> Cost is n/a while an update is still being priced.',
+        title: 'Latest pipeline updates',
+        description: 'Synthetic fixture pipeline updates with state, timing, volume and cost.',
+        sql: 'SELECT update_id, pipeline_name, state, started_at, duration_min, rows_written, error_ratio, cost_usd, cause\nFROM fixture.ops.pipeline_updates\nORDER BY started_at DESC\nLIMIT 6',
+        columns: [['update_id', 'STRING'], ['pipeline_name', 'STRING'], ['state', 'STRING'], ['started_at', 'TIMESTAMP'], ['duration_min', 'DOUBLE'], ['rows_written', 'LONG'], ['error_ratio', 'DOUBLE'], ['cost_usd', 'DECIMAL'], ['cause', 'STRING']],
+        rows: [
+          ['u-fixture-0006', 'orders_bronze', 'COMPLETED', '2026-10-15T06:10:05Z', '6.4', '1840211', '0', '3.12', null],
+          ['u-fixture-0005', 'orders_silver', 'FAILED', '2026-10-15T05:40:51Z', '2.1', '0', '1', '0.88', 'Schema change in source column amount_usd'],
+          ['u-fixture-0004', 'customers_silver', 'COMPLETED', '2026-10-15T04:15:44Z', '11.8', '402118', '0.0021', null, null],
+          ['u-fixture-0003', 'clicks_bronze', 'COMPLETED', '2026-10-14T23:00:00Z', '24.3', '18220419', '0.0004', '14.20', null],
+          ['u-fixture-0002', 'orders_bronze', 'COMPLETED', '2026-10-14T18:10:02Z', '5.9', '1722930', '0', '2.98', null],
+          ['u-fixture-0001', 'customers_silver', 'COMPLETED', '2026-10-14T08:15:30Z', '12.6', '398765', '0.0018', '5.61', null],
+        ],
+        suggested: ['Which jobs failed?', 'How do run duration and DBUs relate?'],
+      };
+    }
     return {
-      text: 'Job 102 (Orders ingest and pipeline refresh) had 1 failed run in the last 5 days; job 101 had none. (fixture)',
+      text: 'Job 102 (Orders ingest and pipeline refresh) had **1 failed run** in the last 5 days; job 101 had none. (fixture)',
       title: 'Job runs by job, last 5 days',
       description: 'Counts synthetic fixture runs and failed runs per job.',
       sql: "SELECT job_name, COUNT(*) AS runs, COUNT_IF(result_state = 'FAILED') AS failed\nFROM fixture.ops.job_runs\nWHERE period_start >= current_date() - INTERVAL 5 DAYS\nGROUP BY job_name\nORDER BY failed DESC",
       columns: [['job_name', 'STRING'], ['runs', 'LONG'], ['failed', 'LONG']],
       rows: [[JOBS[1].name, '5', '1'], [JOBS[0].name, '5', '0']],
-      suggested: ['Why did job 102 fail?', 'Which runs took longest?'],
+      suggested: ['How do run duration and DBUs relate?', 'Show the latest pipeline updates'],
+    };
+  }
+  if (/week|trend|daily|over time/.test(q)) {
+    return {
+      text: 'Weekly revenue for the last 10 weeks. (fixture)\n\n1. Revenue rose **4 weeks in a row** to $318.4K.\n2. The week of Sep 14 has no data and shows as a gap.',
+      title: 'Weekly revenue, last 10 weeks',
+      description: 'Sums synthetic fixture orders per week.',
+      sql: "SELECT date_trunc('week', order_date) AS week_start, ROUND(SUM(amount_usd), 0) AS revenue_usd\nFROM fixture.sales.orders\nWHERE order_date >= current_date() - INTERVAL 10 WEEKS\nGROUP BY 1\nORDER BY 1",
+      columns: [['week_start', 'DATE'], ['revenue_usd', 'DECIMAL']],
+      rows: WEEKS.map((w, i) => [w, WEEKLY[i] === null ? null : String(WEEKLY[i])]),
+      suggested: ['What were the headline numbers last month?', 'Which products drove EMEA?'],
+    };
+  }
+  if (/headline|total|overall|kpi/.test(q)) {
+    return {
+      text: 'Last month: **$1.24M** revenue from **10,831** orders and 4,212 active customers. Refunds were 1.8% of orders. (fixture)',
+      title: 'Headline numbers, last month',
+      description: 'Totals synthetic fixture orders for the previous calendar month.',
+      sql: "SELECT SUM(amount_usd) AS total_revenue_usd, COUNT(*) AS orders, COUNT(DISTINCT customer) AS active_customers, ROUND(100 * AVG(CASE WHEN refunded THEN 1 ELSE 0 END), 1) AS refund_pct\nFROM fixture.sales.orders\nWHERE order_month = date_trunc('month', current_date() - INTERVAL 1 MONTH)",
+      columns: [['total_revenue_usd', 'DECIMAL'], ['orders', 'LONG'], ['active_customers', 'LONG'], ['refund_pct', 'DOUBLE']],
+      rows: [['1240512.40', '10831', '4212', '1.8']],
+      suggested: ['Show revenue by week', 'Which products drove EMEA?'],
     };
   }
   return {
-    text: 'Revenue last month was $1.24M across 4 regions; EMEA led with $412.3K. (fixture)',
+    text: 'Revenue last month was **$1.24M** across 4 regions. (fixture)\n\n- **EMEA** led with $412.3K.\n- LATAM has no order count yet, so it shows as n/a.',
     title: 'Revenue by region, last month',
     description: 'Sums synthetic fixture orders per region for the previous calendar month.',
     sql: "SELECT region, ROUND(SUM(amount_usd), 0) AS revenue_usd, COUNT(*) AS orders\nFROM fixture.sales.orders\nWHERE order_month = date_trunc('month', current_date() - INTERVAL 1 MONTH)\nGROUP BY region\nORDER BY revenue_usd DESC",
     columns: [['region', 'STRING'], ['revenue_usd', 'DECIMAL'], ['orders', 'LONG']],
     rows: [['EMEA', '412300', '3120'], ['North America', '398900', '2875'], ['APAC', '301750', '3410'], ['LATAM', '96200', null]],
-    suggested: ['Which products drove EMEA?', 'Show revenue by week'],
+    suggested: ['Show revenue by week', 'What were the headline numbers last month?'],
   };
 }
 

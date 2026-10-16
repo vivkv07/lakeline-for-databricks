@@ -1,8 +1,36 @@
 /*
  * Genie side panel (ui/sidepanel.html). Builds on brand.css tokens and components; defines no
- * tokens of its own. Designed for the browser side panel (about 320 to 480 px wide) and also
- * works full width in a tab. Light and dark follow prefers-color-scheme through brand.css.
+ * --dcc-* tokens of its own. Designed for the browser side panel (about 320 to 480 px wide) and
+ * also works full width in a tab. Light and dark follow prefers-color-scheme through brand.css.
+ *
+ * Minimal by design: pure white or black, hairline separators and whitespace instead of boxes
+ * (the result block is the one outlined region), no shadows, radius 10px, spacing on a
+ * 4 / 8 / 12 / 16 / 24 scale. Inter for text at 13 to 14px; IBM Plex Mono only for code, IDs,
+ * numbers in tables and the tiny section labels. One accent blue for the primary action,
+ * selection and links; amber only for warnings and the second data series.
+ *
+ * Chart series colors (--gp-series-1..4) are the accent blue plus amber, magenta and violet,
+ * stepped per theme. Both sets pass the categorical palette checks against the white and black
+ * surfaces the charts sit on (lightness band, chroma floor, adjacent and first-three all-pairs
+ * CVD separation, normal-vision floor, 3:1 contrast), validated with the dataviz script.
  */
+
+:root {
+  --gp-series-1: var(--dcc-accent);
+  --gp-series-2: #D97706;
+  --gp-series-3: #C2417A;
+  --gp-series-4: #7C3AED;
+  --gp-radius: 10px;
+  --gp-pad: 12px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --gp-series-2: #C98500;
+    --gp-series-3: #D55181;
+    --gp-series-4: #9085E9;
+  }
+}
 
 html,
 body {
@@ -12,6 +40,7 @@ body {
 body.gp {
   min-width: 300px;
   overflow: hidden;
+  font-size: var(--dcc-text-base);
 }
 
 .gp-app {
@@ -22,11 +51,21 @@ body.gp {
   margin: 0 auto;
 }
 
+/* Tiny section label: the one place mono uppercase appears. */
+.gp-section-label {
+  font-family: var(--dcc-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--dcc-muted);
+}
+
 /* ------------------------------------------------------------------ header */
 
 .gp-head {
   flex: none;
-  padding: 12px 16px 10px;
+  padding: 12px 16px 8px;
   border-bottom: 1px solid var(--dcc-line);
   background: var(--dcc-bg);
 }
@@ -34,27 +73,21 @@ body.gp {
 .gp-bar {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
+  min-height: 28px;
 }
 
 .gp-mark {
-  width: 24px;
-  height: 24px;
-}
-
-.gp-titles {
-  min-width: 0;
-}
-
-.gp-eyebrow {
-  font-size: 10px;
-  line-height: 1.2;
+  width: 18px;
+  height: 18px;
 }
 
 .gp-h1 {
-  font-size: var(--dcc-text-lg);
-  line-height: 1.25;
+  font-size: var(--dcc-text-base);
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.005em;
   white-space: nowrap;
 }
 
@@ -63,62 +96,120 @@ body.gp {
 }
 
 .gp-demo {
-  font-family: var(--dcc-mono);
-  letter-spacing: 0.08em;
+  padding: 0 8px;
+  font-size: var(--dcc-text-xs);
+  font-weight: 600;
+  line-height: 18px;
+  color: var(--dcc-warm);
+  background: var(--dcc-warm-soft);
+  border-radius: var(--gp-radius);
 }
 
 .gp-new {
   flex: none;
+  margin-right: -8px;
 }
 
+/* Selectors: quiet inline controls (no box until hover or focus), label beside each. */
 .gp-pickers {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
-  gap: 8px;
-  margin-top: 12px;
-}
-
-@media (max-width: 360px) {
-  .gp-pickers {
-    grid-template-columns: minmax(0, 1fr);
-  }
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+  margin-top: 4px;
 }
 
 .gp-field {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  align-items: center;
   gap: 4px;
   min-width: 0;
 }
 
+@media (min-width: 560px) {
+  .gp-pickers {
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  .gp-field {
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: 8px;
+  }
+}
+
 .gp-label {
-  font-family: var(--dcc-mono);
-  font-size: var(--dcc-text-xs);
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: var(--dcc-text-sm);
   color: var(--dcc-muted);
 }
 
-.gp-select {
-  min-height: 34px;
-  padding: 5px 10px;
-  text-overflow: ellipsis;
+.gp-quiet {
+  position: relative;
+  display: block;
+  min-width: 0;
 }
 
-.gp-desc {
-  margin-top: 8px;
-  font-size: var(--dcc-text-sm);
-  line-height: 1.45;
-  color: var(--dcc-body);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+.gp-quiet::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  width: 6px;
+  height: 6px;
+  margin-top: -5px;
+  border-right: 1.5px solid var(--dcc-muted);
+  border-bottom: 1.5px solid var(--dcc-muted);
+  transform: rotate(45deg);
+  pointer-events: none;
 }
 
-.gp-desc:empty {
+.gp-quiet:has(select:disabled)::after {
   display: none;
+}
+
+.gp-select {
+  appearance: none;
+  -webkit-appearance: none;
+  display: block;
+  width: 100%;
+  min-height: 32px;
+  padding: 4px 28px 4px 8px;
+  font: inherit;
+  font-size: var(--dcc-text-md);
+  font-weight: 500;
+  color: var(--dcc-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--gp-radius);
+  cursor: pointer;
+  transition: background-color 120ms var(--dcc-ease), border-color 120ms var(--dcc-ease);
+}
+
+#ws {
+  font-weight: 400;
+  color: var(--dcc-body);
+}
+
+.gp-select:hover:not(:disabled) {
+  background: var(--dcc-surface);
+}
+
+.gp-select:focus-visible {
+  outline: 2px solid var(--dcc-accent);
+  outline-offset: 0;
+}
+
+.gp-select:disabled {
+  color: var(--dcc-body);
+  cursor: default;
+  opacity: 1;
+}
+
+.gp-select option {
+  color: var(--dcc-text);
+  background: var(--dcc-bg);
 }
 
 /* ------------------------------------------------------------------ notice */
@@ -132,6 +223,7 @@ body.gp {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  border-radius: var(--gp-radius);
 }
 
 .gp-notice-actions {
@@ -162,77 +254,87 @@ body.gp {
 }
 
 .gp-empty {
-  margin: 8px 0 0;
-  padding: 18px 18px 16px;
-  border: 1px solid var(--dcc-line);
-  border-radius: var(--dcc-radius-card);
+  padding: 8px 0 16px;
 }
 
 .gp-empty h2 {
-  margin-top: 6px;
+  margin-top: 8px;
   font-size: var(--dcc-text-lg);
   overflow-wrap: anywhere;
 }
 
-.gp-empty p {
-  margin-top: 6px;
+.gp-empty p:not(.gp-section-label) {
+  margin-top: 8px;
   font-size: var(--dcc-text-md);
+  line-height: 1.5;
   color: var(--dcc-body);
 }
 
+.gp-empty .gp-empty-desc {
+  color: var(--dcc-text);
+}
+
 .gp-empty .gp-starters {
-  margin-top: 14px;
+  margin-top: 16px;
 }
 
 .gp-turn {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding-bottom: 18px;
+  gap: 12px;
+  min-width: 0;
+  padding-bottom: 24px;
 }
 
 .gp-turn + .gp-turn {
-  padding-top: 18px;
+  padding-top: 24px;
   border-top: 1px solid var(--dcc-line);
 }
 
-/* The user's question: a soft bubble on the right. */
+/* The question: plain text, set a step heavier than the answer. */
 .gp-q {
-  align-self: flex-end;
-  max-width: 88%;
-  padding: 8px 12px;
   font-size: var(--dcc-text-base);
+  font-weight: 600;
   line-height: 1.45;
   color: var(--dcc-text);
-  background: var(--dcc-surface);
-  border: 1px solid var(--dcc-line);
-  border-radius: 14px 14px 4px 14px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 
-.gp-a {
+.gp-answer {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   min-width: 0;
+}
+
+.gp-answer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 24px;
+  margin-top: -4px;
 }
 
 .gp-status {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px 8px;
+  gap: 4px 8px;
   font-size: var(--dcc-text-sm);
   color: var(--dcc-muted);
+  font-variant-numeric: tabular-nums;
 }
 
+/* Status: a dot plus words (never color alone). */
 .gp-chip {
+  display: inline-flex;
+  align-items: center;
   gap: 6px;
-  font-family: var(--dcc-mono);
-  font-size: 10.5px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-size: var(--dcc-text-sm);
+  font-weight: 500;
+  color: var(--dcc-body);
 }
 
 .gp-chip::before {
@@ -242,6 +344,20 @@ body.gp {
   border-radius: 50%;
   background: currentColor;
   flex: none;
+}
+
+.gp-chip--sending,
+.gp-chip--working,
+.gp-chip--query {
+  color: var(--dcc-accent);
+}
+
+.gp-chip--done::before {
+  background: var(--dcc-success);
+}
+
+.gp-chip--failed {
+  color: var(--dcc-danger);
 }
 
 .gp-chip--live::before {
@@ -259,26 +375,14 @@ body.gp {
 }
 
 .gp-step {
-  font-family: var(--dcc-mono);
-  font-size: var(--dcc-text-xs);
-  letter-spacing: 0.02em;
-  font-variant-numeric: tabular-nums;
-}
-
-.gp-text {
-  font-size: var(--dcc-text-base);
-  line-height: 1.55;
-  color: var(--dcc-text);
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
+  font-size: var(--dcc-text-sm);
 }
 
 .gp-kicker {
-  font-family: var(--dcc-mono);
-  font-size: var(--dcc-text-xs);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--dcc-warm);
+  margin-bottom: 4px;
+  font-size: var(--dcc-text-sm);
+  font-weight: 600;
+  color: var(--dcc-body);
 }
 
 .gp-none {
@@ -286,32 +390,390 @@ body.gp {
   color: var(--dcc-muted);
 }
 
-/* Result card */
+.gp-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.gp-error-detail {
+  margin-top: 4px;
+  font-family: var(--dcc-mono);
+  font-size: var(--dcc-text-xs);
+  color: var(--dcc-body);
+  overflow-wrap: anywhere;
+}
+
+.gp-answer .dcc-alert {
+  border-radius: var(--gp-radius);
+}
+
+/* ------------------------------------------------------------------ answer menu */
+
+.gp-menu {
+  position: relative;
+  flex: none;
+}
+
+.gp-menu > summary {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  color: var(--dcc-muted);
+  border-radius: var(--gp-radius);
+  list-style: none;
+  cursor: pointer;
+}
+
+.gp-menu > summary::-webkit-details-marker {
+  display: none;
+}
+
+.gp-menu > summary:hover,
+.gp-menu[open] > summary {
+  color: var(--dcc-text);
+  background: var(--dcc-surface);
+  text-decoration: none;
+}
+
+.gp-menu > summary:focus-visible {
+  outline-offset: 0;
+}
+
+.gp-menu-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  min-width: 168px;
+  padding: 4px;
+  background: var(--dcc-bg);
+  border: 1px solid var(--dcc-line2);
+  border-radius: var(--gp-radius);
+}
+
+.gp-menu-item {
+  padding: 8px 12px;
+  font: inherit;
+  font-size: var(--dcc-text-md);
+  text-align: left;
+  color: var(--dcc-text);
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.gp-menu-item:hover {
+  background: var(--dcc-surface);
+}
+
+.gp-menu-item:focus-visible {
+  outline-offset: -2px;
+}
+
+/* ------------------------------------------------------------------ answer text (Markdown) */
+
+.gp-md {
+  font-size: var(--dcc-text-base);
+  line-height: 1.6;
+  color: var(--dcc-text);
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+.gp-md > * + * {
+  margin-top: 8px;
+}
+
+.gp-md h3,
+.gp-md h4,
+.gp-md h5 {
+  margin-top: 16px;
+  line-height: 1.35;
+  letter-spacing: 0;
+}
+
+.gp-md > :first-child {
+  margin-top: 0;
+}
+
+.gp-md h3 {
+  font-size: 15px;
+}
+
+.gp-md h4 {
+  font-size: var(--dcc-text-base);
+}
+
+.gp-md h5 {
+  font-size: var(--dcc-text-md);
+  color: var(--dcc-body);
+}
+
+.gp-md ul,
+.gp-md ol {
+  padding-left: 20px;
+}
+
+.gp-md li + li,
+.gp-md li > ul,
+.gp-md li > ol {
+  margin-top: 4px;
+}
+
+.gp-md li::marker {
+  color: var(--dcc-muted);
+}
+
+.gp-md strong {
+  font-weight: 600;
+}
+
+.gp-md code {
+  font-size: 0.86em;
+  background: var(--dcc-surface);
+  border-color: var(--dcc-line);
+}
+
+.gp-md pre {
+  padding: 8px 12px;
+  max-height: 260px;
+  overflow: auto;
+  font-family: var(--dcc-mono);
+  font-size: var(--dcc-text-xs);
+  line-height: 1.6;
+  border: 1px solid var(--dcc-line);
+  border-radius: var(--gp-radius);
+}
+
+.gp-md pre code {
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: inherit;
+  overflow-wrap: normal;
+}
+
+.gp-md blockquote {
+  margin: 8px 0 0;
+  padding: 0 0 0 12px;
+  color: var(--dcc-body);
+  border-left: 2px solid var(--dcc-line2);
+}
+
+.gp-md hr {
+  border: 0;
+  border-top: 1px solid var(--dcc-line);
+  margin: 16px 0;
+}
+
+.gp-md a {
+  overflow-wrap: anywhere;
+}
+
+.gp-md .md-table {
+  max-width: 100%;
+  overflow-x: auto;
+  border-top: 1px solid var(--dcc-line);
+  border-bottom: 1px solid var(--dcc-line);
+}
+
+.gp-md .md-table table {
+  border-collapse: collapse;
+  min-width: 100%;
+  font-size: var(--dcc-text-md);
+  font-variant-numeric: tabular-nums;
+}
+
+.gp-md .md-table th,
+.gp-md .md-table td {
+  padding: 8px 12px 8px 0;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--dcc-line);
+  overflow-wrap: normal;
+}
+
+.gp-md .md-table th {
+  font-weight: 600;
+  color: var(--dcc-body);
+  white-space: nowrap;
+}
+
+.gp-md .md-table tbody tr:last-child > * {
+  border-bottom: 0;
+}
+
+/* ------------------------------------------------------------------ result block */
+
+/* The one outlined region of an answer: the result, its views and its SQL. */
 .gp-result {
-  overflow: hidden;
+  min-width: 0;
+  border: 1px solid var(--dcc-line);
+  border-radius: var(--gp-radius);
 }
 
 .gp-result-head {
-  padding: 10px 12px 8px;
+  padding: 12px var(--gp-pad) 8px;
 }
 
 .gp-result-title {
   font-size: var(--dcc-text-md);
   font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 0;
   overflow-wrap: anywhere;
 }
 
 .gp-result-desc {
   margin-top: 2px;
   font-size: var(--dcc-text-sm);
+  line-height: 1.5;
   color: var(--dcc-body);
   overflow-wrap: anywhere;
 }
 
-.gp-table-wrap {
-  max-height: 320px;
-  overflow: auto;
+.gp-result-msg {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  padding: 0 var(--gp-pad) 12px;
+  font-size: var(--dcc-text-sm);
+  color: var(--dcc-muted);
+}
+
+.gp-viewbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding: 0 var(--gp-pad) 12px;
+}
+
+/* Chart | Table: a quiet two-option switch; the selected option is raised by a hairline. */
+.gp-seg {
+  position: relative; /* anchors the visually hidden radios inside the thread's scroll box */
+  gap: 0;
+  padding: 2px;
+  background: var(--dcc-surface);
+  border: 0;
+  border-radius: var(--gp-radius);
+}
+
+.gp-seg label {
+  padding: 4px 12px;
+  font-size: var(--dcc-text-sm);
+  font-weight: 500;
+  color: var(--dcc-body);
+  border: 1px solid transparent;
+  border-radius: 8px;
+}
+
+.gp-seg label:hover {
+  color: var(--dcc-text);
+  background: transparent;
+}
+
+.gp-seg input:checked + label {
+  color: var(--dcc-text);
+  background: var(--dcc-bg);
+  border-color: var(--dcc-line2);
+}
+
+.gp-pick {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  font-size: var(--dcc-text-sm);
+  color: var(--dcc-muted);
+}
+
+.gp-pick .gp-quiet {
+  max-width: 200px;
+}
+
+.gp-pick-select {
+  min-height: 28px;
+  padding: 2px 28px 2px 8px;
+  font-size: var(--dcc-text-sm);
+}
+
+.gp-view {
+  min-width: 0;
+}
+
+.gp-view[data-view="chart"] {
+  padding: 0 var(--gp-pad) 12px;
+}
+
+.gp-result-foot {
+  padding: 8px var(--gp-pad);
   border-top: 1px solid var(--dcc-line);
+}
+
+.gp-count {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  font-size: var(--dcc-text-sm);
+  color: var(--dcc-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.gp-count-extra {
+  color: var(--dcc-warm);
+}
+
+/* ------------------------------------------------------------------ result table */
+
+/* Full width inside the block; scrolls on both axes with a fade on the side that has more. */
+.gp-tablebox {
+  position: relative;
+  min-width: 0;
+  border-top: 1px solid var(--dcc-line);
+}
+
+.gp-tablebox::before,
+.gp-tablebox::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 2;
+  width: 24px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 160ms var(--dcc-ease);
+}
+
+.gp-tablebox::before {
+  left: 0;
+  background: linear-gradient(to right, var(--dcc-bg), transparent);
+  border-left: 1px solid var(--dcc-line2);
+}
+
+.gp-tablebox::after {
+  right: 0;
+  background: linear-gradient(to left, var(--dcc-bg), transparent);
+  border-right: 1px solid var(--dcc-line2);
+}
+
+.gp-tablebox[data-more-left]::before,
+.gp-tablebox[data-more-right]::after {
+  opacity: 1;
+}
+
+.gp-table-wrap {
+  max-height: 340px;
+  overflow: auto;
+  overscroll-behavior-x: contain;
 }
 
 .gp-table-wrap:focus-visible {
@@ -319,52 +781,359 @@ body.gp {
 }
 
 .gp-table {
-  font-size: var(--dcc-text-sm);
+  font-size: var(--dcc-text-md);
 }
 
 .gp-table th,
 .gp-table td {
-  padding: 6px 10px;
+  padding: 8px;
   white-space: nowrap;
-  max-width: 260px;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-.gp-table thead th {
+.gp-table th:first-child,
+.gp-table td:first-child {
+  padding-left: var(--gp-pad);
+}
+
+.gp-table th:last-child,
+.gp-table td:last-child {
+  padding-right: var(--gp-pad);
+}
+
+/* Readable headers in the text face; the raw column name and type are in the tooltip. */
+.gp-table thead th,
+.gp-table thead th.num {
   position: sticky;
   top: 0;
   z-index: 1;
-  background: var(--dcc-surface);
-  border-bottom: 1px solid var(--dcc-line);
+  min-width: 64px;
+  max-width: 180px;
+  font-family: var(--dcc-font);
+  font-size: var(--dcc-text-sm);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  line-height: 1.35;
+  white-space: normal;
+  vertical-align: bottom;
+  color: var(--dcc-body);
+  background: var(--dcc-bg);
+  border-bottom: 1px solid var(--dcc-line2);
 }
 
 .gp-table td.num {
+  font-family: var(--dcc-mono);
+  font-size: var(--dcc-text-sm);
+  font-variant-numeric: tabular-nums;
   color: var(--dcc-text);
 }
 
-.gp-table .gp-null {
+.gp-table td.id {
   font-family: var(--dcc-mono);
-  font-size: var(--dcc-text-xs);
+  font-size: var(--dcc-text-sm);
+  color: var(--dcc-body);
+}
+
+.gp-table td.long {
+  min-width: 240px;
+  max-width: 320px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.gp-table tbody tr:hover > td {
+  background: var(--dcc-surface);
+}
+
+.gp-na {
+  font-family: var(--dcc-font);
+  font-size: var(--dcc-text-sm);
+  font-style: italic;
   color: var(--dcc-muted);
 }
 
-.gp-table-meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 10px;
-  padding: 8px 12px;
-  font-size: var(--dcc-text-sm);
-  color: var(--dcc-muted);
+/* ------------------------------------------------------------------ KPI tiles */
+
+.gp-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  gap: 16px;
+}
+
+.gp-kpi {
+  min-width: 0;
+  padding-top: 8px;
   border-top: 1px solid var(--dcc-line);
 }
 
-.gp-table-meta .gp-count {
-  font-family: var(--dcc-mono);
-  font-size: var(--dcc-text-xs);
-  letter-spacing: 0.02em;
+.gp-kpi-label {
+  font-size: var(--dcc-text-sm);
+  line-height: 1.4;
+  color: var(--dcc-body);
+  overflow-wrap: anywhere;
 }
+
+.gp-kpi-value {
+  margin-top: 4px;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: var(--dcc-text);
+  overflow-wrap: anywhere;
+}
+
+.gp-kpis[data-count="1"] .gp-kpi-value {
+  font-size: 32px;
+}
+
+.gp-kpi-value.gp-na {
+  font-size: 16px;
+}
+
+.gp-kpi-exact {
+  margin-top: 2px;
+  font-size: var(--dcc-text-sm);
+  color: var(--dcc-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.gp-kpi-context {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 4px 12px;
+  margin: 16px 0 0;
+  font-size: var(--dcc-text-sm);
+}
+
+.gp-kpi-context dt {
+  color: var(--dcc-muted);
+}
+
+.gp-kpi-context dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* ------------------------------------------------------------------ charts */
+
+.gp-fig {
+  margin: 0;
+  min-width: 0;
+}
+
+.gp-fig-cap {
+  margin-bottom: 8px;
+  font-size: var(--dcc-text-sm);
+  color: var(--dcc-body);
+}
+
+.gp-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+  font-size: var(--dcc-text-sm);
+  color: var(--dcc-body);
+}
+
+.gp-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gp-key {
+  flex: none;
+  overflow: visible;
+}
+
+.gp-key line {
+  stroke-width: 2.5;
+}
+
+.gp-plot {
+  position: relative;
+}
+
+.gp-svg {
+  display: block;
+  overflow: visible;
+}
+
+.gp-svg text {
+  font-family: var(--dcc-font);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  fill: var(--dcc-muted);
+}
+
+.gp-svg .gp-bar-label {
+  font-size: 12px;
+  font-variant-numeric: normal;
+  fill: var(--dcc-text);
+}
+
+.gp-svg .gp-bar-value {
+  font-size: 11.5px;
+  fill: var(--dcc-body);
+}
+
+.gp-svg .gp-bar-value.gp-na {
+  font-style: italic;
+  fill: var(--dcc-muted);
+}
+
+.gp-svg .gp-axis-title {
+  font-size: 11px;
+  fill: var(--dcc-body);
+}
+
+.gp-grid {
+  stroke: var(--dcc-line);
+  stroke-width: 1;
+}
+
+.gp-baseline {
+  stroke: var(--dcc-line2);
+  stroke-width: 1;
+}
+
+.gp-cross {
+  stroke: var(--dcc-control);
+  stroke-width: 1;
+}
+
+.gp-line {
+  fill: none;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.gp-area {
+  opacity: 0.08;
+}
+
+.gp-dot {
+  stroke: var(--dcc-bg);
+  stroke-width: 2;
+}
+
+.gp-line.s1 {
+  stroke: var(--gp-series-1);
+}
+
+.gp-line.s2 {
+  stroke: var(--gp-series-2);
+}
+
+.gp-line.s3 {
+  stroke: var(--gp-series-3);
+}
+
+.gp-line.s4 {
+  stroke: var(--gp-series-4);
+}
+
+.gp-dot.s1,
+.gp-area.s1,
+.gp-bar.s1 {
+  fill: var(--gp-series-1);
+}
+
+.gp-dot.s2,
+.gp-area.s2 {
+  fill: var(--gp-series-2);
+}
+
+.gp-dot.s3,
+.gp-area.s3 {
+  fill: var(--gp-series-3);
+}
+
+.gp-dot.s4,
+.gp-area.s4 {
+  fill: var(--gp-series-4);
+}
+
+.gp-marks [tabindex],
+.gp-hit {
+  outline: none;
+}
+
+/* Hover and focus: the row or point lifts; keyboard focus adds an accent ring on the hit area. */
+.gp-bar-row.is-active .gp-hit,
+.gp-pt.is-active .gp-hit {
+  fill: var(--dcc-surface);
+}
+
+.gp-pt.is-active .gp-dot {
+  stroke-width: 3;
+}
+
+.gp-bar-row:focus-visible .gp-hit,
+.gp-pt:focus-visible .gp-hit,
+.gp-marks > .gp-hit:focus-visible {
+  stroke: var(--dcc-accent);
+  stroke-width: 2;
+}
+
+.gp-fig-note {
+  margin-top: 8px;
+  font-size: var(--dcc-text-sm);
+  color: var(--dcc-muted);
+}
+
+.gp-tip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 3;
+  min-width: 96px;
+  max-width: 220px;
+  padding: 8px 12px;
+  font-size: var(--dcc-text-sm);
+  line-height: 1.4;
+  color: var(--dcc-text);
+  background: var(--dcc-bg);
+  border: 1px solid var(--dcc-line2);
+  border-radius: var(--gp-radius);
+  pointer-events: none;
+}
+
+.gp-tip-head {
+  margin-bottom: 2px;
+  font-size: var(--dcc-text-xs);
+  color: var(--dcc-body);
+  overflow-wrap: anywhere;
+}
+
+.gp-tip-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.gp-tip-row .gp-key {
+  align-self: center;
+}
+
+.gp-tip-row strong {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.gp-tip-row span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--dcc-body);
+}
+
+/* ------------------------------------------------------------------ SQL disclosure */
 
 .gp-sql {
   border-top: 1px solid var(--dcc-line);
@@ -373,10 +1142,17 @@ body.gp {
 .gp-sql > summary {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
+  gap: 8px;
+  padding: 8px var(--gp-pad);
   font-size: var(--dcc-text-sm);
+  font-weight: 500;
+  color: var(--dcc-body);
   list-style: none;
+}
+
+.gp-sql > summary:hover {
+  color: var(--dcc-text);
+  text-decoration: none;
 }
 
 .gp-sql > summary::-webkit-details-marker {
@@ -401,80 +1177,91 @@ body.gp {
   outline-offset: -2px;
 }
 
-.gp-sql-body {
-  padding: 0 12px 12px;
+.gp-sql-meta {
+  font-weight: 400;
+  color: var(--dcc-muted);
 }
 
-.gp-sql pre {
+.gp-sql-body {
+  min-width: 0;
+  padding: 0 var(--gp-pad) 12px;
+}
+
+.gp-sql-bar {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: -4px -8px 4px 0;
+}
+
+.gp-code {
   margin: 0;
-  padding: 10px 12px;
-  max-height: 260px;
+  max-width: 100%;
+  max-height: 280px;
+  padding: 8px 12px;
   overflow: auto;
   font-family: var(--dcc-mono);
   font-size: var(--dcc-text-xs);
-  line-height: 1.55;
+  line-height: 1.6;
   color: var(--dcc-text);
-  background: var(--dcc-surface2);
-  border: 1px solid var(--dcc-line);
-  border-radius: var(--dcc-radius);
+  background: var(--dcc-surface);
+  border: 0;
+  border-radius: var(--gp-radius);
   white-space: pre;
   tab-size: 2;
 }
 
-.gp-sql pre code {
+.gp-code.is-wrapped {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.gp-code code {
   padding: 0;
   border: 0;
   background: none;
   font-size: inherit;
+  overflow-wrap: inherit;
 }
 
-.gp-sql-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 8px;
-}
-
-.gp-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
+/* ------------------------------------------------------------------ follow-ups */
 
 .gp-suggest {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .gp-suggest-list,
 .gp-starters {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 8px;
 }
 
 .gp-chipbtn {
   display: inline-flex;
   align-items: center;
   max-width: 100%;
-  min-height: 30px;
-  padding: 5px 12px;
+  min-height: 32px;
+  padding: 4px 12px;
   font: inherit;
-  font-size: var(--dcc-text-sm);
-  line-height: 1.35;
+  font-size: var(--dcc-text-md);
+  line-height: 1.4;
   text-align: left;
-  color: var(--dcc-accent-text);
-  background: var(--dcc-accent-soft);
-  border: 1px solid var(--dcc-accent-line);
-  border-radius: 999px;
+  color: var(--dcc-text);
+  background: transparent;
+  border: 1px solid var(--dcc-line2);
+  border-radius: var(--gp-radius);
   cursor: pointer;
   overflow-wrap: anywhere;
   transition: background-color 120ms var(--dcc-ease), border-color 120ms var(--dcc-ease);
 }
 
 .gp-chipbtn:hover {
-  background: var(--dcc-accent-fill);
-  border-color: var(--dcc-accent);
+  background: var(--dcc-surface);
+  border-color: var(--dcc-control);
 }
 
 .gp-chipbtn:disabled {
@@ -482,19 +1269,11 @@ body.gp {
   cursor: not-allowed;
 }
 
-.gp-error-detail {
-  margin-top: 6px;
-  font-family: var(--dcc-mono);
-  font-size: var(--dcc-text-xs);
-  color: var(--dcc-body);
-  overflow-wrap: anywhere;
-}
-
 /* ------------------------------------------------------------------ composer */
 
 .gp-composer {
   flex: none;
-  padding: 10px 16px 12px;
+  padding: 12px 16px;
   border-top: 1px solid var(--dcc-line);
   background: var(--dcc-bg);
 }
@@ -503,17 +1282,16 @@ body.gp {
   display: flex;
   align-items: flex-end;
   gap: 8px;
-  padding: 6px 6px 6px 12px;
+  padding: 4px 4px 4px 12px;
   border: 1px solid var(--dcc-control);
-  border-radius: 18px;
+  border-radius: var(--gp-radius);
   background: var(--dcc-bg);
   transition: border-color 120ms var(--dcc-ease);
 }
 
 .gp-form:focus-within {
   border-color: var(--dcc-accent);
-  outline: 2px solid var(--dcc-accent);
-  outline-offset: 2px;
+  outline: 1px solid var(--dcc-accent);
 }
 
 .gp-input {
@@ -548,13 +1326,14 @@ body.gp {
 .gp-send {
   flex: none;
   min-height: 32px;
-  padding: 0 12px 0 14px;
+  padding: 0 12px 0 16px;
+  border-radius: 8px;
 }
 
 .gp-hint {
-  margin-top: 6px;
-  font-size: var(--dcc-text-xs);
-  color: var(--dcc-muted);
+  margin-top: 8px;
+  font-size: var(--dcc-text-sm);
+  color: var(--dcc-body);
 }
 
 .gp-hint kbd {
@@ -563,9 +1342,9 @@ body.gp {
 }
 
 .gp-privacy {
-  margin-top: 4px;
+  margin-top: 8px;
   font-size: var(--dcc-text-xs);
-  line-height: 1.45;
+  line-height: 1.5;
   color: var(--dcc-muted);
 }
 

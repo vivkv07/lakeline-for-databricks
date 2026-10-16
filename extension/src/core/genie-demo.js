@@ -31,9 +31,23 @@
     [1600, 'FAILED'],
   ]);
 
+  // Canned answers. Text is Markdown (like real Genie answers); the tables cover every chart the
+  // panel draws: categorical bars (0, 1), a multi-series line with a gap (2), KPI tiles (3), a
+  // scatter (4), a wide table with timestamps and nulls (5) and a single-series line (6).
+  const DAYS = ['2026-10-01', '2026-10-02', '2026-10-03', '2026-10-04', '2026-10-05', '2026-10-06', '2026-10-07', '2026-10-08', '2026-10-09', '2026-10-10', '2026-10-11', '2026-10-12', '2026-10-13', '2026-10-14'];
+  const WEB = [41200, 39850, 43610, 45020, 44100, 38200, 36950, 42800, 44950, 46310, 47020, 45880, 40120, 39400];
+  const STORE = [28400, 27950, 29100, 30250, 31800, 34900, 33600, 28700, 29350, 30100, 30880, 32500, 35200, 34100];
+  const PARTNER = [12100, 11800, 12950, null, 13400, 14200, 13900, 12600, 13050, 13700, 14100, 14650, 15200, 14900];
+  const RUNS = [
+    ['801104417', '4.2', '3.9'], ['801104502', '6.8', '6.1'], ['801104588', '7.5', '7.9'], ['801104671', '9.1', '8.2'], ['801104730', '11.4', '10.8'],
+    ['801104812', '12.9', '14.6'], ['801104901', '15.3', '13.7'], ['801104977', '17.8', '18.9'], ['801105046', '19.2', null], ['801105120', '21.6', '19.4'],
+    ['801105211', '24.0', '26.3'], ['801105287', '27.5', '24.1'], ['801105360', '31.2', '33.0'], ['801105444', '34.8', '30.2'], ['801105519', '39.6', '41.7'],
+    ['801105603', '44.1', '38.5'], ['801105688', '51.3', '55.2'], ['801105772', '57.9', '49.8'],
+  ];
+
   const ANSWERS = Object.freeze([
     {
-      text: 'DEMO answer (synthetic): revenue last month was $1.24M, up 6.1% on the month before. EMEA grew fastest, and APAC had the most orders.',
+      text: '**DEMO answer (synthetic).** Revenue last month was **$1.24M**, up 6.1% on the month before.\n\n- **EMEA** grew fastest, up 9.4%.\n- **APAC** had the most orders: 3,410.\n- *Other* has no prior month, so its change is n/a.',
       title: 'Revenue by region, last month',
       description: 'Sums synthetic order amounts per region for the previous calendar month.',
       sql: "SELECT region,\n       ROUND(SUM(amount_usd), 0) AS revenue_usd,\n       COUNT(*) AS orders,\n       ROUND(100 * (SUM(amount_usd) / LAG(SUM(amount_usd)) OVER (PARTITION BY region ORDER BY month) - 1), 1) AS change_pct\nFROM demo.sales.orders\nWHERE month = date_trunc('month', current_date() - INTERVAL 1 MONTH)\nGROUP BY region\nORDER BY revenue_usd DESC",
@@ -45,10 +59,10 @@
         ['LATAM', '96200', '1024', '2.1'],
         ['Other', '31850', '402', null],
       ],
-      suggested: ['Which products drove the EMEA growth?', 'Show revenue by week for the last quarter'],
+      suggested: ['Show daily revenue by channel for the last 2 weeks', 'What were our headline numbers last month?'],
     },
     {
-      text: 'DEMO answer (synthetic): 3 of 6 jobs had a failed run in the last 7 days. Nightly sales ETL failed twice, both at the load step.',
+      text: '**DEMO answer (synthetic).** 3 of 6 jobs had a failed run in the last 7 days.\n\n1. **Nightly sales ETL** failed twice, both at the `load` step.\n2. **Orders ingest** and **Feature refresh** failed once each.\n\nEverything else succeeded on every run.',
       title: 'Job runs and failures, last 7 days',
       description: 'Counts synthetic runs and failed runs per job.',
       sql: "SELECT job_name,\n       COUNT(*) AS runs,\n       COUNT_IF(result_state = 'FAILED') AS failed,\n       ROUND(100 * COUNT_IF(result_state = 'SUCCEEDED') / COUNT(*), 1) AS success_pct\nFROM demo.ops.job_runs\nWHERE period_start >= current_date() - INTERVAL 7 DAYS\nGROUP BY job_name\nORDER BY failed DESC, runs DESC",
@@ -61,33 +75,76 @@
         ['Marketing export (demo)', '4', '0', '100'],
         ['Data quality checks (demo)', '14', '0', '100'],
       ],
-      suggested: ['Why did Nightly sales ETL fail?', 'Which pipeline updates ran longest this week?'],
+      suggested: ['How do run duration and DBUs relate?', 'Show the latest pipeline updates'],
     },
     {
-      text: 'DEMO answer (synthetic): here are daily orders for the last 5 days. This is a canned answer, so try asking about revenue or failed jobs.',
-      title: 'Daily orders, last 5 days',
-      description: 'Counts synthetic orders per day.',
-      sql: 'SELECT order_date, COUNT(*) AS orders\nFROM demo.sales.orders\nWHERE order_date >= current_date() - INTERVAL 5 DAYS\nGROUP BY order_date\nORDER BY order_date',
-      columns: [['order_date', 'DATE'], ['orders', 'LONG']],
+      text: '**DEMO answer (synthetic).** Daily revenue by channel for the last 2 weeks:\n\n- **Web** peaked at $47,020 on Oct 11.\n- **Store** is strongest on weekends.\n- **Partner** has no data for Oct 4, so that day is a gap.',
+      title: 'Daily revenue by channel, last 14 days',
+      description: 'Sums synthetic order amounts per day and sales channel.',
+      sql: "SELECT order_date,\n       SUM(CASE WHEN channel = 'web' THEN amount_usd END) AS web_usd,\n       SUM(CASE WHEN channel = 'store' THEN amount_usd END) AS store_usd,\n       SUM(CASE WHEN channel = 'partner' THEN amount_usd END) AS partner_usd\nFROM demo.sales.orders\nWHERE order_date >= current_date() - INTERVAL 14 DAYS\nGROUP BY order_date\nORDER BY order_date",
+      columns: [['order_date', 'DATE'], ['web_usd', 'DECIMAL'], ['store_usd', 'DECIMAL'], ['partner_usd', 'DECIMAL']],
+      rows: DAYS.map((d, i) => [d, String(WEB[i]), String(STORE[i]), PARTNER[i] === null ? null : String(PARTNER[i])]),
+      suggested: ['What were our headline numbers last month?', 'What was revenue by region last month?'],
+    },
+    {
+      text: '**DEMO answer (synthetic).** Last month in one line: **$1.24M** revenue from **10,831** orders, an average of $114.53 per order, up 6.1% on the month before.',
+      title: 'Headline numbers, last month',
+      description: 'Totals synthetic orders for the previous calendar month.',
+      sql: "SELECT SUM(amount_usd) AS total_revenue_usd,\n       COUNT(*) AS orders,\n       AVG(amount_usd) AS avg_order_value_usd,\n       SUM(amount_usd) / LAG(SUM(amount_usd)) OVER (ORDER BY month) - 1 AS change_ratio,\n       date_trunc('month', current_date() - INTERVAL 1 MONTH) AS month\nFROM demo.sales.orders\nWHERE month = date_trunc('month', current_date() - INTERVAL 1 MONTH)",
+      columns: [['total_revenue_usd', 'DECIMAL'], ['orders', 'LONG'], ['avg_order_value_usd', 'DECIMAL'], ['change_ratio', 'DOUBLE'], ['month', 'DATE']],
+      rows: [['1240512.40', '10831', '114.53', '0.061', '2026-09-01']],
+      suggested: ['What was revenue by region last month?', 'Show daily revenue by channel for the last 2 weeks'],
+    },
+    {
+      text: '**DEMO answer (synthetic).** Longer runs use more DBUs, roughly **0.95 DBU per minute**. One run (`801105046`) has no DBU figure yet, so it is left out of the chart.',
+      title: 'Run duration vs DBUs, last 7 days',
+      description: 'One point per synthetic job run.',
+      sql: 'SELECT run_id,\n       ROUND(duration_ms / 60000, 1) AS duration_min,\n       ROUND(dbus, 1) AS dbus\nFROM demo.ops.job_run_usage\nWHERE period_start >= current_date() - INTERVAL 7 DAYS\nORDER BY duration_min',
+      columns: [['run_id', 'BIGINT'], ['duration_min', 'DOUBLE'], ['dbus', 'DOUBLE']],
+      rows: RUNS.map((r) => r.slice()),
+      suggested: ['Show the latest pipeline updates', 'Which jobs failed this week?'],
+    },
+    {
+      text: '**DEMO answer (synthetic).** The 8 latest pipeline updates. Two failed:\n\n- `orders_silver` stopped on a schema change.\n- `inventory_gold` timed out waiting for compute.\n\n> Cost is n/a where the update was still being priced.',
+      title: 'Latest pipeline updates',
+      description: 'Synthetic pipeline update history with state, timing, volume and cost.',
+      sql: 'SELECT update_id, pipeline_name, state, started_at, duration_min, rows_written, error_ratio, cost_usd, compute, cause\nFROM demo.ops.pipeline_updates\nORDER BY started_at DESC\nLIMIT 8',
+      columns: [['update_id', 'STRING'], ['pipeline_name', 'STRING'], ['state', 'STRING'], ['started_at', 'TIMESTAMP'], ['duration_min', 'DOUBLE'], ['rows_written', 'LONG'], ['error_ratio', 'DOUBLE'], ['cost_usd', 'DECIMAL'], ['compute', 'STRING'], ['cause', 'STRING']],
       rows: [
-        ['2026-10-10', '1204'],
-        ['2026-10-11', '1187'],
-        ['2026-10-12', '1340'],
-        ['2026-10-13', '1298'],
-        ['2026-10-14', '1356'],
+        ['9f2c41d0-demo-0008', 'orders_bronze', 'COMPLETED', '2026-10-14T23:10:05.000Z', '6.4', '1840211', '0', '3.12', 'Serverless', null],
+        ['9f2c41d0-demo-0007', 'orders_silver', 'FAILED', '2026-10-14T22:40:51.000Z', '2.1', '0', '1', '0.88', 'Serverless', 'Schema change in source column amount_usd (DECIMAL to STRING)'],
+        ['9f2c41d0-demo-0006', 'inventory_gold', 'FAILED', '2026-10-14T21:05:17.000Z', '30', '0', null, null, 'Pipelines cluster', 'Timed out waiting for compute'],
+        ['9f2c41d0-demo-0005', 'customers_silver', 'COMPLETED', '2026-10-14T20:15:44.000Z', '11.8', '402118', '0.0021', '5.47', 'Serverless', null],
+        ['9f2c41d0-demo-0004', 'orders_bronze', 'COMPLETED', '2026-10-14T17:10:02.000Z', '5.9', '1722930', '0', '2.98', 'Serverless', null],
+        ['9f2c41d0-demo-0003', 'clicks_bronze', 'COMPLETED', '2026-10-14T16:00:00.000Z', '24.3', '18220419', '0.0004', '14.20', 'Pipelines cluster', null],
+        ['9f2c41d0-demo-0002', 'inventory_gold', 'COMPLETED', '2026-10-14T09:05:12.000Z', '17.2', '96004', '0', null, 'Pipelines cluster', null],
+        ['9f2c41d0-demo-0001', 'customers_silver', 'COMPLETED', '2026-10-14T08:15:30.000Z', '12.6', '398765', '0.0018', '5.61', 'Serverless', null],
       ],
+      suggested: ['Which jobs failed this week?', 'How do run duration and DBUs relate?'],
+    },
+    {
+      text: '**DEMO answer (synthetic).** Here are daily orders for the last 2 weeks. This is a canned answer, so try asking about revenue, channels, headline numbers or failed jobs.',
+      title: 'Daily orders, last 14 days',
+      description: 'Counts synthetic orders per day.',
+      sql: 'SELECT order_date, COUNT(*) AS orders\nFROM demo.sales.orders\nWHERE order_date >= current_date() - INTERVAL 14 DAYS\nGROUP BY order_date\nORDER BY order_date',
+      columns: [['order_date', 'DATE'], ['orders', 'LONG']],
+      rows: DAYS.map((d, i) => [d, String(1180 + ((i * 37) % 190) + (i % 7 === 5 ? 140 : 0))]),
       suggested: ['What was revenue by region last month?', 'Which jobs failed this week?'],
     },
   ]);
 
   const ID = /^de3([0-9a-f])([0-9a-f])([0-9a-f]{12})([0-9a-f]{15})$/;
 
+  /** Keyword routing to a canned answer (order matters: specific phrases first). */
   function pickAnswer(spaceIndex, question) {
     const q = String(question || '').toLowerCase();
-    if (spaceIndex === 2) return 1;
+    if (/headline|kpi|overall|in total|totals?\b|summary/.test(q)) return 3;
+    if (/channel|daily revenue|trend|over time|by day|by week|weekly/.test(q)) return 2;
+    if (/duration|dbus?\b|relate|correlat|scatter/.test(q)) return 4;
+    if (/pipeline updates?|latest updates?|update history|updates/.test(q)) return 5;
     if (/revenue|sales|region|customer|product|order value/.test(q)) return 0;
-    if (/job|pipeline|fail|run|error|update/.test(q)) return 1;
-    return spaceIndex === 1 ? 1 : 2;
+    if (/job|pipeline|fail|run|error/.test(q)) return 1;
+    return spaceIndex === 2 ? 1 : 6;
   }
 
   /** 32 hex: de3 + agent (1) + answer (1) + created ms (12) + salt (15). */
@@ -126,7 +183,7 @@
       if (!info) throw notFound();
       const failing = info.spaceIndex === 3;
       const status = statusAt(failing ? FAIL_TIMELINE : TIMELINE, now() - info.createdMs);
-      const a = ANSWERS[info.answer] || ANSWERS[2];
+      const a = ANSWERS[info.answer] || ANSWERS[6];
       const msg = { message_id: msgId, conversation_id: convId, space_id: spaceId, status, attachments: [] };
       if (status === 'FAILED') msg.error = { error: 'DEMO: this agent always fails, to show how errors look.', type: 'DEMO_FAILURE' };
       if (status === 'EXECUTING_QUERY' || status === 'COMPLETED') {

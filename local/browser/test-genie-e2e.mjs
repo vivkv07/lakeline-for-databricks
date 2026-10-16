@@ -121,15 +121,49 @@ describe('browser e2e: Genie side panel in real Chromium against the SIMULATED f
         phase: a.getAttribute('data-phase'),
         chip: (a.querySelector('.gp-chip') || {}).textContent || '',
         question: (a.querySelector('.gp-q') || {}).textContent || '',
-        text: [...a.querySelectorAll('.gp-text')].map((x) => x.textContent).join('\n'),
+        text: [...a.querySelectorAll('.gp-md')].map((x) => x.textContent).join('\n'),
+        strong: [...a.querySelectorAll('.gp-md strong')].map((x) => x.textContent),
+        listItems: a.querySelectorAll('.gp-md li').length,
         headers: [...a.querySelectorAll('thead th')].map((th) => th.textContent),
+        rawHeaders: [...a.querySelectorAll('thead th')].map((th) => th.getAttribute('data-col')),
         rows: [...a.querySelectorAll('tbody tr')].map((tr) => [...tr.children].map((td) => td.textContent)),
-        meta: (a.querySelector('.gp-table-meta') || {}).textContent || '',
+        meta: (a.querySelector('.gp-count') || {}).textContent || '',
+        views: [...a.querySelectorAll('.gp-seg label')].map((l) => l.textContent),
+        chart: a.querySelector('.gp-kpis') ? 'kpi' : a.querySelector('.gp-fig') ? a.querySelector('.gp-fig').getAttribute('data-chart') : null,
+        marks: a.querySelectorAll('.gp-marks [tabindex]').length,
+        summary: (a.querySelector('.gp-svg [role="img"]') || { getAttribute: () => '' }).getAttribute('aria-label') || '',
+        note: (a.querySelector('.gp-fig-note') || {}).textContent || '',
+        kpis: [...a.querySelectorAll('.gp-kpi-value')].map((x) => x.textContent),
         sqlOpen: a.querySelector('details.gp-sql') ? a.querySelector('details.gp-sql').open : null,
         error: (a.querySelector('.dcc-alert__title') || {}).textContent || '',
         suggested: [...a.querySelectorAll('.gp-suggest-list button')].map((b) => b.textContent),
       }))
     );
+
+  /** Layout facts the screenshots showed going wrong before: nothing may overflow the panel. */
+  const layout = (p) =>
+    p.evaluate(() => {
+      const vw = document.documentElement.clientWidth;
+      const over = [];
+      for (const el of document.querySelectorAll('.gp-answer, .gp-answer *:not(.gp-table *):not(.gp-code *):not(.gp-tip):not(.gp-tip *)')) {
+        if (el.closest('[hidden]') || el.closest('.gp-table-wrap') || el.closest('pre')) continue;
+        const r = el.getBoundingClientRect();
+        if (r.width && (r.right > vw + 0.5 || r.left < -0.5)) over.push(el.className || el.tagName);
+      }
+      return { docScroll: document.documentElement.scrollWidth - vw, bodyScrollTop: document.scrollingElement.scrollTop, over: [...new Set(over)].slice(0, 5) };
+    });
+
+  /** The CSV a Download CSV click would save, captured in the page (no file is written). */
+  const downloadCsv = (p, turnIndex) =>
+    p.evaluate(async (k) => {
+      const blobs = [];
+      const orig = URL.createObjectURL;
+      URL.createObjectURL = (b) => (blobs.push(b), orig.call(URL, b));
+      HTMLAnchorElement.prototype.click = function () {};
+      document.querySelectorAll('article.gp-turn')[k].querySelector('[data-download]').click();
+      URL.createObjectURL = orig;
+      return blobs.length ? await blobs[0].text() : null;
+    }, turnIndex);
 
   async function pickSpace(p, title) {
     await poll(async () => p.evaluate(() => !document.getElementById('space').disabled && document.getElementById('space').options.length > 0), { label: 'agents listed' });
@@ -270,36 +304,120 @@ describe('browser e2e: Genie side panel in real Chromium against the SIMULATED f
     assert.ok(session.includes(QUESTION) && session.includes('EMEA'));
   });
 
-  it('reopening the panel shows the completed answer with a real table; the badge clears', { timeout: 60000 }, async () => {
+  it('reopening the panel shows the answer: Markdown, bar chart first, formatted table, SQL, CSV; the badge clears', { timeout: 90000 }, async () => {
     const p = await openPanel();
     const t = await poll(async () => {
       const list = await turns(p);
       return list.length === 1 && list[0].phase === 'done' ? list[0] : null;
     }, { label: 'completed turn after reopening' });
-    const a = fixtureData.genieAnswer(fixtureData.GENIE_SPACES[0].space_id);
+    const a = fixtureData.genieAnswer(fixtureData.GENIE_SPACES[0].space_id, QUESTION);
     assert.equal(t.chip, 'Answer ready');
-    assert.equal(t.text, a.text);
-    assert.deepEqual(t.headers, ['region', 'revenue_usd', 'orders']);
-    assert.deepEqual(t.rows, a.rows.map((r) => r.map((v) => (v === null ? 'null' : v))));
-    assert.match(t.meta, /4 rows/);
+    assert.match(t.text, /^Revenue last month was \$1\.24M across 4 regions\. \(fixture\)/);
+    assert.deepEqual(t.strong, ['$1.24M', 'EMEA'], 'Markdown bold became <strong>');
+    assert.equal(t.listItems, 2);
+    assert.ok(!t.text.includes('**'), 'no raw Markdown markers');
+    assert.deepEqual(t.views, ['Chart', 'Table']);
+    assert.equal(t.chart, 'bar');
+    assert.equal(t.marks, 4);
+    assert.match(t.summary, /^Bar chart of Revenue \(USD\) by Region, 4 of 4 bars, largest first\. Highest EMEA \$412,300\./);
+    assert.deepEqual(t.headers, ['Region', 'Revenue (USD)', 'Orders']);
+    assert.deepEqual(t.rawHeaders, ['region', 'revenue_usd', 'orders']);
+    assert.deepEqual(t.rows, [['EMEA', '$412,300', '3,120'], ['North America', '$398,900', '2,875'], ['APAC', '$301,750', '3,410'], ['LATAM', '$96,200', 'n/a']]);
+    assert.equal(t.meta, 'Showing 4 of 4 rows');
     assert.equal(t.sqlOpen, false, 'SQL hidden behind Show SQL');
     assert.deepEqual(t.suggested, a.suggested);
+    assert.deepEqual(await layout(p), { docScroll: 0, bodyScrollTop: 0, over: [] }, 'nothing overflows the 400 px panel');
     await poll(async () => (await sw.evaluate(() => chrome.action.getBadgeText({}))) === '', { timeout: 5000, label: 'badge cleared by the open panel' });
     await shot(p, '04-fixture-answer-light');
+    // Keyboard on the chart: one Tab stop, arrows move, the tooltip follows focus.
+    await p.focus('article.gp-turn .gp-marks [tabindex="0"]');
+    await p.keyboard.press('ArrowDown');
+    const focused = await p.evaluate(() => [document.activeElement.getAttribute('aria-label'), !document.querySelector('.gp-tip').hidden, document.querySelector('.gp-tip strong').textContent]);
+    assert.deepEqual(focused, ['North America: $398,900', true, '$398,900']);
+    // ResizeObserver: the chart redraws at the new width.
+    const w0 = await p.evaluate(() => Number(document.querySelector('.gp-chart svg.gp-svg').getAttribute('width')));
+    await p.setViewportSize({ width: 480, height: 820 });
+    await poll(async () => p.evaluate((w) => Number(document.querySelector('.gp-chart svg.gp-svg').getAttribute('width')) > w + 40, w0), { timeout: 5000, label: 'chart redrawn wider' });
+    assert.equal(await p.evaluate(() => Number(document.querySelector('.gp-chart svg.gp-svg').getAttribute('width')) === document.querySelector('.gp-chart').clientWidth), true);
+    await p.setViewportSize({ width: 400, height: 820 });
+    // Table view, CSV content (formula-safe escaping from explorer/csv.js), SQL with Copy SQL in view.
+    await p.click('article.gp-turn label[for$="-table"]');
+    assert.equal(await p.evaluate(() => document.querySelector('.gp-view[data-view="table"]').hidden), false);
+    assert.equal(await downloadCsv(p, 0), 'region,revenue_usd,orders\r\nEMEA,412300,3120\r\nNorth America,398900,2875\r\nAPAC,301750,3410\r\nLATAM,96200,\r\n');
     await p.click('details.gp-sql > summary');
     assert.equal(await p.evaluate(() => document.querySelector('details.gp-sql pre code').textContent), a.sql);
+    const sqlBox = await p.evaluate(() => {
+      const b = document.querySelector('[data-copy-sql]').getBoundingClientRect();
+      const card = document.querySelector('.gp-answer').getBoundingClientRect();
+      const pre = document.querySelector('pre.gp-code');
+      return { inCard: b.left >= card.left && b.right <= card.right, aboveCode: b.bottom <= pre.getBoundingClientRect().top, scrolls: pre.scrollWidth > pre.clientWidth, preFits: pre.getBoundingClientRect().right <= card.right };
+    });
+    assert.deepEqual(sqlBox, { inCard: true, aboveCode: true, scrolls: true, preFits: true }, 'Copy SQL is never clipped; long SQL scrolls inside its block');
+    await p.evaluate(() => document.querySelector('details.gp-sql').scrollIntoView({ block: 'center' }));
     await shot(p, '05-fixture-answer-sql-light');
-    // Follow-up from a suggested question, in the same Genie conversation.
+    // Follow-up from a suggested question ("Show revenue by week"), in the same Genie conversation.
     const before = fx.state.genie.followUps;
     await p.click('.gp-suggest-list button');
-    await poll(async () => {
+    const line = await poll(async () => {
       const list = await turns(p);
-      return list.length === 2 && list[1].phase === 'done';
+      return list.length === 2 && list[1].phase === 'done' ? list[1] : null;
     }, { timeout: 40000, label: 'follow-up answered' });
     assert.equal(fx.state.genie.followUps, before + 1);
+    assert.equal(line.chart, 'line');
+    assert.equal(line.note, '1 missing value shown as gaps');
+    assert.equal(await p.evaluate(() => document.querySelectorAll('article.gp-turn')[1].querySelectorAll('polyline.gp-line').length), 2, 'the missing week splits the line');
+    assert.deepEqual(line.rows[5], ['Sep 14, 2026', 'n/a']);
+    // Then the KPI follow-up ("What were the headline numbers last month?").
+    await p.click('.gp-suggest-list button');
+    const kpi = await poll(async () => {
+      const list = await turns(p);
+      return list.length === 3 && list[2].phase === 'done' ? list[2] : null;
+    }, { timeout: 40000, label: 'KPI follow-up answered' });
+    assert.equal(kpi.chart, 'kpi');
+    assert.deepEqual(kpi.views, ['Summary', 'Table']);
+    assert.deepEqual(kpi.kpis, ['$1.24M', '10.8K', '4,212', '1.8%'], 'compact from 10,000; the exact value sits under each tile');
+    assert.deepEqual(await layout(p), { docScroll: 0, bodyScrollTop: 0, over: [] });
     await p.emulateMedia({ colorScheme: 'dark' });
     await sleep(200);
     await shot(p, '06-fixture-answer-dark');
+    await p.close();
+  });
+
+  it('job agent: scatter for two measures, a wide record table with a scroll cue and n/a cells', { timeout: 90000 }, async () => {
+    const p = await openPanel();
+    await pickSpace(p, 'Job operations (fixture)');
+    await ask(p, 'How do run duration and DBUs relate?');
+    const sc = await poll(async () => {
+      const list = await turns(p);
+      return list.length === 1 && list[0].phase === 'done' ? list[0] : null;
+    }, { timeout: 40000, label: 'scatter answer' });
+    assert.equal(sc.chart, 'scatter');
+    assert.equal(sc.marks, 11, 'the run without DBUs is left out, not drawn at 0');
+    assert.equal(sc.note, '1 row without both values not shown');
+    await ask(p, 'Show the latest pipeline updates');
+    const wide = await poll(async () => {
+      const list = await turns(p);
+      return list.length === 2 && list[1].phase === 'done' ? list[1] : null;
+    }, { timeout: 40000, label: 'wide table answer' });
+    assert.equal(wide.chart, null);
+    assert.deepEqual(wide.views, [], 'records get the table only');
+    assert.deepEqual(wide.headers, ['Update ID', 'Pipeline Name', 'State', 'Started at (UTC)', 'Duration (min)', 'Rows Written', 'Error Ratio', 'Cost (USD)', 'Cause']);
+    assert.deepEqual(wide.rows[1].slice(3, 8), ['Oct 15, 2026, 05:40:51', '2.1', '0', '100.00%', '$0.88']);
+    assert.equal(wide.rows[2][7], 'n/a');
+    const cue = await p.evaluate(() => {
+      const a = document.querySelectorAll('article.gp-turn')[1];
+      const wrap = a.querySelector('.gp-table-wrap');
+      return { scrolls: wrap.scrollWidth > wrap.clientWidth, right: a.querySelector('.gp-tablebox').hasAttribute('data-more-right'), left: a.querySelector('.gp-tablebox').hasAttribute('data-more-left'), sticky: getComputedStyle(a.querySelector('thead th')).position };
+    });
+    assert.deepEqual(cue, { scrolls: true, right: true, left: false, sticky: 'sticky' });
+    await p.evaluate(() => {
+      const w = document.querySelectorAll('article.gp-turn')[1].querySelector('.gp-table-wrap');
+      w.scrollLeft = w.scrollWidth;
+    });
+    await poll(async () => p.evaluate(() => document.querySelectorAll('article.gp-turn')[1].querySelector('.gp-tablebox').hasAttribute('data-more-left')), { timeout: 3000, label: 'left cue after scrolling' });
+    assert.deepEqual(await layout(p), { docScroll: 0, bodyScrollTop: 0, over: [] });
+    await p.evaluate(() => document.querySelectorAll('article.gp-turn')[1].scrollIntoView());
+    await shot(p, '06b-fixture-wide-table-light');
     await p.close();
   });
 
@@ -335,7 +453,10 @@ describe('browser e2e: Genie side panel in real Chromium against the SIMULATED f
       }
       const t = (await turns(p))[0];
       assert.match(t.text, /DEMO answer \(synthetic\)/);
+      assert.equal(t.strong[0], 'DEMO answer (synthetic).');
+      assert.equal(t.chart, 'bar');
       assert.equal(t.rows.length, 5);
+      assert.deepEqual(t.rows[4], ['Other', '$31,850', '402', 'n/a']);
       await shot(p, dark ? '10-demo-answer-dark' : '09-demo-answer-light');
       await p.close();
     }

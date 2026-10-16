@@ -4,16 +4,19 @@
 // so no network). This checks page logic and DOM output, not a real browser side panel.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { JSDOM } from 'jsdom';
+import { JSDOM, VirtualConsole } from 'jsdom';
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { load, fakeArea } from './support/load.mjs';
 
 const EXT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../extension');
+const demoMod = load('core/genie-demo.js');
 const HTML = readFileSync(path.join(EXT, 'ui/sidepanel.html'), 'utf8');
 const settle = (ms = 20) => new Promise((r) => setTimeout(r, ms));
 const text = (el) => (el ? el.textContent.replace(/\s+/g, ' ').trim() : '');
+/** Text of each element child, for elements whose children carry no spaces between them. */
+const parts = (el, sel = ':scope > *') => (el ? [...el.querySelectorAll(sel)].map((c) => text(c)) : []);
 
 const A = 'https://dbc-aaa.cloud.databricks.com';
 const B = 'https://dbc-bbb.cloud.databricks.com';
@@ -21,6 +24,12 @@ const SALES = 'aaaa0000000000000000000000000001';
 const OPS = 'aaaa0000000000000000000000000002';
 const EVIL = '<img src=x onerror="window.__pwned=1">';
 const SQL = 'SELECT region, SUM(amount) AS revenue\nFROM sales\nGROUP BY region';
+
+// Panels still open after a failed assertion are closed, so their timers can't keep the run alive.
+const OPEN = new Set();
+test.afterEach(() => {
+  for (const env of [...OPEN]) env.close();
+});
 
 function event() {
   const fns = [];
@@ -31,11 +40,30 @@ function event() {
  * @param o {respond(msg) → data | {__error}, tabs, clipboard, route?(msg, sender) → full response}
  */
 async function openPanel({ respond, tabs = [], route = null } = {}) {
-  const dom = new JSDOM(HTML, { url: 'chrome-extension://testext/ui/sidepanel.html', runScripts: 'outside-only', pretendToBeVisual: true });
+  const jsdomErrors = [];
+  const virtualConsole = new VirtualConsole();
+  // jsdom can't navigate to blob: URLs (the CSV download click); everything else is reported.
+  virtualConsole.on('jsdomError', (e) => {
+    if (!/Not implemented: navigation/.test(e.message)) jsdomErrors.push(e.message);
+  });
+  const dom = new JSDOM(HTML, { url: 'chrome-extension://testext/ui/sidepanel.html', runScripts: 'outside-only', pretendToBeVisual: true, virtualConsole });
   const w = dom.window;
   const messages = [];
   const ports = [];
   const clipboard = [];
+  const downloads = [];
+  // Every HTML-parsing entry point is spied before the page scripts run.
+  const htmlCalls = [];
+  for (const [proto, prop] of [[w.Element.prototype, 'innerHTML'], [w.Element.prototype, 'outerHTML'], [w.ShadowRoot.prototype, 'innerHTML']]) {
+    const desc = Object.getOwnPropertyDescriptor(proto, prop);
+    Object.defineProperty(proto, prop, { configurable: true, get: desc.get, set(v) { htmlCalls.push(prop); return desc.set.call(this, v); } });
+  }
+  const iah = w.Element.prototype.insertAdjacentHTML;
+  w.Element.prototype.insertAdjacentHTML = function (...a) { htmlCalls.push('insertAdjacentHTML'); return iah.apply(this, a); };
+  const ccf = w.Range.prototype.createContextualFragment;
+  w.Range.prototype.createContextualFragment = function (...a) { htmlCalls.push('createContextualFragment'); return ccf.apply(this, a); };
+  w.URL.createObjectURL = (blob) => (downloads.push(blob), 'blob:chrome-extension://testext/' + downloads.length);
+  w.URL.revokeObjectURL = () => {};
   w.chrome = {
     runtime: {
       id: 'testext',
@@ -61,7 +89,14 @@ async function openPanel({ respond, tabs = [], route = null } = {}) {
   await w.DCC.sidePanel.ready;
   await settle();
   const $ = (id) => w.document.getElementById(id);
-  return { dom, window: w, document: w.document, $, messages, ports, clipboard, close: () => (w.DCC.sidePanel.stop(), w.close()) };
+  const env = { dom, window: w, document: w.document, $, messages, ports, clipboard, downloads, htmlCalls, jsdomErrors };
+  env.close = () => {
+    if (!OPEN.delete(env)) return;
+    w.DCC.sidePanel.stop();
+    w.close();
+  };
+  OPEN.add(env);
+  return env;
 }
 
 const ready = (origin = A) => ({ origin, host: new URL(origin).host, workspaceId: '1001', authMode: 'pat', status: 'ready' });
@@ -74,12 +109,26 @@ function turn(phase, o = {}) {
 }
 const doneTurn = (o = {}) =>
   turn('done', Object.assign({
-    texts: [{ content: 'Revenue grew 6%. ' + EVIL, purpose: 'answer' }],
+    texts: [{ content: 'Revenue grew **6%**. ' + EVIL, purpose: 'answer' }],
     query: { title: 'Revenue by region', description: 'Sum of orders', sql: SQL, rowCount: 1234, truncated: false, canRerun: true },
     table: { columns: [{ name: 'region', type: 'STRING', numeric: false }, { name: 'revenue', type: 'DECIMAL', numeric: true }], rows: [['EMEA', '412300'], [EVIL, null], ['APAC', '301750']], totalRows: 1234, shown: 3, clipped: true, serverTruncated: false, columnsHidden: 0 },
     tableState: 'ready',
     suggested: ['By month?', 'Top products?'],
   }, o));
+
+/** A finished turn holding one canned DEMO answer (same data the demo agents return). */
+function demoTurn(i, o = {}) {
+  const a = demoMod.ANSWERS[i];
+  return turn('done', Object.assign({
+    id: 'q' + i,
+    question: 'Demo question ' + i,
+    texts: [{ content: a.text, purpose: 'answer' }],
+    query: { title: a.title, description: a.description, sql: a.sql, rowCount: a.rows.length, truncated: false, canRerun: true },
+    table: { columns: a.columns.map(([name, type]) => ({ name, type, numeric: /INT|LONG|DOUBLE|DECIMAL/.test(type) })), rows: a.rows.map((r) => r.slice()), totalRows: a.rows.length, shown: a.rows.length, clipped: false, serverTruncated: false, columnsHidden: 0 },
+    tableState: 'ready',
+    suggested: a.suggested,
+  }, o));
+}
 
 function worker({ init = initData(), spaces = spacesData, thread = null, hooks = {} } = {}) {
   const state = { thread, rev: 1 };
@@ -103,11 +152,18 @@ test('side panel page is CSP-safe: external scripts only, no inline handlers, no
     assert.equal(s.textContent.trim(), '');
   }
   for (const el of dom.window.document.querySelectorAll('*')) for (const a of el.getAttributeNames()) assert.ok(!/^on/i.test(a), 'inline handler ' + a);
-  const js = readFileSync(path.join(EXT, 'ui/sidepanel.js'), 'utf8');
-  assert.doesNotMatch(js, /\.(innerHTML|outerHTML)\b|insertAdjacentHTML|document\.write|\beval\(|new Function/);
+  let all = HTML;
+  for (const f of ['ui/sidepanel.js', 'ui/genie-chart.js', 'src/core/mini-markdown.js', 'src/core/genie-viz.js', 'src/core/genie-demo.js']) {
+    const js = readFileSync(path.join(EXT, f), 'utf8');
+    assert.doesNotMatch(js, /\.(innerHTML|outerHTML)\b|insertAdjacentHTML|createContextualFragment|document\.write|\beval\(|new Function|DOMParser/, f);
+    all += js;
+  }
   const css = readFileSync(path.join(EXT, 'ui/sidepanel.css'), 'utf8');
   assert.doesNotMatch(css, /--dcc-[a-z0-9-]+\s*:/, 'no token redefinitions; brand.css owns them');
-  assert.ok(!/—/.test(HTML + js), 'no em dashes in copy');
+  assert.ok(!/—/.test(all + css), 'no em dashes in copy');
+  // Scripts the panel needs, in dependency order, all local (CSP script-src 'self').
+  const srcs = [...dom.window.document.querySelectorAll('script')].map((s) => s.getAttribute('src'));
+  assert.deepEqual(srcs, ['../src/core/validate.js', '../src/core/ids.js', '../src/errors.js', '../src/explorer/csv.js', '../src/explorer/charts.js', '../src/core/mini-markdown.js', '../src/core/genie-viz.js', 'genie-chart.js', 'sidepanel.js']);
 });
 
 test('opens on the active tab workspace, remembers the last agent, connects the presence port', async () => {
@@ -120,6 +176,7 @@ test('opens on the active tab workspace, remembers the last agent, connects the 
   assert.deepEqual([...env.$('space').options].map((o) => o.textContent), ['Sales analytics', 'Operations']);
   assert.deepEqual(env.ports.map((p) => p.name), ['dcc-genie-panel']);
   assert.match(text(env.$('thread')), /Ask Operations/);
+  assert.equal(env.$('composer-hint').classList.contains('dcc-visually-hidden'), true, 'the idle keyboard hint is for screen readers only');
   assert.equal(env.$('question').disabled, false);
   assert.equal(env.$('send').disabled, true, 'nothing typed yet');
   // Switching agents remembers the choice and reloads that agent's conversation.
@@ -128,6 +185,11 @@ test('opens on the active tab workspace, remembers the last agent, connects the 
   await settle();
   assert.ok(env.messages.some((m) => m.type === 'genie:remember' && m.spaceId === SALES));
   assert.equal(text(env.$('space-desc')), 'Orders and revenue');
+  assert.equal(env.$('space').title, 'Sales analytics\nOrders and revenue', 'full agent name and description in the select tooltip');
+  assert.equal(text(env.document.querySelector('.gp-empty-desc')), 'Orders and revenue', 'a new conversation shows the agent description');
+  assert.equal(env.$('space-desc').hidden, true, 'the description is disclosed on demand (tooltip, screen readers, new conversation)');
+  assert.equal(env.$('space').getAttribute('aria-describedby'), 'space-desc');
+  assert.equal(env.$('ws').title, new URL(A).host);
   env.close();
 });
 
@@ -153,7 +215,7 @@ test('per-message statuses: Sending, Genie is working, Running query, Answer rea
   ]);
   const arts = [...env.document.querySelectorAll('article.gp-turn')];
   assert.match(text(arts[1]), /Finding relevant context · \d+s/);
-  assert.match(text(arts[2]), /The query is running/);
+  assert.match(text(arts[2].querySelector('.gp-result-msg')), /The query is running/);
   assert.match(text(arts[3]), /in 4s/);
   assert.match(text(arts[4]), /Genie is busy right now.*Wait a minute.*Details: Too many requests/);
   assert.equal(arts[0].getAttribute('aria-busy'), 'true');
@@ -170,37 +232,178 @@ test('per-message statuses: Sending, Genie is working, Running query, Answer rea
   env.close();
 });
 
-test('answer: text via textContent, a real table with headers, "showing N of M", SQL behind Show SQL, copy', async () => {
-  const env = await openPanel({ respond: worker({ thread: { id: 'c1', turns: [doneTurn()] } }).fn });
+test('answer card: Markdown text as DOM, formatted table behind Chart | Table, "Showing N of M", SQL disclosure, copy and CSV', async () => {
+  const sw = worker({ thread: { id: 'c1', turns: [doneTurn()] } });
+  const env = await openPanel({ respond: sw.fn });
   const art = env.document.querySelector('article.gp-turn');
   assert.equal(env.document.querySelector('img'), null, 'markup in answers and cells is shown as text');
   assert.equal(env.window.__pwned, undefined);
-  assert.match(text(art.querySelector('.gp-text')), /Revenue grew 6%\. <img src=x/);
+  const md = art.querySelector('.gp-answer .gp-md');
+  assert.equal(md.querySelector('strong').textContent, '6%', 'Markdown bold');
+  assert.match(text(md), /Revenue grew 6%\. <img src=x/);
+  // One category + one measure: a bar chart first, the table one click away.
+  const seg = art.querySelector('.gp-seg');
+  assert.deepEqual([...seg.querySelectorAll('label')].map((l) => l.textContent), ['Chart', 'Table']);
+  assert.equal(art.querySelector('.gp-view[data-view="chart"]').hidden, false);
+  assert.equal(art.querySelector('.gp-view[data-view="table"]').hidden, true);
+  assert.equal(art.querySelector('.gp-fig').getAttribute('data-chart'), 'bar');
+  art.querySelector('[data-view-option="table"]').click();
+  assert.equal(art.querySelector('.gp-view[data-view="table"]').hidden, false);
+  assert.equal(art.querySelector('.gp-view[data-view="chart"]').hidden, true);
   const table = art.querySelector('table');
-  assert.deepEqual([...table.querySelectorAll('thead th')].map((th) => [th.textContent, th.getAttribute('scope'), th.className]), [['region', 'col', ''], ['revenue', 'col', 'num']]);
+  assert.deepEqual([...table.querySelectorAll('thead th')].map((th) => [th.textContent, th.getAttribute('data-col'), th.getAttribute('title'), th.className]), [['Region', 'region', 'region (string)', ''], ['Revenue', 'revenue', 'revenue (decimal)', 'num']]);
   const cells = [...table.querySelectorAll('tbody tr')].map((tr) => [...tr.children].map((td) => td.textContent));
-  assert.deepEqual(cells, [['EMEA', '412300'], [EVIL, 'null'], ['APAC', '301750']]);
-  assert.ok(table.querySelector('tbody tr:nth-child(2) td:nth-child(2) .gp-null'), 'null is labeled, not blank and not 0');
+  assert.deepEqual(cells, [['EMEA', '412,300'], [EVIL, 'n/a'], ['APAC', '301,750']]);
+  assert.ok(table.querySelector('tbody tr:nth-child(2) td:nth-child(2) .gp-na'), 'null is labeled n/a, never blank, 0 or "null"');
   assert.equal(text(table.querySelector('caption')), 'Revenue by region');
-  assert.match(text(art.querySelector('.gp-table-meta')), /Showing 3 of 1,234 rows/);
+  assert.match(text(art.querySelector('.gp-count')), /^Showing 3 of 1,234 rows$/);
   const wrap = art.querySelector('.gp-table-wrap');
   assert.deepEqual([wrap.getAttribute('tabindex'), wrap.getAttribute('role')], ['0', 'region'], 'the scrollable table is keyboard reachable');
   const details = art.querySelector('details.gp-sql');
   assert.equal(details.open, false, 'SQL hidden until asked');
-  assert.equal(text(details.querySelector('summary')), 'Show SQL');
+  assert.deepEqual(parts(details.querySelector('summary')), ['Show SQL', '3 lines']);
   assert.equal(details.querySelector('pre code').textContent, SQL);
   details.open = true;
   details.dispatchEvent(new env.window.Event('toggle'));
-  // A re-render (e.g. a port change signal) keeps the disclosure open.
+  // Copy SQL sits in a toolbar above the code (never inside the scrolling block); Wrap lines toggles.
+  const bar = details.querySelector('.gp-sql-bar');
+  assert.ok(bar.nextElementSibling.matches('pre.gp-code'));
+  bar.querySelector('[data-wrap]').click();
+  assert.ok(details.querySelector('pre').classList.contains('is-wrapped'));
+  assert.equal(bar.querySelector('[data-wrap]').getAttribute('aria-pressed'), 'true');
+  bar.querySelector('[data-copy-sql]').click();
+  await settle();
+  assert.equal(env.clipboard.at(-1), SQL);
+  // A re-render (a follow-up question arrives) keeps the disclosure open, wrapped, and the Table view.
+  sw.state.thread = { id: 'c1', turns: [doneTurn(), turn('working', { id: 'q-next' })] };
   env.ports[0].onMessage.fire({ type: 'genie:changed', rev: 99 });
   await settle();
-  assert.equal(env.document.querySelector('details.gp-sql').open, true);
-  // Copy answer: the text plus the shown rows as tab-separated values.
-  const copyBtn = art.querySelector('[data-copy]');
-  copyBtn.click();
+  const again = env.document.querySelector('article.gp-turn');
+  assert.notEqual(again, art, 're-rendered');
+  assert.equal(again.querySelector('details.gp-sql').open, true);
+  assert.ok(again.querySelector('pre.gp-code').classList.contains('is-wrapped'));
+  assert.equal(again.querySelector('.gp-view[data-view="table"]').hidden, false);
+  // Secondary actions sit behind one menu button; it closes on Escape and on a click elsewhere.
+  const menu = again.querySelector('details.gp-menu');
+  assert.deepEqual([...menu.querySelectorAll('.gp-menu-item')].map((b) => b.textContent), ['Copy answer', 'Copy table', 'Download CSV']);
+  assert.equal(menu.querySelector('summary').getAttribute('aria-label'), 'More actions for this answer');
+  menu.open = true;
+  env.document.dispatchEvent(new env.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  assert.equal(menu.open, false);
+  assert.equal(env.document.activeElement, menu.querySelector('summary'), 'focus returns to the menu button');
+  menu.open = true;
+  env.document.body.click();
+  assert.equal(menu.open, false);
+  // Copy table: raw values with raw names (TSV); Copy answer: the Markdown text plus that TSV.
+  again.querySelector('[data-copy-table]').click();
   await settle();
-  assert.equal(env.clipboard[0], 'Revenue grew 6%. ' + EVIL + '\n\nregion\trevenue\nEMEA\t412300\n' + EVIL + '\t\nAPAC\t301750');
+  const tsv = 'region\trevenue\nEMEA\t412300\n' + EVIL + '\t\nAPAC\t301750';
+  assert.equal(env.clipboard.at(-1), tsv);
+  again.querySelector('[data-copy]').click();
+  await settle();
+  assert.equal(env.clipboard.at(-1), 'Revenue grew **6%**. ' + EVIL + '\n\n' + tsv);
   assert.equal(env.document.querySelector('[data-copy]').textContent, 'Copied');
+  // Download CSV: a Blob through explorer/csv.js (BOM, CRLF, quoting), named after the result.
+  again.querySelector('[data-download]').click();
+  assert.equal(env.downloads.length, 1);
+  const bytes = new Uint8Array(await env.downloads[0].arrayBuffer());
+  assert.deepEqual([...bytes.slice(0, 3)], [0xef, 0xbb, 0xbf], 'UTF-8 BOM for spreadsheet apps');
+  assert.equal(await env.downloads[0].text(), 'region,revenue\r\nEMEA,412300\r\n"<img src=x onerror=""window.__pwned=1"">",\r\nAPAC,301750\r\n');
+  assert.equal(env.document.querySelector('[data-download]').textContent, 'Downloaded');
+  assert.deepEqual(env.htmlCalls, [], 'no HTML parsing anywhere while rendering');
+  assert.deepEqual(env.jsdomErrors, []);
+  env.close();
+});
+
+test('charts per result shape (DEMO answers): bars with a measure picker, multi-series line with gaps, KPI summary, scatter, table only', async () => {
+  const thread = { id: 'c1', turns: [0, 1, 2, 3, 4, 5, 6].map((i) => demoTurn(i)) };
+  const env = await openPanel({ respond: worker({ thread }).fn });
+  const arts = [...env.document.querySelectorAll('article.gp-turn')];
+  const kind = (a) => (a.querySelector('.gp-kpis') ? 'kpi' : a.querySelector('.gp-fig') ? a.querySelector('.gp-fig').getAttribute('data-chart') : 'table');
+  assert.deepEqual(arts.map(kind), ['bar', 'bar', 'line', 'kpi', 'scatter', 'table', 'line']);
+
+  // Bars: largest first, value at the tip, accessible summary and per-bar labels; measure picker.
+  const bars = arts[0];
+  assert.match(bars.querySelector('.gp-svg [role="img"]').getAttribute('aria-label'), /^Bar chart of Revenue \(USD\) by Region, 5 of 5 bars, largest first\. Highest EMEA \$412,300\./);
+  const marks = [...bars.querySelectorAll('.gp-marks [tabindex]')];
+  assert.deepEqual(marks.map((m) => m.getAttribute('aria-label')), ['EMEA: $412,300', 'North America: $398,900', 'APAC: $301,750', 'LATAM: $96,200', 'Other: $31,850']);
+  assert.deepEqual(marks.map((m) => [m.getAttribute('role'), m.getAttribute('tabindex')]), [['img', '0'], ['img', '-1'], ['img', '-1'], ['img', '-1'], ['img', '-1']], 'one Tab stop per chart');
+  marks[0].focus();
+  const tip = bars.querySelector('.gp-tip');
+  assert.equal(tip.hidden, false);
+  const tipText = () => parts(tip, '.gp-tip-head, strong, .gp-tip-row span');
+  assert.deepEqual(tipText(), ['EMEA', '$412,300', 'Revenue (USD)'], 'the value leads, the measure name follows');
+  marks[0].dispatchEvent(new env.window.KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+  assert.equal(env.document.activeElement, marks[1], 'arrow keys move between bars');
+  assert.deepEqual(tipText(), ['North America', '$398,900', 'Revenue (USD)']);
+  marks[1].dispatchEvent(new env.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  assert.equal(tip.hidden, true);
+  const pick = bars.querySelector('select[data-measure]');
+  assert.deepEqual([...pick.options].map((o) => o.textContent), ['Revenue (USD)', 'Orders', 'Change %']);
+  pick.value = '2';
+  pick.dispatchEvent(new env.window.Event('change'));
+  assert.equal(text(bars.querySelector('.gp-fig-cap')), 'Change % by Region');
+  const changed = [...bars.querySelectorAll('.gp-marks [tabindex]')].map((m) => m.getAttribute('aria-label'));
+  assert.deepEqual(changed, ['EMEA: 9.4%', 'APAC: 6.8%', 'North America: 4.2%', 'LATAM: 2.1%', 'Other: n/a'], 'a missing value is n/a, sorted last, never 0');
+  assert.ok(bars.querySelector('.gp-bar-row[data-label="Other"] .gp-bar') === null, 'no bar drawn for a missing value');
+
+  // Line: three comparable series share one axis with a legend; the missing partner day is a gap.
+  const line = arts[2];
+  assert.deepEqual([...line.querySelectorAll('.gp-legend li')].map((li) => text(li)), ['Web', 'Store', 'Partner']);
+  assert.equal(line.querySelector('select[data-measure]'), null);
+  assert.equal(line.querySelectorAll('[data-series="m3"] polyline').length, 2, 'the gap splits the partner line');
+  assert.equal(text(line.querySelector('.gp-fig-note')), '1 missing value shown as gaps');
+  const lm = [...line.querySelectorAll('.gp-marks [tabindex]')];
+  assert.equal(lm.length, 14);
+  assert.equal(lm[3].getAttribute('aria-label'), 'Oct 4, 2026: Web $45,020, Store $30,250, Partner n/a');
+  lm[0].focus();
+  lm[0].dispatchEvent(new env.window.KeyboardEvent('keydown', { key: 'End', bubbles: true }));
+  assert.equal(env.document.activeElement, lm[13]);
+  assert.equal(line.querySelector('.gp-cross').getAttribute('visibility'), 'visible');
+
+  // KPI: Summary | Table, compact big numbers with the exact value, percent from a fraction.
+  const kpi = arts[3];
+  assert.deepEqual([...kpi.querySelectorAll('.gp-seg label')].map((l) => l.textContent), ['Summary', 'Table']);
+  assert.deepEqual([...kpi.querySelectorAll('.gp-kpi')].map((t) => [text(t.querySelector('.gp-kpi-label')), text(t.querySelector('.gp-kpi-value')), text(t.querySelector('.gp-kpi-exact'))]), [
+    ['Total Revenue (USD)', '$1.24M', '$1,240,512.40'],
+    ['Orders', '10.8K', '10,831'],
+    ['Avg Order Value (USD)', '$114.53', ''],
+    ['Change Ratio', '6.1%', ''],
+  ]);
+  assert.match(kpi.querySelector('.gp-kpi:nth-child(4)').getAttribute('title'), /fractions \(0 to 1\)/);
+  assert.deepEqual(parts(kpi.querySelector('.gp-kpi-context')), ['Month', 'Sep 1, 2026']);
+
+  // Scatter: run IDs label the points, never an axis; the incomplete run is left out and said so.
+  const sc = arts[4];
+  assert.equal(sc.querySelectorAll('.gp-marks [tabindex]').length, 17);
+  assert.equal(sc.querySelector('.gp-marks [tabindex]').getAttribute('aria-label'), '801104417: Duration (min) 4.2, DBUs 3.9');
+  assert.equal(text(sc.querySelector('.gp-fig-note')), '1 row without both values not shown');
+
+  // Wide record table: no chart and no switch; humanized headers, UTC timestamps, n/a cells.
+  const wide = arts[5];
+  assert.equal(wide.querySelector('.gp-seg'), null);
+  assert.deepEqual([...wide.querySelectorAll('thead th')].map((th) => th.textContent), ['Update ID', 'Pipeline Name', 'State', 'Started at (UTC)', 'Duration (min)', 'Rows Written', 'Error Ratio', 'Cost (USD)', 'Compute', 'Cause']);
+  assert.deepEqual([...wide.querySelectorAll('tbody tr:nth-child(3) td')].map((td) => td.textContent), ['9f2c41d0-demo-0006', 'inventory_gold', 'FAILED', 'Oct 14, 2026, 21:05:17', '30.0', '0', 'n/a', 'n/a', 'Pipelines cluster', 'Timed out waiting for compute']);
+  assert.equal(wide.querySelectorAll('tbody .gp-na').length, 9);
+  assert.equal([...wide.querySelectorAll('tbody tr:nth-child(1) td')][6].textContent, '0.00%');
+  assert.equal([...wide.querySelectorAll('tbody tr:nth-child(1) td')][6].getAttribute('title'), '0');
+  assert.match(wide.querySelector('th[data-col="error_ratio"]').getAttribute('title'), /fractions \(0 to 1\) and shown as percents/);
+  assert.equal(wide.querySelector('.gp-md blockquote').textContent, 'Cost is n/a where the update was still being priced.');
+
+  assert.deepEqual(env.htmlCalls, [], 'no HTML parsing anywhere while rendering');
+  assert.deepEqual(env.jsdomErrors, []);
+  env.close();
+});
+
+test('charts redraw at the new width when the panel resizes (window resize fallback in jsdom)', async () => {
+  const env = await openPanel({ respond: worker({ thread: { id: 'c1', turns: [demoTurn(6)] } }).fn });
+  const host = env.document.querySelector('.gp-chart');
+  assert.equal(env.window.ResizeObserver, undefined, 'jsdom has no ResizeObserver, so the fallback path runs');
+  assert.equal(host.querySelector('svg.gp-svg').getAttribute('width'), '320', 'detached first drawing uses the fallback width');
+  Object.defineProperty(host, 'clientWidth', { configurable: true, get: () => 412 });
+  env.window.dispatchEvent(new env.window.Event('resize'));
+  await settle(200);
+  assert.equal(env.document.querySelector('.gp-chart svg.gp-svg').getAttribute('width'), '412');
   env.close();
 });
 
@@ -332,9 +535,11 @@ test('demo mode end to end in jsdom: real background + router, ask with Enter, D
   for (let i = 0; i < 80 && !env.document.querySelector('.gp-turn[data-phase="done"]'); i++) await settle(100);
   const done = env.document.querySelector('.gp-turn[data-phase="done"]');
   assert.ok(done, 'the DEMO answer arrived through the port signal');
-  assert.match(text(done.querySelector('.gp-text')), /DEMO answer \(synthetic\)/);
+  assert.match(text(done.querySelector('.gp-md')), /DEMO answer \(synthetic\)/);
+  assert.equal(done.querySelector('.gp-md strong').textContent, 'DEMO answer (synthetic).');
+  assert.equal(done.querySelector('.gp-fig').getAttribute('data-chart'), 'bar');
   assert.equal(done.querySelectorAll('tbody tr').length, 5);
-  assert.match(text(done.querySelector('.gp-table-meta')), /5 rows/);
+  assert.equal(text(done.querySelector('.gp-count')), 'Showing 5 of 5 rows');
   assert.equal(fetched, 0, 'demo mode makes no requests');
   env.close();
 });
