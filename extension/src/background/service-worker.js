@@ -32,6 +32,7 @@ importScripts(
   './registration.js',
   './appearance-handlers.js',
   './oauth.js',
+  './session-transport.js',
   './data-service.js',
   './ui-handlers.js',
   './connect-handlers.js',
@@ -48,12 +49,13 @@ const HELPER_PORT = 8766;
 const EXTENSION_ORIGIN = 'chrome-extension://' + chrome.runtime.id;
 
 const store = DCC.store.create(chrome.storage.local);
-const secrets = DCC.secrets.create(chrome.storage.session);
+const secrets = DCC.secrets.create(chrome.storage.session, chrome.storage.local);
 const fetchImpl = (...args) => fetch(...args);
 const helperFactory = (o) => DCC.helperClient.create({ fetch: fetchImpl, getBridge: o.getBridge });
 const helper = helperFactory({ getBridge: () => secrets.getBridge() });
 const oauth = DCC.oauth.create({ chromeApi: chrome, fetch: fetchImpl });
-const data = DCC.dataService.create({ store, secrets, helper, oauth, fetch: fetchImpl });
+const sessionTransport = DCC.sessionTransport.create({ chromeApi: chrome });
+const data = DCC.dataService.create({ store, secrets, helper, oauth, sessionTransport, fetch: fetchImpl });
 
 async function openPage(path) {
   const url = chrome.runtime.getURL(path);

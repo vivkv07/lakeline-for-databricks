@@ -1,8 +1,9 @@
 /*
  * One-click connect. From the popup (or options) on a workspace tab:
- *   page grants site access (+ identity) in its click → this handler signs in with Databricks
- *   (OAuth PKCE), resolves the workspace ID, picks a warehouse automatically, saves the
- *   connection with list prices, registers content scripts and injects into open tabs.
+ *   page grants site access in its click → this handler signs in (Databricks OAuth PKCE, or the
+ *   user's existing browser login relayed through the open tab), resolves the workspace ID,
+ *   picks a warehouse automatically, saves the connection with list prices, registers content
+ *   scripts and injects into open tabs.
  * Progress is mirrored to chrome.storage.session so a popup that closed while the sign-in window
  * was open can show the outcome next time.
  */
@@ -35,6 +36,11 @@
       return id;
     }
 
+    /**
+     * @param msg {url|origin, method?: 'oauth'|'session', clientId?}
+     * Without a method: Sign in with Databricks when a client ID is configured; otherwise the
+     * caller gets {needsChoice} so the user can pick their Databricks login, a client ID, or a token.
+     */
     async function connect(msg) {
       const cls = ids.classifyOrigin(msg.url || msg.origin);
       if (!cls.ok || cls.kind !== 'workspace') throw new errors.DccError({ code: 'UNKNOWN', message: 'Open a Databricks workspace tab, then click Connect' });
@@ -43,19 +49,28 @@
 
       const settings = await store.getSettings();
       const clientId = msg.clientId !== undefined && msg.clientId !== '' ? String(msg.clientId).trim() : settings.oauth.clientId;
-      if (!DCC.oauth.isClientId(clientId)) {
-        return { needsClientId: true, redirectUrl: chromeApi.identity.getRedirectURL() };
+      let method = msg.method === 'session' || msg.method === 'oauth' ? msg.method : null;
+      if (!method) method = DCC.oauth.isClientId(clientId) ? 'oauth' : null;
+      if (!method || (method === 'oauth' && !DCC.oauth.isClientId(clientId))) {
+        return { needsChoice: true, needsClientId: true, redirectUrl: chromeApi.identity.getRedirectURL() };
       }
-      if (clientId !== settings.oauth.clientId) await store.updateSettings({ oauth: { clientId } });
 
-      await setStatus({ state: 'signing-in', origin });
-      await oauth.signIn({ origin, clientId, purpose: 'cost', interactive: true });
+      if (method === 'oauth') {
+        if (clientId !== settings.oauth.clientId) await store.updateSettings({ oauth: { clientId } });
+        await setStatus({ state: 'signing-in', origin });
+        await oauth.signIn({ origin, clientId, purpose: 'cost', interactive: true });
+      } else {
+        // Browser login works through the tab: make sure our bridge is loaded there first.
+        await setStatus({ state: 'checking-login', origin });
+        await DCC.registration.sync(chromeApi);
+        await DCC.registration.injectIntoOpenTabs(chromeApi, origin);
+      }
 
       await setStatus({ state: 'configuring', origin });
       let headerId = null;
       const list = await data.listWarehouses({
         origin,
-        authMode: 'oauth',
+        authMode: method,
         onHeaders: (h) => {
           const v = h.get('x-databricks-org-id');
           if (V.isWorkspaceId(v)) headerId = v;
@@ -70,7 +85,7 @@
       const saved = await store.saveConnection({
         origin,
         workspaceId,
-        authMode: 'oauth',
+        authMode: method,
         // Keep an explicit earlier choice; otherwise Automatic resolved now.
         warehouse: existing && existing.warehouse && existing.warehouse.mode === 'manual' ? existing.warehouse : { mode: 'auto', resolvedId: auto.id, resolvedName: auto.name },
         priceTable: existing ? existing.priceTable : DCC.pricing.DEFAULT_PRICE_TABLE,
@@ -81,7 +96,7 @@
       data.cache.clear();
       await DCC.registration.sync(chromeApi);
       const injected = await DCC.registration.injectIntoOpenTabs(chromeApi, origin);
-      const result = { connected: true, origin, workspaceId, warehouseName: saved.value.warehouse.resolvedName || saved.value.warehouse.name || null, injected };
+      const result = { connected: true, method, origin, workspaceId, warehouseName: saved.value.warehouse.resolvedName || saved.value.warehouse.name || null, injected };
       await setStatus(Object.assign({ state: 'connected' }, result));
       return result;
     }

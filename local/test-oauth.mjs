@@ -90,7 +90,7 @@ test('sign-in uses PKCE S256, the workspace OIDC endpoints and SQL-only scope fo
   assert.equal(await o.getAccessToken(ORIGIN), 'at-1');
   const stored = JSON.stringify(chrome.storage.session.data);
   assert.match(stored, /at-1/, 'tokens live in session storage');
-  assert.deepEqual(await o.describe(ORIGIN), { cost: true, monitor: false });
+  assert.deepEqual(await o.describe(ORIGIN), { cost: true, apis: false, monitor: false, genie: false });
 });
 
 test('monitor sign-in asks separately for all-apis', async () => {
@@ -175,7 +175,7 @@ test('one click: sign in, detect workspace ID from the API, pick the warehouse, 
 test('one click asks for the one-time client ID when none is configured, with the redirect URL to register', async () => {
   const env = await connectEnv({ clientId: null });
   const out = await env.handlers['connect:oneClick'].handle({ url: ORIGIN + '/jobs' });
-  assert.deepEqual(out, { needsClientId: true, redirectUrl: REDIRECT });
+  assert.deepEqual(out, { needsChoice: true, needsClientId: true, redirectUrl: REDIRECT });
   assert.equal(env.chrome.calls.auth.length, 0);
   const second = await env.handlers['connect:oneClick'].handle({ url: ORIGIN + '/jobs', clientId: CLIENT });
   assert.equal(second.connected, true);

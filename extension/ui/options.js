@@ -632,6 +632,9 @@
         await fillRedirectUrl();
         return show(out, messageBox('warn', 'One-time setup needed', ['Paste the OAuth client ID from your Databricks admin below, then select Sign in with Databricks again.']));
       }
+      if (!res.data || res.data.connected !== true || !V.isWorkspaceId(res.data.workspaceId)) {
+        return show(out, messageBox('error', 'Not connected', ['The extension did not confirm the connection. Reload the extension and the Databricks tab, then try again.']));
+      }
       await selectWorkspace(sel.origin + '/?o=' + res.data.workspaceId);
       show($('oauth-result'), messageBox('ok', 'Connected ' + sel.host, ['Workspace ' + res.data.workspaceId + (res.data.warehouseName ? ' · Automatic → ' + res.data.warehouseName : '') + ' · list prices.', 'Costs now show inside the workspace. You can change the warehouse or price table below.']));
       return undefined;
@@ -654,6 +657,9 @@
       await refreshState();
       if (gen !== S.selGen) return show(out, null);
       if (!res.ok) return show(out, errorBox(res.error));
+      if (!res.data || res.data.connected !== true || !V.isWorkspaceId(res.data.workspaceId)) {
+        return show(out, messageBox('error', 'Not connected', ['The extension did not confirm the connection. Reload the extension and the Databricks tab, then try again.']));
+      }
       await selectWorkspace(sel.origin + '/?o=' + res.data.workspaceId);
       show($('session-result'), messageBox('ok', 'Connected ' + sel.host + ' with your Databricks login', ['Workspace ' + res.data.workspaceId + (res.data.warehouseName ? ' · Automatic → ' + res.data.warehouseName : '') + ' · list prices.', 'Keep a tab of this workspace open for costs, the monitor and Genie.']));
       return undefined;

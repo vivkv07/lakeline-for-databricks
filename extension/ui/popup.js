@@ -225,14 +225,15 @@
       .catch((e) => showAlert(backgroundError(e && e.message)));
   }
 
-  async function oneClick(clientId) {
+  async function oneClick(clientId, method) {
     const btn = $('connect-btn');
     btn.disabled = true;
     $('oauth-save-connect').disabled = true;
     showAlert(null);
-    setTabLine(null, 'Signing in with Databricks… finish in the window that opens.');
+    setTabLine(null, method === 'session' ? 'Checking your Databricks login in the open tab…' : 'Signing in with Databricks… finish in the window that opens.');
     const msg = { type: 'connect:oneClick', url: tab.url };
     if (clientId) msg.clientId = clientId;
+    if (method) msg.method = method;
     const r = await send(msg);
     btn.disabled = false;
     $('oauth-save-connect').disabled = false;
@@ -242,9 +243,14 @@
       if (r.error && /^OAUTH_CLIENT_/.test(r.error.code)) showSetup();
       return;
     }
-    if (r.data && r.data.needsClientId) {
+    if (r.data && (r.data.needsChoice || r.data.needsClientId)) {
       setTabLine(null, '');
       showSetup(r.data.redirectUrl);
+      return;
+    }
+    if (!r.data || r.data.connected !== true) {
+      setTabLine(null, '');
+      showAlert({ code: 'UNKNOWN', title: 'Not connected', steps: ['The extension did not confirm the connection. Reload the extension and the Databricks tab, then try again.'] });
       return;
     }
     $('oauth-setup').hidden = true;
@@ -252,7 +258,7 @@
     if (fresh.ok && fresh.data) state = fresh.data;
     renderSettings();
     renderTab();
-    setTabLine('ok', 'Connected · workspace ' + r.data.workspaceId + (r.data.warehouseName ? ' · ' + r.data.warehouseName : '') + '. Costs now show on the page.');
+    setTabLine('ok', 'Connected · workspace ' + r.data.workspaceId + (r.data.warehouseName ? ' · ' + r.data.warehouseName : '') + (r.data.method === 'session' ? ' · your Databricks login' : '') + '. Costs now show on the page.');
   }
 
   function onConnect() {
@@ -535,6 +541,10 @@
   function wire() {
     $('connect-btn').addEventListener('click', onConnect);
     $('oauth-save-connect').addEventListener('click', onSaveAndConnect);
+    $('use-session').addEventListener('click', () => {
+      if (tab && tab.supported && tab.kind === 'workspace') requestAccessThen(() => oneClick(undefined, 'session'));
+    });
+    $('use-token').addEventListener('click', () => openOptionsForConnect());
     $('oauth-copy').addEventListener('click', onCopyRedirect);
     $('oauth-guide').addEventListener('click', () => openPage('guide', 'sign-in'));
     $('open-options').addEventListener('click', () => openPage('options'));

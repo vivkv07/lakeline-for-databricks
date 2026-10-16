@@ -31,7 +31,13 @@
       <button type="button" class="dcc-btn dcc-btn--primary" id="connect-btn">Connect Databricks</button>
     </div>
     <div id="oauth-setup" class="pp-oauth-setup dcc-card" hidden>
-      <p class="pp-line"><strong>One-time setup.</strong> An account admin registers Lakeline in Databricks once. After that, Connect is one click for every workspace in the account.</p>
+      <p class="pp-line"><strong>Choose how to sign in.</strong></p>
+      <div class="pp-actions pp-choice">
+        <button type="button" class="dcc-btn dcc-btn--primary" id="use-session">Use my Databricks login</button>
+        <button type="button" class="dcc-btn" id="use-token">Use a token</button>
+      </div>
+      <p class="pp-line pp-muted">"Use my Databricks login" needs no setup and works while a tab of this workspace is open. It's experimental: it relies on an undocumented Databricks API.</p>
+      <p class="pp-line"><strong>Or sign in with Databricks (one-time setup).</strong> An account admin registers Lakeline in Databricks once. After that, Connect is one click for every workspace in the account.</p>
       <ol class="pp-steps">
         <li>Account console, Settings, App connections, Add connection.</li>
         <li>Redirect URL: <code id="oauth-redirect" class="pp-code"></code> <button type="button" class="dcc-btn pp-copy" id="oauth-copy">Copy</button></li>
