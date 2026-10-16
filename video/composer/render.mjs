@@ -19,7 +19,12 @@
 // Options: --workers N (parallel pages, default 4), --crf 15, --quality 95, --no-music,
 //   --allow-placeholder (write the final file names even with placeholders), --port N,
 //   --placeholder-root DIR (env LAKELINE_PLACEHOLDER_ROOT), --keep (keep the video-only file),
-//   --review (stills only: placeholder tag without the full-frame watermark grid, for layout review).
+//   --review (stills only: placeholder tag without the full-frame watermark grid, for layout review),
+//   --allow-pacing / --allow-markers (render finals despite pacing-rule or music-marker failures),
+//   --no-share (skip the 720p share copy).
+// --info also runs the pacing check (notes/VIDEO.md, Pacing v2): it lists every camera move with
+// start, duration, zoom and hold-after, and exits non-zero when any rule is violated. Final
+// renders refuse to start on a pacing violation or a music-marker mismatch.
 import http from 'node:http';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -28,6 +33,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { once } from 'node:events';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
+import { RULES } from './timeline.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '../..');
@@ -62,6 +68,9 @@ function parseArgs(argv) {
       case '--placeholder-root': a.phRoot = path.resolve(v()); break;
       case '--keep': a.keep = true; break;
       case '--review': a.review = true; break;
+      case '--allow-pacing': a.allowPacing = true; break;
+      case '--allow-markers': a.allowMarkers = true; break;
+      case '--no-share': a.noShare = true; break;
       case '-h': case '--help': a.help = true; break;
       default: throw new Error('unknown option ' + k);
     }
@@ -209,9 +218,9 @@ function describe(file) {
 /* ---------------------------------------------------------------- markers */
 
 function checkMarkers(timeline) {
-  if (!fs.existsSync(MARKERS)) { console.log('music markers: none yet (' + path.relative(REPO, MARKERS) + ')'); return; }
+  if (!fs.existsSync(MARKERS)) { console.log('music markers: none yet (' + path.relative(REPO, MARKERS) + ')'); return false; }
   let j;
-  try { j = JSON.parse(fs.readFileSync(MARKERS, 'utf8')); } catch (e) { console.log('music markers: unreadable: ' + e.message); return; }
+  try { j = JSON.parse(fs.readFileSync(MARKERS, 'utf8')); } catch (e) { console.log('music markers: unreadable: ' + e.message); return false; }
   const times = [];
   const visit = (v, key) => {
     if (typeof v === 'number' && /start|time|t$|^t\d*$|at|sec|^\d+$/i.test(String(key))) times.push({ key: String(key), t: v });
@@ -224,12 +233,71 @@ function checkMarkers(timeline) {
   };
   visit(j, 'root');
   console.log('music markers vs timeline (scene start):');
+  let ok = true;
   for (const s of timeline) {
     const near = times.reduce((b, m) => (!b || Math.abs(m.t - s.t0) < Math.abs(b.t - s.t0) ? m : b), null);
     const d = near ? near.t - s.t0 : NaN;
     const flag = Number.isFinite(d) && Math.abs(d) <= 1 / 30 + 1e-6 ? 'ok' : 'OFF';
+    if (flag !== 'ok') ok = false;
     console.log(`  ${String(s.n).padStart(2)} ${s.key.padEnd(9)} ${s.t0.toFixed(2).padStart(7)}  marker ${near ? near.t.toFixed(3).padStart(8) + ' (' + near.key + ')' : 'n/a'}  ${Number.isFinite(d) ? (d >= 0 ? '+' : '') + d.toFixed(3) + ' s' : ''} ${flag}`);
   }
+  return ok;
+}
+
+/* ----------------------------------------------------------------- pacing */
+
+/**
+ * Check the Pacing v2 rules (notes/VIDEO.md) on the page's per-scene pacing data and print the
+ * camera-move table. Returns the list of violations.
+ */
+function checkPacing(scenes) {
+  const R = RULES, eps = 1e-6, v = [], rows = [];
+  const f = (x) => x.toFixed(2);
+  for (const s of scenes) {
+    const tag = `scene ${s.n}`;
+    const beats = s.beats.map(([nm, r]) => [nm, s.t0 + r]);
+    const beatOf = (t) => { let b = beats[0][0]; for (const [nm, bt] of beats) if (t >= bt - eps) b = nm; return b; };
+    if (!s.startFull) v.push(`${tag}: does not open on the full window`);
+    if (s.moves.length && s.moves[0].t0 < s.t0 + R.establish - eps) v.push(`${tag}: first move at ${f(s.moves[0].t0)} s, before the ${R.establish} s establishing shot`);
+    const perBeat = {};
+    s.moves.forEach((m, i) => {
+      const end = m.t0 + m.dur, next = s.moves[i + 1];
+      const hold = (next ? next.t0 : s.t1) - end;
+      const beat = beatOf(m.t0);
+      rows.push({ n: s.n, i: i + 1, beat, start: m.t0, dur: m.dur, kFrom: m.kFrom, kTo: m.kTo, hold, cut: !next });
+      const id = `${tag} move ${i + 1} (${f(m.t0)} s)`;
+      if (m.dur < R.move[0] - eps || m.dur > R.move[1] + eps) v.push(`${id}: ${f(m.dur)} s, outside ${R.move[0]}–${R.move[1]} s`);
+      if (m.ease !== 'inOutCubic') v.push(`${id}: not eased in-out cubic`);
+      if (Math.max(m.kFrom, m.kTo) > R.maxZoom + 1e-3) v.push(`${id}: zoom ${f(Math.max(m.kFrom, m.kTo))}× over ${R.maxZoom}×`);
+      if (next && hold < R.hold - eps) v.push(`${id}: holds ${f(hold)} s before the next move (min ${R.hold} s)`);
+      perBeat[beat] = (perBeat[beat] || 0) + 1;
+      if (perBeat[beat] === 2) v.push(`${tag}: more than one camera move in beat '${beat}'`);
+      if (next && m.kTo < m.kFrom - 0.01 && next.kTo > next.kFrom + 0.01 && next.t0 - end < R.reZoom - eps) v.push(`${id}: zooms out then back in within ${R.reZoom} s`);
+      // Zooming while zoomed in is allowed only toward an area already in frame (a related area).
+      const inside = (r, f) => r && f && r.x >= f.x - 2 && r.y >= f.y - 2 && r.x + r.w <= f.x + f.w + 2 && r.y + r.h <= f.y + f.h + 2;
+      if (m.kFrom > 1.02 && m.kTo > 1.02 && Math.abs(m.kTo - m.kFrom) / m.kFrom > 0.1 && !inside(m.toRect, m.fromVisible)) v.push(`${id}: pans and zooms at the same time to an area outside the frame`);
+      if (end > s.t1 + eps) v.push(`${id}: runs past the cut`);
+      for (const c of s.captions) if (m.t0 < c.t0 + R.capIn - eps && end > c.t0 + eps) v.push(`${id}: moves while the caption "${c.head}" enters`);
+    });
+    if (!s.endFull) v.push(`${tag}: cuts while not on the full window (pull back first)`);
+    for (const c of s.captions) if (c.t1 - c.t0 < R.capMin - eps) v.push(`${tag}: caption "${c.head}" is on screen ${f(c.t1 - c.t0)} s (min ${R.capMin} s)`);
+    for (const g of s.cursor) if (g.dist > 4 && g.end - g.start < R.cursorMove - eps) v.push(`${tag}: cursor move at ${f(g.start)} s takes ${f(g.end - g.start)} s (min ${R.cursorMove} s)`);
+    for (const tc of s.clicks) for (const st of s.states) if (st.t > tc - eps && st.t < tc + R.clickPause - eps) v.push(`${tag}: ${st.label || st.kind} changes ${f(st.t - tc)} s after the click at ${f(tc)} s (min ${R.clickPause} s)`);
+    for (const st of s.states) {
+      if (st.kind === 'state' && (st.d < R.xfade[0] - eps || st.d > R.xfade[1] + eps)) v.push(`${tag}: crossfade ${st.label} at ${f(st.t)} s takes ${f(st.d)} s (${R.xfade[0]}–${R.xfade[1]} s)`);
+      if (st.kind === 'tab' && Math.abs(st.d - R.tab) > 1e-3) v.push(`${tag}: tab switch ${st.label} at ${f(st.t)} s takes ${f(st.d)} s (${R.tab} s)`);
+    }
+  }
+  console.log('pacing check: camera moves (absolute seconds; zoom relative to the full-window shot)');
+  console.log('  scene  #  beat        start    dur   zoom          hold after');
+  for (const r of rows) console.log(`  ${String(r.n).padStart(5)}  ${r.i}  ${r.beat.padEnd(10)} ${f(r.start).padStart(7)}  ${f(r.dur)}  ${f(r.kFrom)}→${f(r.kTo)}×   ${f(r.hold)}${r.cut ? ' (to cut)' : ''}`);
+  const quiet = scenes.filter((s) => !s.moves.length).map((s) => s.n);
+  if (quiet.length) console.log(`  no camera moves (full window throughout): scenes ${quiet.join(', ')}`);
+  const counts = scenes.reduce((a, s) => ({ captions: a.captions + s.captions.length, clicks: a.clicks + s.clicks.length, states: a.states + s.states.length, cursor: a.cursor + s.cursor.length }), { captions: 0, clicks: 0, states: 0, cursor: 0 });
+  console.log(`  checked ${rows.length} moves, ${counts.captions} captions, ${counts.clicks} clicks, ${counts.states} UI changes, ${counts.cursor} cursor moves`);
+  if (v.length) { console.log(`PACING CHECK FAILED (${v.length}):`); for (const x of v) console.log('  ✗ ' + x); }
+  else console.log('pacing check: all rules pass');
+  return v;
 }
 
 /* ------------------------------------------------------------------ main */
@@ -257,8 +325,10 @@ async function main() {
     for (const [n, src] of Object.entries(info.sources)) console.log(`  scene ${String(n).padStart(2)}: ${src}`);
     if (info.placeholders.length) console.log(`PLACEHOLDERS IN USE (watermarked): scenes ${info.placeholders.join(', ')}`);
     for (const w of info.warnings) console.log('  warning: ' + w);
-    checkMarkers(info.timeline);
-    if (a.info) return;
+    const markersOk = checkMarkers(info.timeline);
+    const pacing = await first.page.evaluate(() => window.__composer.pacing());
+    const violations = checkPacing(pacing);
+    if (a.info) { if (violations.length) process.exitCode = 1; return; }
 
     if (a.stills) {
       const dir = a.outDir || fs.mkdtempSync(path.join(os.tmpdir(), 'lakeline-stills-'));
@@ -284,6 +354,8 @@ async function main() {
     const hasMusic = fs.existsSync(MUSIC) && !a.noMusic;
     if (!a.preview && !spot && !hasMusic && !a.noMusic) throw new Error('music missing: ' + MUSIC + ' (use --no-music to render without it)');
     if (!a.preview && !spot && info.placeholders.length && !a.allowPlaceholder) throw new Error('placeholders in use for scenes ' + info.placeholders.join(', ') + '; final deliverables need real captures (or pass --allow-placeholder)');
+    if (!a.preview && !spot && violations.length && !a.allowPacing) throw new Error(`pacing check failed (${violations.length}); fix the choreography or pass --allow-pacing`);
+    if (!a.preview && !spot && hasMusic && !markersOk && !a.allowMarkers) throw new Error('music markers do not match the timeline; wait for the re-composed music or pass --allow-markers');
     fs.mkdirSync(OUT, { recursive: true });
     const tag = spot ? `lakeline-spot-${(a.from || 0).toFixed(1)}-${(f1 / fps).toFixed(1)}` : 'lakeline-launch';
     const finalName = a.preview ? `${tag}-preview.mp4` : spot ? `${tag}-4k.mp4` : 'lakeline-launch-4k.mp4';
@@ -355,6 +427,19 @@ async function main() {
       run('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-i', final, '-map', '0', '-vf', 'scale=1920:1080:flags=lanczos+accurate_rnd+full_chroma_int,format=yuv420p',
         ...X264(16, 'slow'), ...COLOR, '-c:a', 'copy', '-movflags', '+faststart', hd], '1080p');
       console.log(describe(hd));
+      if (!a.noShare) {
+        // A share copy under 30 MB: 1280×720, two-pass H.264 at the bitrate that fits (target
+        // 29.0 MB including AAC 128 kb/s and about 2 % container overhead).
+        const share = path.join(OUT, 'lakeline-launch-720p-share.mp4');
+        const kbps = Math.floor(((29.0e6 * 8) / secs - 128000) * 0.98 / 1000);
+        const vf720 = 'scale=1280:720:flags=lanczos+accurate_rnd+full_chroma_int,format=yuv420p';
+        const enc = ['-c:v', 'libx264', '-profile:v', 'high', '-preset', 'slow', '-b:v', kbps + 'k', '-maxrate', Math.round(kbps * 1.6) + 'k', '-bufsize', Math.round(kbps * 3) + 'k', '-pix_fmt', 'yuv420p', '-x264-params', 'colorprim=bt709:transfer=bt709:colormatrix=bt709'];
+        const plog = path.join(tmp, 'x264pass');
+        run('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-i', final, '-vf', vf720, ...enc, '-pass', '1', '-passlogfile', plog, '-an', '-f', 'mp4', '/dev/null'], '720p pass 1');
+        run('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-i', final, '-vf', vf720, ...enc, '-pass', '2', '-passlogfile', plog, ...COLOR, '-c:a', 'aac', '-b:a', '128k', '-ar', '48000', '-ac', '2', '-movflags', '+faststart', share], '720p pass 2');
+        console.log(describe(share) + `\n  video target ${kbps} kb/s · ${(fs.statSync(share).size / 1e6).toFixed(2)} MB`);
+        if (fs.statSync(share).size >= 30e6) throw new Error('720p share copy is not under 30 MB');
+      }
     }
     if (a.keep) console.log('video-only: ' + videoOnly); else fs.rmSync(tmp, { recursive: true, force: true });
     console.log(`done in ${((Date.now() - started) / 1000).toFixed(0)} s`);

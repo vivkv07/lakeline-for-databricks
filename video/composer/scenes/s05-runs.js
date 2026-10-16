@@ -1,7 +1,8 @@
-// Scene 5 · Run costs (light). The nightly_sales_etl runs list with a badge on every run and a
-// zoom on the spike (backfill) run; then the customer_360_refresh detail page whose title total
-// includes the pipeline it triggers (its keyboard-focus state shows the real focus ring).
-import { productScene, focusRect, rx } from './product.js';
+// Scene 5 · Run costs (light), 14 s. The nightly_sales_etl runs list with a badge on every run and
+// a push-in on the spike (backfill) run; a pan to the title total, then the customer_360_refresh
+// detail page whose title total includes the pipeline it triggers (its keyboard-focus state shows
+// the real focus ring). Camera: push-in, one pure pan at the same zoom, pull-back before the cut.
+import { productScene, rx, PACE } from './product.js';
 import { pageWindow, hostFor, union, grow } from './common.js';
 
 export default function build(ctx, { n, t0, t1 }) {
@@ -11,30 +12,32 @@ export default function build(ctx, { n, t0, t1 }) {
   const det = sc.S({ kind: 'page', theme: 'light', hints: ['customer-360-detail', 'detail', 'customer-360'], not: ['focus'], exclude: [runs], index: 1 });
   const focusSt = sc.S({ kind: 'page', theme: 'light', hints: ['title-focus', 'focus'], strict: true, exclude: [runs, det] });
   const host = hostFor(sc, runs, 'prod');
-  const tNav = L(5.15), tFocus = L(7.1);
-  const sched = [{ t: -1e9, i: 0 }, { t: tNav, i: 1, d: 0.4 }];
-  if (focusSt) sched.push({ t: tFocus, i: 2, d: 0.2 });
+  const tNav = L(8.7), tFocus = L(10.7);
+  const sched = [{ t: -1e9, i: 0 }, { t: tNav, i: 1 }];
+  if (focusSt) sched.push({ t: tFocus, i: 2 });
   const { win } = pageWindow(sc, { theme: 'light', states: [runs, det, focusSt], host, sched });
-  const P = (st, hints, not) => { const b = st ? sc.B(st, hints, not) : null; return b ? win.pageRect(b) : null; };
-  const list = P(runs, ['runs-table', 'run-list', 'runs-list', 'table']);
-  const spike = P(runs, ['spike-row', 'spike-run', 'backfill', 'spike'], ['badge', 'duration']);
-  const spikeBadge = P(runs, ['spike-badge', 'backfill-badge'], []);
-  const title = P(det, ['title-badge', 'title-total', 'job-total'], ['aria']);
-  const titleRow = P(det, ['page-title', 'title', 'heading'], ['badge']);
+  const P = (st, hints, not) => { const b = st ? sc.Bq(st, hints, not) : null; return b ? win.pageRect(b) : null; };
+  const spike = P(runs, ['spike-row'], []);
+  const spikeBadge = P(runs, ['spike-badge'], []);
+  const spikeDur = P(runs, ['spike-duration'], []);
+  const title = union(P(runs, ['page-title'], []), P(runs, ['title-badge'], ['aria']), P(det, ['page-title'], []), P(det, ['title-badge'], ['aria']));
+  const titleBadge = P(det, ['title-badge'], ['aria']);
 
-  // Camera: full window, push in on the runs list, then the spike row; pull back for the page
-  // change; push in on the detail page's title total; pull back before the cut.
+  // Camera: full window, push-in on the spike run (the rows above it for context), a pure pan
+  // (same zoom) to the title area before the page changes, pull-back before the cut.
   sc.cam.set(sc.full());
-  if (list) sc.cam.to(L(0.8), 1.3, sc.focus(grow(list, 20, 20), { k: 1.3 }));
-  if (spike) sc.cam.to(L(2.45), 1.2, sc.focus(focusRect(grow(spike, 20, 60), 1000, 0), { k: 1.8 }));
-  sc.cam.to(tNav - 0.45, 0.9, sc.full());
-  const tf = union(title, titleRow);
-  if (tf) sc.cam.to(L(6.0), 1.3, sc.focus(focusRect(grow(tf, 40, 60), 900, 0), { k: 1.9 }));
-  sc.cam.to(t1 - 1.0, 0.9, sc.full());
+  let k = null;
+  if (spike) {
+    const r = union(spike, spikeBadge, spikeDur);
+    const v = sc.focus({ x: r.x, y: r.y - 190, w: Math.min(r.w, 1160), h: r.h + 190 });
+    k = v.s / sc.full().s;
+    sc.move(L(1.5), v);
+  }
+  if (title && k) sc.move(L(7.0), sc.focus(grow(title, 40, 60), { k }));
+  sc.move(L(12.0), sc.full());
 
-  if (spike || spikeBadge) sc.ring(spike || spikeBadge, { t0: L(3.1), t1: L(4.9), warm: true });
-  // The focus state draws the product's own focus ring; only ring the title total without it.
-  if (title && !focusSt) sc.ring(title, { t0: L(7.0), t1: L(9.1) });
+  if (spikeBadge || spike) sc.ring(spikeBadge || spike, { t0: L(3.3), t1: L(6.8), warm: true });
+  if (titleBadge && !focusSt) sc.ring(titleBadge, { t0: tFocus, t1: L(11.9) });
 
   const spikeAmt = sc.T(runs, ['spike-run-badge', 'spike-badge', 'spike-run-cost'], []);
   const spikeDay = sc.T(runs, ['spike-run-start', 'spike-start', 'spike-date'], []);
@@ -42,7 +45,8 @@ export default function build(ctx, { n, t0, t1 }) {
   const ariaText = sc.Tq(det, ['title-badge-aria', 'aria'], []);
   const jobTotal = rx(totalText, /(\$[\d,]+(?:\.\d+)?)/);
   const pipe = rx(ariaText, /Includes\s+(\$[\d,]+(?:\.\d+)?)\s+from triggered pipeline/i);
-  sc.caps.add({ t0: L(0.25), t1: tNav - 0.1, eyebrow: '03 · Run costs', head: 'Every run, priced.', detail: [{ label: 'Backfill run', num: spikeDay }, '·', { num: spikeAmt }] });
-  sc.caps.add({ t0: tNav + 0.2, t1: t1 - 0.05, eyebrow: '03 · Run costs', head: 'Job totals include the pipelines they trigger.', detail: [{ label: 'Job total', num: jobTotal }, '·', { label: 'includes', num: pipe, suffix: 'from triggered pipelines' }] });
+  const steps = { labels: ['Every run', 'Job total'], times: [t0, tNav] };
+  sc.caps.add({ t0: L(0.3), t1: L(8.5), head: 'Every run, priced.', steps, detail: [{ label: 'Backfill run', num: spikeDay }, '·', { num: spikeAmt }] });
+  sc.caps.add({ t0: tNav, t1: t1 - 0.05, head: 'Job totals include the pipelines they trigger.', steps, detail: [{ label: 'Job total', num: jobTotal }, '·', { label: 'includes', num: pipe, suffix: 'from triggered pipelines' }] });
   return sc;
 }

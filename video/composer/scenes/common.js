@@ -32,7 +32,7 @@ export function pageWindow(sc, { theme, states, sched, tabs, active = 0, panelW 
   // Keep the window behind popups, rings and the cursor.
   sc.world.insertBefore(win.el, sc.world.firstChild);
   sc.setWindow(win);
-  const stack = crossStack(win.content, states, sched);
+  const stack = crossStack(win.content, states, sched, { log: sc, label: 'page' });
   sc.add((t) => stack.update(t));
   return { win, stack };
 }

@@ -126,6 +126,8 @@ async function boot() {
   window.__composer = Object.assign(window.__composer || {}, {
     seek,
     info: () => ({ duration: DURATION, fps: FPS, timeline: TIMELINE, placeholders, sources: manifests.sources, warnings }),
+    /** Camera moves, captions, clicks and UI changes per product scene, for the pacing check. */
+    pacing: () => built.filter((b) => typeof b.pacing === 'function').map((b) => b.pacing()),
   });
   return { seek };
 }

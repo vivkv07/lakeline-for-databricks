@@ -140,8 +140,9 @@ export function security(ctx, { t0, t1 }) {
       eb.style.opacity = ep0.toFixed(4);
       eb.style.transform = `translateX(${((1 - ep0) * -16).toFixed(3)}px)`;
       head.update(t, t0 + 0.35);
+      // One point at a time, about a second apart, so each can be read.
       rows.forEach((r, i) => {
-        const ts = t0 + 1.35 + i * 0.5;
+        const ts = t0 + 1.6 + i * 0.95;
         const p = ep(t, ts, 0.9);
         r.line.style.transform = `scaleX(${E.camera(prog(t, ts - 0.1, ts + 0.8)).toFixed(5)})`;
         r.tile.style.opacity = p.toFixed(4);
