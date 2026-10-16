@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
   <title>Connection preferences · Databricks Cost Companion</title>
   <link rel="stylesheet" href="brand.css">
   <link rel="stylesheet" href="options.css">
@@ -12,27 +13,27 @@
 
   <header class="op-header">
     <div class="op-header-inner">
-      <svg class="dcc-mark op-mark" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect width="16" height="16" rx="4" fill="#0f766e"/><rect x="3.5" y="8.5" width="2" height="4" fill="#fff"/><rect x="7" y="5.5" width="2" height="7" fill="#fff"/><rect x="10.5" y="3.5" width="2" height="9" fill="#fff"/></svg>
-      <div>
-        <p class="op-eyebrow">Databricks Cost Companion</p>
+      <svg class="dcc-mark op-mark" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect width="16" height="16" rx="4" fill="#000000"/><rect x="3.5" y="8.5" width="2" height="4" fill="#FFFFFF"/><rect x="7" y="5.5" width="2" height="7" fill="#FFFFFF"/><rect x="10.5" y="3.5" width="2" height="9" fill="#5B8CFF"/></svg>
+      <div class="op-header-text">
+        <p class="dcc-eyebrow">Databricks Cost Companion</p>
         <h1>Connection preferences</h1>
       </div>
-      <button type="button" class="dcc-link op-header-link" data-guide="connection">How costs are calculated</button>
+      <button type="button" class="dcc-btn op-header-link" data-guide="connection">How costs are calculated</button>
     </div>
   </header>
 
   <div class="op-layout">
     <nav class="op-toc" aria-label="On this page">
       <ol>
-        <li><a href="#connect">Workspace</a></li>
-        <li><a href="#site-access">Site access</a></li>
-        <li><a href="#auth">Sign-in</a></li>
-        <li><a href="#warehouse">SQL warehouse</a></li>
-        <li><a href="#billing">Billing source</a></li>
-        <li><a href="#save">Save</a></li>
-        <li><a href="#import">Local import</a></li>
-        <li><a href="#diagnostics">Diagnostics</a></li>
-        <li><a href="#storage">Stored data and reset</a></li>
+        <li><a href="#connect"><span class="op-toc-n" >01</span>Workspace</a></li>
+        <li><a href="#site-access"><span class="op-toc-n" >02</span>Site access</a></li>
+        <li><a href="#auth"><span class="op-toc-n" >03</span>Sign-in</a></li>
+        <li><a href="#warehouse"><span class="op-toc-n" >04</span>SQL warehouse</a></li>
+        <li><a href="#billing"><span class="op-toc-n" >05</span>Billing source</a></li>
+        <li><a href="#save"><span class="op-toc-n" >06</span>Save</a></li>
+        <li><a href="#import"><span class="op-toc-n" >07</span>Local import</a></li>
+        <li><a href="#diagnostics"><span class="op-toc-n" >08</span>Diagnostics</a></li>
+        <li><a href="#storage"><span class="op-toc-n" >09</span>Stored data and reset</a></li>
       </ol>
     </nav>
 
@@ -42,8 +43,9 @@
 
       <!-- 1. Workspace -------------------------------------------------------------------- -->
       <section id="connect" class="op-section" aria-labelledby="h-connect">
-        <h2 id="h-connect"><span class="op-step">1</span>Workspace</h2>
-        <p class="op-lede">Choose the Databricks workspace for this cost connection. There is one connection per workspace URL. When more than one workspace is listed, pick one yourself — the extension never switches workspaces on its own.</p>
+        <p class="dcc-eyebrow op-eyebrow">01 · Workspace</p>
+        <h2 id="h-connect">Choose the workspace</h2>
+        <p class="op-lede">Choose the Databricks workspace for this cost connection. There is one connection per workspace URL. When more than one workspace is listed, pick one yourself. The extension never switches workspaces on its own.</p>
         <div id="pending-note" class="op-result"></div>
 
         <fieldset class="dcc-fieldset op-group">
@@ -75,7 +77,8 @@
 
       <!-- 2. Site access ------------------------------------------------------------------ -->
       <section id="site-access" class="op-section" aria-labelledby="h-access">
-        <h2 id="h-access"><span class="op-step">2</span>Site access</h2>
+        <p class="dcc-eyebrow op-eyebrow">02 · Site access</p>
+        <h2 id="h-access">Allow site access</h2>
         <p class="op-lede">The extension runs only on workspaces you allow. Access is requested for exactly the selected workspace URL, nothing broader.</p>
         <p id="access-status" class="op-status"></p>
         <div class="op-actions">
@@ -87,7 +90,8 @@
 
       <!-- 3. Sign-in ---------------------------------------------------------------------- -->
       <section id="auth" class="op-section" aria-labelledby="h-auth">
-        <h2 id="h-auth"><span class="op-step">3</span>Sign-in</h2>
+        <p class="dcc-eyebrow op-eyebrow">03 · Sign-in</p>
+        <h2 id="h-auth">Choose how to sign in</h2>
         <fieldset class="dcc-fieldset op-group">
           <legend class="op-label">How should the extension query Databricks?</legend>
           <div class="op-options">
@@ -159,7 +163,7 @@
               <input id="pat-input" class="dcc-input dcc-input--mono" type="password" autocomplete="off" spellcheck="false" aria-describedby="pat-help">
               <button type="button" id="pat-save" class="dcc-btn dcc-btn--primary">Save token</button>
             </div>
-            <p id="pat-help" class="op-help">Kept in session storage for this browser session only (cleared when the browser closes) and never shown again. Use a token for an identity that can use the SQL warehouse and read the billing tables — nothing more.</p>
+            <p id="pat-help" class="op-help">Kept in session storage for this browser session only (cleared when the browser closes) and never shown again. Use a token for an identity that can use the SQL warehouse and read the billing tables, and nothing more.</p>
           </div>
           <div id="pat-result" class="op-result" aria-live="polite"></div>
           <div class="op-actions">
@@ -170,8 +174,9 @@
 
       <!-- 4. Warehouse -------------------------------------------------------------------- -->
       <section id="warehouse" class="op-section" aria-labelledby="h-warehouse">
-        <h2 id="h-warehouse"><span class="op-step">4</span>SQL warehouse</h2>
-        <p class="op-lede">Cost queries run on one SQL warehouse per workspace. Automatic picks a running warehouse first, then the smallest size, and is resolved when you save — never switched per query.</p>
+        <p class="dcc-eyebrow op-eyebrow">04 · SQL warehouse</p>
+        <h2 id="h-warehouse">Pick a SQL warehouse</h2>
+        <p class="op-lede">Cost queries run on one SQL warehouse per workspace. Automatic picks a running warehouse first, then the smallest size. It's resolved when you save and never switched per query.</p>
         <div id="wh-saved" class="op-result"></div>
         <div class="op-actions">
           <button type="button" id="wh-list" class="dcc-btn">List warehouses</button>
@@ -182,7 +187,8 @@
 
       <!-- 5. Billing ---------------------------------------------------------------------- -->
       <section id="billing" class="op-section" aria-labelledby="h-billing">
-        <h2 id="h-billing"><span class="op-step">5</span>Billing source</h2>
+        <p class="dcc-eyebrow op-eyebrow">05 · Billing source</p>
+        <h2 id="h-billing">Set the billing source</h2>
         <div class="op-field">
           <label for="price-table" class="op-label">Price table</label>
           <select id="price-table" class="dcc-select" aria-describedby="price-table-help"></select>
@@ -213,7 +219,8 @@
 
       <!-- 6. Save ------------------------------------------------------------------------- -->
       <section id="save" class="op-section" aria-labelledby="h-save">
-        <h2 id="h-save"><span class="op-step">6</span>Save</h2>
+        <p class="dcc-eyebrow op-eyebrow">06 · Save</p>
+        <h2 id="h-save">Save the connection</h2>
         <p id="save-summary" class="op-lede"></p>
         <div class="op-actions">
           <button type="button" id="save-btn" class="dcc-btn dcc-btn--primary">Save connection</button>
@@ -239,8 +246,9 @@
 
       <!-- Local import -------------------------------------------------------------------- -->
       <section id="import" class="op-section" aria-labelledby="h-import">
-        <h2 id="h-import">Local import</h2>
-        <p class="op-lede">Load per-workspace, per-resource summaries from a <code>costs.json</code> file for Local import mode. The file is validated and stored in this browser; imported summaries contain only what you import — no query history or run detail.</p>
+        <p class="dcc-eyebrow op-eyebrow">07 · Local import</p>
+        <h2 id="h-import">Import costs from a file</h2>
+        <p class="op-lede">Load per-workspace, per-resource summaries from a <code>costs.json</code> file for Local import mode. The file is validated and stored in this browser; imported summaries contain only what you import (no query history or run detail).</p>
         <p id="import-status" class="op-status"></p>
         <div class="op-field">
           <label for="import-file" class="op-label">costs.json file</label>
@@ -257,7 +265,8 @@
 
       <!-- Diagnostics --------------------------------------------------------------------- -->
       <section id="diagnostics" class="op-section" aria-labelledby="h-diag">
-        <h2 id="h-diag">Diagnostics</h2>
+        <p class="dcc-eyebrow op-eyebrow">08 · Diagnostics</p>
+        <h2 id="h-diag">Recent errors</h2>
         <p class="op-lede">The last errors, with secrets removed. No SQL text, query results, or tokens are recorded.</p>
         <ul id="diag-list" class="op-diag-list"></ul>
         <div class="op-actions">
@@ -268,6 +277,7 @@
 
       <!-- Storage and reset --------------------------------------------------------------- -->
       <section id="storage" class="op-section" aria-labelledby="h-storage">
+        <p class="dcc-eyebrow op-eyebrow">09 · Stored data</p>
         <h2 id="h-storage">Stored data and safe reset</h2>
         <div class="op-table-wrap">
           <table class="dcc-table op-store-table">
@@ -278,7 +288,7 @@
             <tbody>
               <tr>
                 <th scope="row">Browser local storage</th>
-                <td>Settings (mode, period, show costs, monitor preferences); one connection per workspace (URL, workspace ID, sign-in type, price table, currency, data sources, warehouse choice — never tokens); workspace IDs seen in tabs; your imported summaries; recent sanitized errors.</td>
+                <td>Settings (mode, period, show costs, monitor preferences); one connection per workspace (URL, workspace ID, sign-in type, price table, currency, data sources, warehouse choice; never tokens); workspace IDs seen in tabs; your imported summaries; recent sanitized errors.</td>
                 <td>Disconnect, Clear import, Clear diagnostics, or removing the extension.</td>
               </tr>
               <tr>

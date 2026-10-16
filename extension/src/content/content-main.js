@@ -347,9 +347,9 @@
     const currency = (s && s.currency) || 'USD';
     const fmt = (v) => {
       try {
-        return DCC.labels.formatAmount(v, currency) || '—';
+        return DCC.labels.formatAmount(v, currency) || 'n/a';
       } catch (_) {
-        return '—';
+        return 'n/a';
       }
     };
     const cur = new Map();
@@ -364,7 +364,7 @@
     }
     const rowsOut = [...cur.entries()]
       .sort((a, b) => b[1] - a[1])
-      .map(([p, v]) => h('tr', {}, [h('td', {}, String(p)), h('td', { class: 'num' }, fmt(v)), h('td', { class: 'num' }, prev.has(p) ? fmt(prev.get(p)) : '—')]));
+      .map(([p, v]) => h('tr', {}, [h('td', {}, String(p)), h('td', { class: 'num' }, fmt(v)), h('td', { class: 'num' }, prev.has(p) ? fmt(prev.get(p)) : 'No data')]));
     panel.appendChild(
       h('table', {}, [
         h('caption', {}, 'Cost by product (selected vs prior period)'),

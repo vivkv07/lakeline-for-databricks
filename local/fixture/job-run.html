@@ -1,0 +1,33 @@
+<!--
+  Fixture fragment: job run detail page (route /jobs/<job id>/runs/<run id>). Synthetic data only
+  (workspace 1234567890). One fragment serves every run URL, so it names no job or run itself: the
+  extension takes the run's identity from the page URL and puts that execution's cost ("Run cost:
+  … · est.") next to the page title. On the fixture server, /jobs/102/runs/<yesterday's run> is the
+  run whose refresh_pipeline task triggered pipeline P1, so its badge includes the triggered
+  pipeline update (attribution "direct+pipelines"). Task rows have no run links and get no badges.
+-->
+<style data-fixture="job-run">
+  .fx-run { font: 13px/1.4 system-ui, sans-serif; color: #11171c; padding: 0 16px; }
+  .fx-run a { color: #2272b4; text-decoration: none; }
+  .fx-run .fx-crumbs { display: flex; gap: 6px; color: #5f7281; padding: 8px 0; }
+  .fx-run dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 8px 0 16px; }
+  .fx-run dt { color: #5f7281; }
+  .fx-run table { width: 100%; border-collapse: collapse; }
+  .fx-run th, .fx-run td { padding: 6px 10px; border-bottom: 1px solid #e0e4e8; text-align: left; }
+  .fx-run th { color: #5f7281; font-weight: 600; }
+</style>
+<section class="fx-run" data-testid="job-run-page">
+  <nav class="fx-crumbs" aria-label="Breadcrumb"><a href="/jobs?o=1234567890">Jobs &amp; Pipelines</a><span>/</span><span>Run</span></nav>
+  <h1 data-testid="page-title">Run details</h1>
+  <dl aria-label="Run summary">
+    <dt>Trigger</dt><dd>Scheduled</dd>
+    <dt>Compute</dt><dd>Job compute</dd>
+  </dl>
+  <table aria-label="Task runs">
+    <thead><tr><th scope="col">Task</th><th scope="col">Status</th></tr></thead>
+    <tbody>
+      <tr><td>Task 1</td><td>Finished</td></tr>
+      <tr><td>Task 2</td><td>Finished</td></tr>
+    </tbody>
+  </table>
+</section>

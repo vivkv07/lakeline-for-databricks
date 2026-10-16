@@ -21,11 +21,23 @@
   const cacheMod = dep('cache', './cache.js');
   const registry = NODE ? require('../databricks/queries/index.js') : root.DCC.queries.registry;
 
-  function create({ store, secrets, helper, fetch: doFetch, now = () => Date.now(), cache = cacheMod.create({ now }) }) {
+  function create({ store, secrets, helper, oauth, fetch: doFetch, now = () => Date.now(), cache = cacheMod.create({ now }) }) {
+    /** Bearer token for direct (non-helper) modes: a session PAT or a Sign in with Databricks token. */
+    async function directToken(origin, authMode, purpose = 'cost') {
+      if (authMode === 'oauth') {
+        if (!oauth) throw new errors.DccError({ code: 'AUTH_EXPIRED', message: 'Sign-in unavailable' });
+        const settings = await store.getSettings();
+        const conn = await store.getConnection(origin);
+        return oauth.getAccessToken(origin, purpose, { clientId: (conn && conn.oauthClientId) || settings.oauth.clientId });
+      }
+      const token = await secrets.getPat(origin);
+      if (!token) throw new errors.DccError({ code: 'AUTH_EXPIRED', message: 'No access token in this browser session' });
+      return token;
+    }
+
     /** Executor for PAT mode: one statement → parsed rows. */
     async function patExec(conn) {
-      const token = await secrets.getPat(conn.origin);
-      if (!token) throw new errors.DccError({ code: 'AUTH_EXPIRED', message: 'No access token in this browser session' });
+      const token = await directToken(conn.origin, conn.authMode);
       const client = http.create({ origin: conn.origin, token, fetch: doFetch });
       const warehouseId = config.effectiveWarehouseId(conn);
       return async (query) => {
@@ -35,7 +47,7 @@
     }
 
     async function runConnected(conn, kind, args) {
-      if (conn.authMode === 'pat') {
+      if (conn.authMode === 'pat' || conn.authMode === 'oauth') {
         return registry.run(kind, { conn, args, nowMs: now(), exec: await patExec(conn) });
       }
       await helper.assertCapable(kind, conn, args);
@@ -115,17 +127,17 @@
       return connectedQuery({ origin, workspaceId, kind, periodDays, scope, args, force });
     }
 
-    async function listWarehouses({ origin, authMode }) {
-      if (authMode === 'pat') {
-        const token = await secrets.getPat(origin);
-        if (!token) throw new errors.DccError({ code: 'AUTH_EXPIRED', message: 'Save an access token first' });
-        return warehouses.list(http.create({ origin, token, fetch: doFetch }));
+    /** Lists warehouses; `onHeaders` sees response headers (x-databricks-org-id = workspace ID). */
+    async function listWarehouses({ origin, authMode, onHeaders }) {
+      if (authMode === 'pat' || authMode === 'oauth') {
+        const token = await directToken(origin, authMode);
+        return warehouses.list(http.create({ origin, token, fetch: doFetch, onHeaders }));
       }
       const out = await helper.call('/bridge/warehouses', { origin });
       return (out.warehouses || []).map(warehouses.normalize).filter(Boolean);
     }
 
-    return { summary, rows, connectedOnly, listWarehouses, cache, runConnected, connectionFor };
+    return { summary, rows, connectedOnly, listWarehouses, directToken, cache, runConnected, connectionFor };
   }
 
   const api = Object.freeze({ create });

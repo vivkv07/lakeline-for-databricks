@@ -15,6 +15,7 @@ export const BASE_CONTENT_FILES = [
   'src/core/ids.js',
   'src/core/periods.js',
   'src/core/labels.js',
+  'src/core/theme.js',
   'src/content/dom.js',
   'src/content/native-adapter.js',
   'src/content/workspace-data.js',

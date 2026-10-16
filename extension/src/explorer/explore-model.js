@@ -20,10 +20,15 @@
 
   const OWNER_TYPES = Object.freeze(['job', 'pipeline', 'warehouse', 'notebook', 'app', 'cluster', 'unattributed']);
   const OWNER_LABELS = Object.freeze({ job: 'Job', pipeline: 'Pipeline', warehouse: 'SQL warehouse', notebook: 'Notebook', app: 'App', cluster: 'Cluster', unattributed: 'Unattributed' });
-  // Categorical palette in fixed slot order (validated for adjacent-pair CVD separation on a
-  // light surface). Colors follow the entity, never its rank; extra keys fold into "Other".
-  const PALETTE = Object.freeze(['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#6250d6', '#e34948']);
-  const OTHER_COLOR = '#8a8f98';
+  // Categorical palette in fixed slot order. Slot 1 is the theme's accent blue; slots 2–8 are
+  // shared by both themes. Validated per theme (white / black surface): every color ≥ 3:1 against
+  // the surface, adjacent pairs ΔE ≥ 10 under protan/deutan simulation and ≥ 15 for normal vision.
+  // No amber: warm amber is reserved for prior-period overlays and partial coverage. Colors
+  // follow the entity, never its rank; extra keys fold into "Other".
+  const SHARED_SLOTS = ['#D6407F', '#1A91B8', '#D9473B', '#109689', '#B04BC6', '#3C9A3C', '#8B6CEB'];
+  const PALETTE = Object.freeze(['#2F5BEA'].concat(SHARED_SLOTS));
+  const PALETTE_DARK = Object.freeze(['#5B8CFF'].concat(SHARED_SLOTS));
+  const OTHER_COLOR = '#8A8A93';
   const OTHER_KEY = '__other__';
   const SPIKE_MIN_HISTORY = 14;
   const SPIKE_MIN_SAME_WEEKDAY = 3;
@@ -343,18 +348,22 @@
    * Stable colors: keys sorted by name take palette slots in fixed order. With more keys than
    * slots, the smallest (by `weights`) fold into "Other".
    */
-  function colorMap(keys, weights = new Map(), fixedOrder = null) {
+  function paletteFor(theme) {
+    return theme === 'dark' ? PALETTE_DARK : PALETTE;
+  }
+
+  function colorMap(keys, weights = new Map(), fixedOrder = null, palette = PALETTE) {
     let ordered = [...new Set(keys)];
     if (fixedOrder) ordered.sort((a, b) => fixedOrder.indexOf(a) - fixedOrder.indexOf(b));
     else ordered.sort();
     const map = new Map();
     let folded = [];
-    if (ordered.length > PALETTE.length) {
-      const keep = new Set(ordered.slice().sort((a, b) => (weights.get(b) || 0) - (weights.get(a) || 0)).slice(0, PALETTE.length - 1));
+    if (ordered.length > palette.length) {
+      const keep = new Set(ordered.slice().sort((a, b) => (weights.get(b) || 0) - (weights.get(a) || 0)).slice(0, palette.length - 1));
       folded = ordered.filter((k) => !keep.has(k));
       ordered = ordered.filter((k) => keep.has(k));
     }
-    ordered.forEach((k, i) => map.set(k, PALETTE[i]));
+    ordered.forEach((k, i) => map.set(k, palette[i]));
     for (const k of folded) map.set(k, OTHER_COLOR);
     return { map, folded, colorOf: (k) => map.get(k) || OTHER_COLOR, groupOf: (k) => (folded.includes(k) ? OTHER_KEY : k) };
   }
@@ -511,6 +520,8 @@
     OWNER_TYPES,
     OWNER_LABELS,
     PALETTE,
+    PALETTE_DARK,
+    paletteFor,
     OTHER_COLOR,
     OTHER_KEY,
     SPIKE_MIN_HISTORY,

@@ -1,7 +1,7 @@
 /*
  * Toolbar popup: data mode, connect hand-off, cost visibility, period, monitor preferences,
  * diagnostics and links. Talks to the service worker only through sender-validated page:*
- * messages. All DOM is built with textContent — never innerHTML with variable data.
+ * messages. All DOM is built with textContent, never innerHTML with variable data.
  *
  * The active tab's URL is visible only while the popup is open (activeTab). It is used to offer
  * "Connect this workspace" and is handed to the options page through page:setPendingConnect,
@@ -31,7 +31,7 @@
   let state = null; // page:state data
   let tab = null; // {supported, url, origin, host, workspaceId, conflict, granted} | {supported:false, reason}
 
-  /** h('div', {class, onclick, ...}, [children]) — text nodes only. */
+  /** h('div', {class, onclick, ...}, [children]): text nodes only. */
   function h(tag, attrs, children) {
     const el = doc.createElement(tag);
     for (const [k, v] of Object.entries(attrs || {})) {
@@ -218,10 +218,10 @@
     const s = (state && state.settings) || {};
     const hint = $('mode-hint');
     let text = MODE_HINTS[s.mode] || '';
-    if (s.mode === 'connected' && !Object.keys(connections()).length) text += ' No workspace is connected yet — select Connect.';
+    if (s.mode === 'connected' && !Object.keys(connections()).length) text += ' No workspace is connected yet. Select Connect.';
     if (s.mode === 'import') {
       const imp = state && state.importSummary;
-      text += imp ? ' ' + imp.entries + (imp.entries === 1 ? ' summary' : ' summaries') + ' imported.' : ' Nothing imported yet — import costs.json in Connection preferences.';
+      text += imp ? ' ' + imp.entries + (imp.entries === 1 ? ' summary' : ' summaries') + ' imported.' : ' Nothing imported yet. Import costs.json in Connection preferences.';
     }
     hint.textContent = text;
   }

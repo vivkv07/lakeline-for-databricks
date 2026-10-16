@@ -218,7 +218,7 @@
   function tile(n, label, sub, cls, truncated) {
     const known = n !== null && n !== undefined;
     return h('div', { class: 'tile' + (cls ? ' ' + cls : '') }, [
-      h('span', { class: 'n' }, known ? String(n) + (truncated ? '+' : '') : '—'),
+      h('span', { class: 'n' }, known ? String(n) + (truncated ? '+' : '') : 'n/a'),
       h('span', { class: 'l' }, [label, known ? null : h('span', { class: 'sr-only' }, ' (unknown)')]),
       sub ? h('span', { class: 'sub' }, sub) : null,
     ]);

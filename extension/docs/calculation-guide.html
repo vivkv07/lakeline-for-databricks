@@ -3,17 +3,24 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="light">
+<meta name="color-scheme" content="light dark">
 <meta name="referrer" content="no-referrer">
 <title>How costs are calculated · Databricks Cost Companion</title>
+<link rel="stylesheet" href="../ui/brand.css">
 <link rel="stylesheet" href="calculation-guide.css">
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
 
-<header class="site-header">
+<header class="site-header dcc-panel">
+  <svg class="dcc-waves" viewBox="0 0 1200 320" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+    <path class="w3" d="M0 150 C 220 112, 420 214, 660 160 S 1040 92, 1200 128"/>
+    <path class="w1" d="M0 214 C 200 170, 430 268, 690 218 S 1060 160, 1200 196"/>
+    <path class="w2" d="M0 250 C 240 214, 470 300, 740 254 S 1080 206, 1200 236"/>
+    <path class="w1" d="M0 286 C 260 254, 520 320, 800 290 S 1100 254, 1200 274"/>
+  </svg>
   <div class="inner">
-    <p class="eyebrow"><span class="mark" aria-hidden="true"></span>Databricks Cost Companion · User guide</p>
+    <p class="dcc-eyebrow eyebrow"><svg class="dcc-mark mark" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect width="16" height="16" rx="4" fill="#000000"/><rect x="3.5" y="8.5" width="2" height="4" fill="#FFFFFF"/><rect x="7" y="5.5" width="2" height="7" fill="#FFFFFF"/><rect x="10.5" y="3.5" width="2" height="9" fill="#5B8CFF"/></svg>Databricks Cost Companion · User guide</p>
     <h1>How costs are calculated</h1>
     <p class="lede">This guide explains where each number in Databricks Cost Companion comes from. It covers what each number includes and excludes, and why the extension sometimes withholds a value instead of showing zero. All examples use made-up numbers. None of them come from a real workspace.</p>
     <p class="notice" role="note">Estimated costs. Billing can be delayed; final invoices may differ.</p>
@@ -23,7 +30,7 @@
 
 <div class="layout">
   <nav class="toc" aria-labelledby="toc-title">
-    <h2 id="toc-title">On this page</h2>
+    <h2 id="toc-title" class="dcc-eyebrow">On this page</h2>
     <ol>
       <li><a href="#overview">What the numbers are</a></li>
       <li><a href="#connection">Data modes and connection</a></li>
@@ -151,8 +158,8 @@
         <tr><th scope="row">7 days</th><td>Oct 8 – Oct 14, 2026</td><td>Oct 1 – Oct 7, 2026</td></tr>
         <tr><th scope="row">30 days</th><td>Sep 15 – Oct 14, 2026</td><td>Aug 16 – Sep 14, 2026</td></tr>
         <tr><th scope="row">90 days</th><td>Jul 17 – Oct 14, 2026</td><td>Apr 18 – Jul 16, 2026</td></tr>
-        <tr><th scope="row">Run and update search</th><td>Oct 16, 2025 – Oct 15, 2026</td><td>—</td></tr>
-        <tr><th scope="row">Query history lookback</th><td>Jul 18 – Oct 15, 2026</td><td>—</td></tr>
+        <tr><th scope="row">Run and update search</th><td>Oct 16, 2025 – Oct 15, 2026</td><td>n/a</td></tr>
+        <tr><th scope="row">Query history lookback</th><td>Jul 18 – Oct 15, 2026</td><td>n/a</td></tr>
       </tbody>
     </table>
   </div>

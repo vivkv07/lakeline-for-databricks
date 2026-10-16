@@ -36,24 +36,36 @@
     'Active time is approximated from query metadata, executions hidden from you are not counted, and billing can be delayed or partial. ' +
     'Hover or focus an estimate for its reason and assumptions.';
 
+  const theme = DCC.theme || null;
+  const vars = (name) => (theme ? theme.cssVars(name, 'dcc-') : '');
+  const OURS = '.dcc-est-badge, .dcc-est-note, .dcc-est-tip';
+  const DARK_OURS = OURS.split(', ').map((c) => c + '[data-dcc-theme="dark"]').join(', ');
+
+  // Theme tokens as custom properties on each inserted element; data-dcc-theme follows the page.
   const CSS = `
-.dcc-est-badge { display: inline-block; margin-left: 6px; padding: 0 6px; border: 1px solid #0f766e; border-radius: 999px;
-  font: 600 11px/18px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #0f5f57;
-  background: #ffffff; white-space: nowrap; font-variant-numeric: tabular-nums; cursor: help; vertical-align: middle; }
-.dcc-est-badge.dcc-est-muted { border-color: #c4ccd4; color: #52606d; font-weight: 500; }
-.dcc-est-badge.dcc-est-loading { border-style: dashed; color: #52606d; }
-.dcc-est-badge:focus-visible { outline: 2px solid #0f766e; outline-offset: 2px; }
-.dcc-est-note { margin: 4px 0 8px; padding: 6px 10px; border-left: 3px solid #0f766e; background: #f5faf9; color: #1f2933;
-  font: 12px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; max-width: 72rem; }
-.dcc-est-note .dcc-est-disclaimer { display: block; margin-top: 2px; color: #52606d; }
-.dcc-est-tip { position: fixed; z-index: 2147483000; max-width: 360px; padding: 8px 10px; border: 1px solid #c4ccd4; border-radius: 6px;
-  background: #ffffff; color: #1f2933; box-shadow: 0 4px 14px rgba(31,41,51,.18);
-  font: 12px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+${OURS} { ${vars('light')} }
+${DARK_OURS} { ${vars('dark')} }
+.dcc-est-badge { display: inline-block; margin-left: 6px; padding: 0 8px; border: 1px solid var(--dcc-accent-line); border-radius: 999px;
+  font: 500 11px/18px var(--dcc-font); color: var(--dcc-accent-text); background: var(--dcc-accent-soft); white-space: nowrap;
+  font-variant-numeric: tabular-nums; cursor: help; vertical-align: middle; }
+.dcc-est-badge.dcc-est-muted { border-color: var(--dcc-line2); color: var(--dcc-muted); background: var(--dcc-bg); font-weight: 400; }
+.dcc-est-badge.dcc-est-loading { border-style: dashed; color: var(--dcc-muted); background: transparent; }
+.dcc-est-badge:focus-visible { outline: 2px solid var(--dcc-accent); outline-offset: 2px; }
+.dcc-est-note { margin: 6px 0 10px; padding: 10px 14px; border: 1px solid var(--dcc-line); border-radius: 12px; background: var(--dcc-bg);
+  color: var(--dcc-body); font: 12px/1.5 var(--dcc-font); max-width: 72rem; }
+.dcc-est-note .dcc-est-disclaimer { display: block; margin-top: 4px; color: var(--dcc-muted); }
+.dcc-est-tip { position: fixed; z-index: 2147483000; max-width: 360px; padding: 10px 12px; border: 1px solid var(--dcc-line2); border-radius: 12px;
+  background: var(--dcc-bg); color: var(--dcc-text); box-shadow: 0 8px 24px rgba(0, 0, 0, .16); font: 12px/1.5 var(--dcc-font); }
 .dcc-est-tip[hidden] { display: none; }
-.dcc-est-tip strong { display: block; margin-bottom: 2px; }
-.dcc-est-tip ul { margin: 4px 0 0; padding-left: 16px; }
-.dcc-est-tip .dcc-est-meta { color: #52606d; margin-top: 4px; }
+.dcc-est-tip strong { display: block; margin-bottom: 2px; font-weight: 600; }
+.dcc-est-tip ul { margin: 4px 0 0; padding-left: 16px; color: var(--dcc-body); }
+.dcc-est-tip .dcc-est-meta { color: var(--dcc-muted); margin-top: 6px; }
 `;
+
+  /** Set data-dcc-theme only when it changes (no DOM writes when nothing changed). */
+  function setTheme(el, name) {
+    if (el && el.getAttribute('data-dcc-theme') !== name) el.setAttribute('data-dcc-theme', name);
+  }
 
   const state = {
     cache: new Map(), // key → {state:'loading'|'done', item, at, retryAfter}
@@ -206,18 +218,19 @@
     return null;
   }
 
-  function ensureNote(doc, scan) {
+  function ensureNote(doc, scan, themeName) {
     const heading = findHeading(doc);
     const ref = heading || (scan.tables[0] && scan.tables[0].table);
     let note = doc.querySelector('.dcc-est-note' + SEL);
     if (!ref) return;
     const placed = note && (heading ? note.previousElementSibling === heading : note.nextElementSibling === ref);
-    if (placed) return;
+    if (placed) return setTheme(note, themeName);
     if (note) note.remove();
     note = h(doc, 'div', { 'data-dcc': FEATURE, class: 'dcc-est-note', role: 'note', 'aria-label': 'About per-query cost estimates' }, [
       NOTE_TEXT,
       h(doc, 'span', { class: 'dcc-est-disclaimer' }, labels.DISCLAIMER),
     ]);
+    setTheme(note, themeName);
     if (heading) heading.insertAdjacentElement('afterend', note);
     else ref.parentNode.insertBefore(note, ref);
   }
@@ -228,7 +241,7 @@
     return 'dcc-est-badge dcc-est-muted';
   }
 
-  function renderBadge(doc, r, view, rendered) {
+  function renderBadge(doc, r, view, rendered, themeName) {
     if (!r.anchor) return;
     let badge = null;
     for (const child of r.anchor.children) {
@@ -237,7 +250,7 @@
         break;
       }
     }
-    const sig = JSON.stringify([r.key, view.status, view.text, view.reason || '']);
+    const sig = JSON.stringify([r.key, view.status, view.text, view.reason || '', themeName]);
     if (!badge) {
       badge = h(doc, 'span', { 'data-dcc': FEATURE, tabindex: '0', role: 'button', 'aria-haspopup': 'true' });
       r.anchor.appendChild(badge);
@@ -249,6 +262,7 @@
     badge.setAttribute('data-dcc-key', r.key);
     badge.setAttribute('data-dcc-status', view.status);
     badge.className = badgeClass(view);
+    setTheme(badge, themeName);
     badge.textContent = view.text;
     badge.setAttribute('aria-label', view.text + (view.reason ? '. ' + view.reason : ''));
   }
@@ -289,6 +303,7 @@
     const view = state.views.get(badge);
     if (!view) return;
     const tip = tipFor(doc);
+    setTheme(tip, badge.getAttribute('data-dcc-theme') || 'light');
     fillTip(doc, tip, view);
     tip.hidden = false;
     badge.setAttribute('aria-describedby', TIP_ID);
@@ -359,14 +374,16 @@
       if (doc.querySelector(SEL)) cleanup(doc);
       return;
     }
+    // Light or dark tokens, matching the page's main container (re-checked every tick).
+    const themeName = theme ? theme.pickForPage(doc) : 'light';
     ensureStyle(doc);
-    ensureNote(doc, scan);
+    ensureNote(doc, scan, themeName);
     listen(doc);
     const rendered = new Set();
     const want = [];
     for (const r of scan.rows) {
       const view = viewFor(r, ctx, now);
-      renderBadge(doc, r, view, rendered);
+      renderBadge(doc, r, view, rendered, themeName);
       if (view.needsRequest && r.target) want.push(r.target);
     }
     // Remove badges left on rows that were recycled, re-rendered or no longer parse.

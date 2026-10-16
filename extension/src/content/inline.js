@@ -27,18 +27,24 @@
   const STYLE_SEL = 'style[data-dcc="inline-style"]';
   const EXECUTION_LOOKBACK_DAYS = 365;
 
+  const theme = dep('theme', '../core/theme.js');
+  const vars = (name) => (theme ? theme.cssVars(name, 'dcc-') : '');
+
+  // Theme tokens as custom properties on the badge itself; data-dcc-theme follows the page.
   const CSS = `
-.dcc-inline { display: inline-flex; align-items: center; gap: 3px; margin: 0 0 0 6px; padding: 0 6px;
-  border: 1px solid #b6c2cc; border-radius: 999px; background: #f5f8fa; color: #1f2933;
-  font: 600 11px/16px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  font-variant-numeric: tabular-nums; letter-spacing: normal; text-transform: none; text-decoration: none;
+.dcc-inline { ${vars('light')} }
+.dcc-inline[data-dcc-theme="dark"] { ${vars('dark')} }
+.dcc-inline { display: inline-flex; align-items: center; gap: 3px; margin: 0 0 0 6px; padding: 0 8px;
+  border: 1px solid var(--dcc-line2); border-radius: 999px; background: var(--dcc-bg); color: var(--dcc-text);
+  font: 500 11px/16px var(--dcc-font); font-variant-numeric: tabular-nums; letter-spacing: normal; text-transform: none; text-decoration: none;
   white-space: nowrap; vertical-align: middle; max-width: 100%; overflow: hidden; text-overflow: ellipsis; cursor: help; }
-.dcc-inline--title { margin: 4px 0 0; padding: 1px 8px; font-size: 12px; line-height: 18px; border-color: #0f766e; color: #0f5f58; background: #ffffff; }
-.dcc-inline--pending { color: #7b8794; border-style: dashed; background: transparent; font-weight: 500; }
-.dcc-inline--partial, .dcc-inline--direct-only { border-color: #9a6700; color: #6b4700; }
-.dcc-inline--none, .dcc-inline--unavailable { color: #52606d; background: transparent; font-weight: 500; }
+.dcc-inline--title { margin: 6px 0 0; padding: 1px 10px; font-size: 12px; line-height: 18px; border-color: var(--dcc-accent-line);
+  color: var(--dcc-accent-text); background: var(--dcc-accent-soft); }
+.dcc-inline--pending { color: var(--dcc-muted); border-style: dashed; background: transparent; font-weight: 400; }
+.dcc-inline--partial, .dcc-inline--direct-only { border-color: var(--dcc-warm-line); color: var(--dcc-warm); background: var(--dcc-warm-soft); }
+.dcc-inline--none, .dcc-inline--unavailable { color: var(--dcc-muted); background: transparent; font-weight: 400; }
 .dcc-inline--demo { border-style: dotted; }
-.dcc-inline:focus-visible { outline: 2px solid #0f766e; outline-offset: 2px; }
+.dcc-inline:focus-visible { outline: 2px solid var(--dcc-accent); outline-offset: 2px; }
 `;
 
   const BASE_LABEL = Object.freeze({
@@ -215,10 +221,11 @@
       return b;
     }
 
-    function apply(badge, kind, key, v) {
-      const sig = kind + '\u0001' + key + '\u0001' + v.cls + '\u0001' + v.text + '\u0001' + v.tip;
+    function apply(badge, kind, key, v, themeName) {
+      const sig = kind + '\u0001' + key + '\u0001' + v.cls + '\u0001' + v.text + '\u0001' + v.tip + '\u0001' + themeName;
       if (sigOf.get(badge) === sig) return;
       badge.className = 'dcc-inline dcc-inline--' + kind + ' ' + v.cls.split(' ').map((c) => 'dcc-inline--' + c).join(' ');
+      badge.setAttribute('data-dcc-theme', themeName);
       badge.setAttribute('data-dcc-key', key);
       badge.textContent = v.text;
       badge.setAttribute('title', v.tip);
@@ -247,6 +254,8 @@
 
       const keep = new Set();
       const nowMs = Date.now();
+      // Light or dark tokens, matching the page's main container (re-checked every tick).
+      const themeName = theme ? theme.pickForPage(doc) : 'light';
       for (const p of places) {
         const v = viewFor(p.kind, p.ref, client.get(p.key), periodDays, nowMs);
         if (!v) continue;
@@ -260,7 +269,7 @@
           p.anchor.after(badge);
           badgeFor.set(p.anchor, badge);
         }
-        apply(badge, p.kind, p.key, v);
+        apply(badge, p.kind, p.key, v, themeName);
         keep.add(badge);
       }
       // Stale (anchor gone or recycled), duplicate and foreign copies of badges.

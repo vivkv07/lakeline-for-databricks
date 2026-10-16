@@ -1,51 +1,117 @@
 /*
- * Shared tokens and base styles for every extension page (popup, options, monitor, guide).
- * Neutral surfaces, dark text, one accent (#0F766E), restrained borders, and a visible focus
- * ring on every interactive element. Page stylesheets build on these; they don't redefine them.
+ * Shared tokens, fonts and base components for every extension page (popup, options, monitor,
+ * guide). White or black surfaces, Inter for text, IBM Plex Mono for labels and numbers, one
+ * blue accent for what matters and warm amber only for data and second things. Light and dark
+ * follow prefers-color-scheme. Token values match src/core/theme.js (checked by a test).
+ * Page stylesheets build on these and don't redefine them.
  */
+
+/* ------------------------------------------------------------------ fonts (bundled, OFL) */
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../fonts/inter-latin-400-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("../fonts/inter-latin-500-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("../fonts/inter-latin-600-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../fonts/inter-latin-700-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../fonts/ibm-plex-mono-latin-400-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("../fonts/ibm-plex-mono-latin-500-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("../fonts/ibm-plex-mono-latin-600-normal.woff2") format("woff2");
+}
+
+/* ------------------------------------------------------------------ tokens */
+
 :root {
   color-scheme: light;
 
-  --dcc-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --dcc-font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --dcc-bg: #FFFFFF;
+  --dcc-surface: #F6F6F7;
+  --dcc-surface2: #EFEFF1;
+  --dcc-line: #E4E4E7;
+  --dcc-line2: #D4D4D8;
+  --dcc-text: #0A0A0A;
+  --dcc-body: #52525B;
+  --dcc-muted: #6B6B74;
+  --dcc-faint: #A1A1AA;
+  --dcc-accent: #2F5BEA;
+  --dcc-accent-soft: #EEF2FF;
+  --dcc-accent-line: #B9C8FA;
+  --dcc-accent-fill: #DCE5FF;
+  --dcc-accent-text: #1E3A8A;
+  --dcc-warm: #B45309;
+  --dcc-warm-soft: #FFF7E8;
+  --dcc-warm-line: #F2CF8E;
+  --dcc-pill-bg: #0A0A0A;
+  --dcc-pill-text: #FFFFFF;
+  --dcc-panel: #0B1A3A;
+  --dcc-panel-text: #F5F5F4;
+  --dcc-panel-sub: #C7D5FF;
+  --dcc-panel-eyebrow: #8FB0FF;
+  --dcc-danger: #B42318;
+  --dcc-success: #067647;
 
-  /* Text */
-  --dcc-text: #1f2933;
-  --dcc-text-muted: #52606d;
-  --dcc-text-subtle: #616e7c;
-  --dcc-text-on-accent: #ffffff;
+  /* Derived: text on solid accent / danger, form-control boundaries (≥ 3:1), soft status fills. */
+  --dcc-on-accent: #FFFFFF;
+  --dcc-on-danger: #FFFFFF;
+  --dcc-control: #8A8A93;
+  --dcc-danger-soft: color-mix(in srgb, var(--dcc-danger) 7%, var(--dcc-bg));
+  --dcc-danger-line: color-mix(in srgb, var(--dcc-danger) 38%, var(--dcc-bg));
+  --dcc-success-soft: color-mix(in srgb, var(--dcc-success) 7%, var(--dcc-bg));
+  --dcc-success-line: color-mix(in srgb, var(--dcc-success) 38%, var(--dcc-bg));
+  --dcc-mark-ring: transparent;
 
-  /* Surfaces and lines */
-  --dcc-surface: #ffffff;
-  --dcc-surface-muted: #f6f8f9;
-  --dcc-surface-hover: #eff2f4;
-  --dcc-surface-pressed: #e6eaee;
-  --dcc-border: #e1e5e9;
-  --dcc-border-strong: #c4ccd4;
-  --dcc-control-border: #7b8794; /* ≥ 3:1 against white for form-control boundaries */
-
-  /* The one accent */
-  --dcc-accent: #0f766e;
-  --dcc-accent-hover: #0c655e;
-  --dcc-accent-pressed: #0a554f;
-  --dcc-accent-soft: #e8f3f1;
-  --dcc-accent-border: #a7d1cc;
-
-  /* Status (text colors meet 4.5:1 on their soft backgrounds) */
-  --dcc-danger: #8a1c1c;
-  --dcc-danger-soft: #fcf1f1;
-  --dcc-danger-border: #e6bcbc;
-  --dcc-warn: #7a5200;
-  --dcc-warn-soft: #fdf7e8;
-  --dcc-warn-border: #e8d3a3;
-  --dcc-ok: #0f5f37;
-  --dcc-ok-soft: #eef7f2;
-  --dcc-ok-border: #b4dac3;
+  --dcc-font: "Inter", -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --dcc-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
   /* Shape, spacing, type */
-  --dcc-radius-sm: 4px;
-  --dcc-radius: 6px;
-  --dcc-radius-lg: 8px;
+  --dcc-radius-sm: 6px;
+  --dcc-radius: 10px;
+  --dcc-radius-card: 14px;
   --dcc-space-1: 4px;
   --dcc-space-2: 8px;
   --dcc-space-3: 12px;
@@ -57,10 +123,52 @@
   --dcc-text-md: 13px;
   --dcc-text-base: 14px;
   --dcc-text-lg: 16px;
-  --dcc-text-xl: 20px;
-  --dcc-shadow-sm: 0 1px 2px rgba(31, 41, 51, 0.06);
+  --dcc-text-xl: 22px;
   --dcc-ease: cubic-bezier(0.2, 0, 0, 1);
 }
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    --dcc-bg: #000000;
+    --dcc-surface: #0F0F10;
+    --dcc-surface2: #141416;
+    --dcc-line: #232326;
+    --dcc-line2: #2A2A2E;
+    --dcc-text: #F5F5F4;
+    --dcc-body: #A1A1AA;
+    --dcc-muted: #8A8A93;
+    --dcc-faint: #52525B;
+    --dcc-accent: #5B8CFF;
+    --dcc-accent-soft: #0B1A3A;
+    --dcc-accent-line: #2E4A85;
+    --dcc-accent-fill: #132447;
+    --dcc-accent-text: #C7D5FF;
+    --dcc-warm: #F5B83D;
+    --dcc-warm-soft: #1A1406;
+    --dcc-warm-line: #5A4515;
+    --dcc-pill-bg: #F5F5F4;
+    --dcc-pill-text: #0A0A0A;
+    --dcc-panel: #0B1A3A;
+    --dcc-panel-text: #F5F5F4;
+    --dcc-panel-sub: #C7D5FF;
+    --dcc-panel-eyebrow: #8FB0FF;
+    --dcc-danger: #F97066;
+    --dcc-success: #47CD89;
+
+    --dcc-on-accent: #000000;
+    --dcc-on-danger: #0A0A0A;
+    --dcc-control: #6E6E76;
+    --dcc-danger-soft: color-mix(in srgb, var(--dcc-danger) 10%, var(--dcc-bg));
+    --dcc-danger-line: color-mix(in srgb, var(--dcc-danger) 40%, var(--dcc-bg));
+    --dcc-success-soft: color-mix(in srgb, var(--dcc-success) 9%, var(--dcc-bg));
+    --dcc-success-line: color-mix(in srgb, var(--dcc-success) 38%, var(--dcc-bg));
+    --dcc-mark-ring: var(--dcc-line2);
+  }
+}
+
+/* ------------------------------------------------------------------ base */
 
 *,
 *::before,
@@ -70,13 +178,14 @@
 
 html {
   -webkit-text-size-adjust: 100%;
+  background: var(--dcc-bg);
 }
 
 body {
   margin: 0;
-  font: var(--dcc-text-base) / 1.5 var(--dcc-font);
+  font: 400 var(--dcc-text-base) / 1.5 var(--dcc-font);
   color: var(--dcc-text);
-  background: var(--dcc-surface);
+  background: var(--dcc-bg);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -85,8 +194,9 @@ h2,
 h3,
 h4 {
   margin: 0;
-  line-height: 1.3;
-  font-weight: 650;
+  line-height: 1.25;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   color: var(--dcc-text);
 }
 
@@ -100,21 +210,27 @@ dl {
 a {
   color: var(--dcc-accent);
   text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
 }
 
 a:hover {
-  color: var(--dcc-accent-hover);
+  text-decoration-thickness: 2px;
 }
 
 code,
 kbd {
-  font-family: var(--dcc-font-mono);
-  font-size: 0.92em;
-  background: var(--dcc-surface-muted);
-  border: 1px solid var(--dcc-border);
-  border-radius: 3px;
+  font-family: var(--dcc-mono);
+  font-size: 0.9em;
+  color: var(--dcc-text);
+  background: var(--dcc-surface2);
+  border: 1px solid var(--dcc-line);
+  border-radius: 4px;
   padding: 0 4px;
   overflow-wrap: anywhere;
+}
+
+strong {
+  font-weight: 600;
 }
 
 [hidden] {
@@ -146,74 +262,173 @@ kbd {
 .dcc-skip {
   position: absolute;
   left: 8px;
-  top: -40px;
+  top: -48px;
   z-index: 10;
-  padding: 6px 10px;
-  background: var(--dcc-surface);
-  border: 1px solid var(--dcc-border-strong);
-  border-radius: var(--dcc-radius);
+  padding: 6px 14px;
+  font-weight: 500;
+  color: var(--dcc-pill-text);
+  background: var(--dcc-pill-bg);
+  border-radius: 999px;
+  text-decoration: none;
 }
 
 .dcc-skip:focus {
   top: 8px;
 }
 
+/* Product mark: black rounded square, white bars, tallest bar in accent blue. */
 .dcc-mark {
   width: 20px;
   height: 20px;
   flex: none;
+  border-radius: 25%;
+  box-shadow: 0 0 0 1px var(--dcc-mark-ring);
+}
+
+/* ------------------------------------------------------------------ type helpers */
+
+/* Eyebrow: uppercase mono label in the accent color, numbered for sections ("01 · Workspace"). */
+.dcc-eyebrow {
+  margin: 0;
+  font-family: var(--dcc-mono);
+  font-size: var(--dcc-text-xs);
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--dcc-accent);
+}
+
+.dcc-mono {
+  font-family: var(--dcc-mono);
+}
+
+.dcc-num {
+  font-family: var(--dcc-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------------ surfaces */
+
+/* Hairline card: 1px line, 14px radius, no heavy shadow. Cards inside cards use surface2. */
+.dcc-card {
+  background: var(--dcc-bg);
+  border: 1px solid var(--dcc-line);
+  border-radius: var(--dcc-radius-card);
+}
+
+.dcc-card .dcc-card {
+  background: var(--dcc-surface2);
+}
+
+/* Navy panel: one hero or summary area per page at most. */
+.dcc-panel {
+  position: relative;
+  overflow: hidden;
+  color: var(--dcc-panel-text);
+  background: var(--dcc-panel);
+  color-scheme: dark;
+}
+
+.dcc-panel h1,
+.dcc-panel h2 {
+  color: var(--dcc-panel-text);
+}
+
+.dcc-panel .dcc-eyebrow {
+  color: var(--dcc-panel-eyebrow);
+}
+
+.dcc-panel a {
+  color: var(--dcc-panel-sub);
+}
+
+.dcc-panel :focus-visible {
+  outline-color: var(--dcc-panel-eyebrow);
+}
+
+/* Decorative wave lines inside a panel (inline SVG, aria-hidden). */
+.dcc-waves {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.dcc-waves path {
+  fill: none;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.dcc-waves .w1 {
+  stroke: var(--dcc-panel-eyebrow);
+  stroke-opacity: 0.32;
+}
+
+.dcc-waves .w2 {
+  stroke: var(--dcc-accent-line);
+  stroke-opacity: 0.45;
+}
+
+.dcc-waves .w3 {
+  stroke: var(--dcc-panel-sub);
+  stroke-opacity: 0.16;
 }
 
 /* ------------------------------------------------------------------ buttons */
 
+/* Secondary: hairline pill. Primary: solid pill (black on light, white on dark). */
 .dcc-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
   min-height: 32px;
-  padding: 0 12px;
+  padding: 0 14px;
   font: inherit;
   font-size: var(--dcc-text-md);
-  font-weight: 550;
+  font-weight: 500;
   line-height: 1.2;
   color: var(--dcc-text);
-  background: var(--dcc-surface);
-  border: 1px solid var(--dcc-border-strong);
-  border-radius: var(--dcc-radius);
+  background: transparent;
+  border: 1px solid var(--dcc-line2);
+  border-radius: 999px;
   cursor: pointer;
   text-decoration: none;
   white-space: nowrap;
-  transition: background-color 120ms var(--dcc-ease), border-color 120ms var(--dcc-ease);
+  transition: background-color 120ms var(--dcc-ease), border-color 120ms var(--dcc-ease), color 120ms var(--dcc-ease);
 }
 
 .dcc-btn:hover {
-  background: var(--dcc-surface-hover);
-  border-color: #aeb8c2;
+  background: var(--dcc-surface);
+  border-color: var(--dcc-control);
 }
 
 .dcc-btn:active {
-  background: var(--dcc-surface-pressed);
+  background: var(--dcc-surface2);
 }
 
 .dcc-btn--primary {
-  color: var(--dcc-text-on-accent);
-  background: var(--dcc-accent);
-  border-color: var(--dcc-accent);
+  color: var(--dcc-pill-text);
+  background: var(--dcc-pill-bg);
+  border-color: var(--dcc-pill-bg);
 }
 
 .dcc-btn--primary:hover {
-  background: var(--dcc-accent-hover);
-  border-color: var(--dcc-accent-hover);
+  color: var(--dcc-pill-text);
+  background: color-mix(in srgb, var(--dcc-pill-bg) 84%, var(--dcc-bg));
+  border-color: color-mix(in srgb, var(--dcc-pill-bg) 84%, var(--dcc-bg));
 }
 
 .dcc-btn--primary:active {
-  background: var(--dcc-accent-pressed);
+  background: color-mix(in srgb, var(--dcc-pill-bg) 72%, var(--dcc-bg));
 }
 
 .dcc-btn--danger {
   color: var(--dcc-danger);
-  border-color: var(--dcc-danger-border);
+  border-color: var(--dcc-danger-line);
 }
 
 .dcc-btn--danger:hover {
@@ -222,37 +437,37 @@ kbd {
 }
 
 .dcc-btn--danger-solid {
-  color: #ffffff;
+  color: var(--dcc-on-danger);
   background: var(--dcc-danger);
   border-color: var(--dcc-danger);
 }
 
 .dcc-btn--danger-solid:hover {
-  background: #741717;
-  border-color: #741717;
+  background: color-mix(in srgb, var(--dcc-danger) 86%, var(--dcc-text));
+  border-color: color-mix(in srgb, var(--dcc-danger) 86%, var(--dcc-text));
 }
 
 .dcc-btn--quiet {
   background: transparent;
   border-color: transparent;
-  color: var(--dcc-text-muted);
+  color: var(--dcc-body);
 }
 
 .dcc-btn--quiet:hover {
-  background: var(--dcc-surface-hover);
+  background: var(--dcc-surface);
   border-color: transparent;
   color: var(--dcc-text);
 }
 
 .dcc-btn--small {
-  min-height: 26px;
-  padding: 0 8px;
+  min-height: 28px;
+  padding: 0 12px;
   font-size: var(--dcc-text-sm);
 }
 
 .dcc-btn:disabled,
 .dcc-btn[aria-disabled="true"] {
-  opacity: 0.55;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
@@ -269,11 +484,12 @@ kbd {
   border: 0;
   text-decoration: underline;
   text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
   cursor: pointer;
 }
 
 .dcc-link:hover {
-  color: var(--dcc-accent-hover);
+  text-decoration-thickness: 2px;
 }
 
 /* ------------------------------------------------------------------ form controls */
@@ -288,24 +504,29 @@ kbd {
 .dcc-input,
 .dcc-select {
   width: 100%;
-  min-height: 32px;
-  padding: 5px 8px;
+  min-height: 36px;
+  padding: 6px 12px;
   font: inherit;
   font-size: var(--dcc-text-md);
   color: var(--dcc-text);
-  background: var(--dcc-surface);
-  border: 1px solid var(--dcc-control-border);
+  background: var(--dcc-bg);
+  border: 1px solid var(--dcc-control);
   border-radius: var(--dcc-radius);
 }
 
 .dcc-input::placeholder {
-  color: #7b8794;
+  color: var(--dcc-muted);
+}
+
+.dcc-input:hover,
+.dcc-select:hover {
+  border-color: var(--dcc-body);
 }
 
 .dcc-input:focus-visible,
 .dcc-select:focus-visible {
   outline: 2px solid var(--dcc-accent);
-  outline-offset: 0;
+  outline-offset: 2px;
   border-color: var(--dcc-accent);
 }
 
@@ -316,13 +537,13 @@ kbd {
 
 .dcc-input:disabled,
 .dcc-select:disabled {
-  background: var(--dcc-surface-muted);
-  color: var(--dcc-text-subtle);
+  background: var(--dcc-surface);
+  color: var(--dcc-muted);
   cursor: not-allowed;
 }
 
 .dcc-input--mono {
-  font-family: var(--dcc-font-mono);
+  font-family: var(--dcc-mono);
   font-size: var(--dcc-text-sm);
 }
 
@@ -337,12 +558,12 @@ input[type="checkbox"] {
   -webkit-appearance: none;
   position: relative;
   flex: none;
-  width: 34px;
+  width: 36px;
   height: 20px;
   margin: 0;
   border: 0;
   border-radius: 999px;
-  background: var(--dcc-control-border);
+  background: var(--dcc-control);
   cursor: pointer;
   transition: background-color 150ms var(--dcc-ease);
 }
@@ -355,8 +576,7 @@ input[type="checkbox"] {
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: #ffffff;
-  box-shadow: 0 1px 2px rgba(31, 41, 51, 0.3);
+  background: #FFFFFF;
   transition: transform 150ms var(--dcc-ease);
 }
 
@@ -365,7 +585,7 @@ input[type="checkbox"] {
 }
 
 .dcc-switch:checked::before {
-  transform: translateX(14px);
+  transform: translateX(16px);
 }
 
 .dcc-switch:disabled {
@@ -373,9 +593,13 @@ input[type="checkbox"] {
   cursor: not-allowed;
 }
 
-/* Segmented control: visually hidden radios followed by their labels. */
+/* Segmented control: visually hidden radios followed by their labels, in one hairline pill. */
 .dcc-segmented {
   display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--dcc-line2);
+  border-radius: 999px;
 }
 
 .dcc-segmented input {
@@ -388,46 +612,36 @@ input[type="checkbox"] {
 
 .dcc-segmented label {
   position: relative;
-  margin-left: -1px;
   padding: 4px 12px;
   font-size: var(--dcc-text-md);
-  font-weight: 550;
-  color: var(--dcc-text);
-  background: var(--dcc-surface);
-  border: 1px solid var(--dcc-border-strong);
+  font-weight: 500;
+  color: var(--dcc-body);
+  background: transparent;
+  border-radius: 999px;
   cursor: pointer;
   white-space: nowrap;
   user-select: none;
-}
-
-.dcc-segmented label:first-of-type {
-  margin-left: 0;
-  border-radius: var(--dcc-radius) 0 0 var(--dcc-radius);
-}
-
-.dcc-segmented label:last-of-type {
-  border-radius: 0 var(--dcc-radius) var(--dcc-radius) 0;
+  transition: background-color 120ms var(--dcc-ease), color 120ms var(--dcc-ease);
 }
 
 .dcc-segmented label:hover {
-  background: var(--dcc-surface-hover);
+  color: var(--dcc-text);
+  background: var(--dcc-surface);
 }
 
 .dcc-segmented input:checked + label {
-  z-index: 1;
-  color: var(--dcc-text-on-accent);
+  color: var(--dcc-on-accent);
   background: var(--dcc-accent);
-  border-color: var(--dcc-accent);
 }
 
 .dcc-segmented input:focus-visible + label {
-  z-index: 2;
+  z-index: 1;
   outline: 2px solid var(--dcc-accent);
   outline-offset: 2px;
 }
 
 .dcc-segmented input:disabled + label {
-  opacity: 0.55;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
@@ -435,25 +649,25 @@ input[type="checkbox"] {
 
 .dcc-notice {
   font-size: var(--dcc-text-sm);
-  color: var(--dcc-text-muted);
-  background: var(--dcc-surface-muted);
-  border: 1px solid var(--dcc-border);
+  color: var(--dcc-body);
+  background: var(--dcc-bg);
+  border: 1px solid var(--dcc-line);
   border-radius: var(--dcc-radius);
-  padding: 6px 10px;
+  padding: 8px 12px;
 }
 
 .dcc-alert {
   font-size: var(--dcc-text-md);
   color: var(--dcc-text);
-  background: var(--dcc-surface-muted);
-  border: 1px solid var(--dcc-border);
-  border-radius: var(--dcc-radius);
-  padding: 10px 12px;
+  background: var(--dcc-surface);
+  border: 1px solid var(--dcc-line);
+  border-radius: 12px;
+  padding: 10px 14px;
 }
 
 .dcc-alert--error {
   background: var(--dcc-danger-soft);
-  border-color: var(--dcc-danger-border);
+  border-color: var(--dcc-danger-line);
 }
 
 .dcc-alert--error .dcc-alert__title {
@@ -461,34 +675,36 @@ input[type="checkbox"] {
 }
 
 .dcc-alert--warn {
-  background: var(--dcc-warn-soft);
-  border-color: var(--dcc-warn-border);
+  background: var(--dcc-warm-soft);
+  border-color: var(--dcc-warm-line);
 }
 
 .dcc-alert--warn .dcc-alert__title {
-  color: var(--dcc-warn);
+  color: var(--dcc-warm);
 }
 
 .dcc-alert--ok {
-  background: var(--dcc-ok-soft);
-  border-color: var(--dcc-ok-border);
+  background: var(--dcc-success-soft);
+  border-color: var(--dcc-success-line);
 }
 
 .dcc-alert--ok .dcc-alert__title {
-  color: var(--dcc-ok);
+  color: var(--dcc-success);
 }
 
 .dcc-alert__title {
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .dcc-alert__body {
   margin-top: 2px;
+  color: var(--dcc-body);
 }
 
 .dcc-alert__steps {
   margin-top: 4px;
   padding-left: 18px;
+  color: var(--dcc-body);
 }
 
 .dcc-alert__steps li + li {
@@ -502,13 +718,16 @@ input[type="checkbox"] {
 .dcc-tech {
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);
-  gap: 2px 10px;
+  gap: 2px 12px;
   margin-top: 6px;
   font-size: var(--dcc-text-sm);
 }
 
 .dcc-tech dt {
-  color: var(--dcc-text-muted);
+  font-family: var(--dcc-mono);
+  font-size: var(--dcc-text-xs);
+  letter-spacing: 0.04em;
+  color: var(--dcc-muted);
 }
 
 .dcc-tech dd {
@@ -519,51 +738,53 @@ input[type="checkbox"] {
 details > summary {
   cursor: pointer;
   color: var(--dcc-accent);
-  font-weight: 550;
+  font-weight: 500;
 }
 
 details > summary:hover {
-  color: var(--dcc-accent-hover);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
-/* ------------------------------------------------------------------ pills and tables */
+/* ------------------------------------------------------------------ chips and tables */
 
+/* Chip: small label pill. Status chips always carry their text, never color alone. */
 .dcc-pill {
   display: inline-flex;
   align-items: center;
-  padding: 0 7px;
+  padding: 0 8px;
   font-size: var(--dcc-text-xs);
-  font-weight: 600;
+  font-weight: 500;
   line-height: 18px;
-  letter-spacing: 0.02em;
-  color: var(--dcc-text-muted);
-  background: var(--dcc-surface);
-  border: 1px solid var(--dcc-border-strong);
+  letter-spacing: 0.01em;
+  color: var(--dcc-body);
+  background: var(--dcc-bg);
+  border: 1px solid var(--dcc-line2);
   border-radius: 999px;
   white-space: nowrap;
 }
 
 .dcc-pill--accent {
-  color: var(--dcc-accent);
-  border-color: var(--dcc-accent-border);
+  color: var(--dcc-accent-text);
+  border-color: var(--dcc-accent-line);
   background: var(--dcc-accent-soft);
 }
 
 .dcc-pill--ok {
-  color: var(--dcc-ok);
-  border-color: var(--dcc-ok-border);
-  background: var(--dcc-ok-soft);
+  color: var(--dcc-success);
+  border-color: var(--dcc-success-line);
+  background: var(--dcc-success-soft);
 }
 
 .dcc-pill--warn {
-  color: var(--dcc-warn);
-  border-color: var(--dcc-warn-border);
-  background: var(--dcc-warn-soft);
+  color: var(--dcc-warm);
+  border-color: var(--dcc-warm-line);
+  background: var(--dcc-warm-soft);
 }
 
 .dcc-pill--danger {
   color: var(--dcc-danger);
-  border-color: var(--dcc-danger-border);
+  border-color: var(--dcc-danger-line);
   background: var(--dcc-danger-soft);
 }
 
@@ -576,20 +797,29 @@ details > summary:hover {
 
 .dcc-table th,
 .dcc-table td {
-  padding: 7px 10px;
+  padding: 8px 12px;
   text-align: left;
   vertical-align: middle;
-  border-bottom: 1px solid var(--dcc-border);
+  border-bottom: 1px solid var(--dcc-line);
 }
 
-.dcc-table th {
-  font-size: var(--dcc-text-sm);
-  font-weight: 600;
-  color: var(--dcc-text-muted);
-  background: var(--dcc-surface-muted);
+.dcc-table thead th {
+  font-family: var(--dcc-mono);
+  font-size: var(--dcc-text-xs);
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dcc-muted);
+  background: var(--dcc-bg);
 }
 
-.dcc-table tbody tr:last-child td {
+.dcc-table td.num,
+.dcc-table th.num {
+  font-family: var(--dcc-mono);
+  text-align: right;
+}
+
+.dcc-table tbody tr:last-child > * {
   border-bottom: 0;
 }
 
@@ -599,5 +829,6 @@ details > summary:hover {
   *::after {
     transition: none !important;
     animation: none !important;
+    scroll-behavior: auto !important;
   }
 }

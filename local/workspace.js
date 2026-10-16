@@ -4,7 +4,8 @@
  * - Routes with history.pushState under the fixture origin (deep links work because the server
  *   serves workspace.html for any non-file path; every asset URL here is root-relative).
  * - Each route renders a body fragment fetched from /fixture/<name>.html into <main>. A missing
- *   fragment renders a friendly placeholder. Fragment <script>s never run.
+ *   fragment renders a friendly placeholder. Fragment <script>s never run. The fixture server
+ *   has already replaced the fragments' {{…}} ID placeholders (local/fixture-data.mjs).
  * - The toolbar (outside <main>) can replace <main> entirely, replace the top nav, run a
  *   continuous DOM mutation storm (clock updated every 50 ms) and simulate virtualized row
  *   recycling (row elements reused in place with new content and IDs on scroll).
@@ -20,14 +21,18 @@
   const WORKSPACE_ID = '1234567890';
   const IDS = Object.freeze({
     workspaceId: WORKSPACE_ID,
-    // Canonical synthetic IDs used by the shared fixture fragments in local/fixture/.
-    jobId: '1001',
-    runId: '50101',
-    pipelineId: '0a1b2c3d-1111-4a2b-8c3d-000000000001',
-    warehouseId: 'a1b2c3d4e5f60001',
+    // Synthetic IDs that exist in the fixture billing data (local/fixture-data.mjs). The fixture
+    // server fills the fragments' {{…}} placeholders with the same IDs (job 101, pipeline P1,
+    // warehouse W1), so connected mode shows simulated amounts on these routes.
+    jobId: '101',
+    // Yesterday's (UTC) run of job 101: job ID × 1,000,000 + UTC epoch day, as fixture-data.mjs
+    // builds it (this page's clock; the server's own values are in its rendered fragments).
+    runId: String(101 * 1000000 + Math.floor(Date.now() / 86400000) - 1),
+    pipelineId: '5e1f0c2a-7b3d-4e8f-9a01-0000000000a1',
+    warehouseId: '0a1b2c3d4e5f6071',
     folderId: '2001',
     notebookId: '3001',
-    appName: 'sales-dashboard',
+    appName: 'cost-dashboard',
   });
   const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
   const UUID_RE = new RegExp('^' + UUID + '$', 'i');

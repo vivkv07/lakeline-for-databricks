@@ -31,8 +31,10 @@ importScripts(
   './helper-client.js',
   './registration.js',
   './appearance-handlers.js',
+  './oauth.js',
   './data-service.js',
   './ui-handlers.js',
+  './connect-handlers.js',
   '../databricks/monitor-api.js',
   './monitor.js',
   './router.js'
@@ -47,7 +49,8 @@ const secrets = DCC.secrets.create(chrome.storage.session);
 const fetchImpl = (...args) => fetch(...args);
 const helperFactory = (o) => DCC.helperClient.create({ fetch: fetchImpl, getBridge: o.getBridge });
 const helper = helperFactory({ getBridge: () => secrets.getBridge() });
-const data = DCC.dataService.create({ store, secrets, helper, fetch: fetchImpl });
+const oauth = DCC.oauth.create({ chromeApi: chrome, fetch: fetchImpl });
+const data = DCC.dataService.create({ store, secrets, helper, oauth, fetch: fetchImpl });
 
 async function openPage(path) {
   const url = chrome.runtime.getURL(path);
@@ -78,11 +81,11 @@ const router = DCC.router.create({
   helperPort: HELPER_PORT,
   openPage,
   // Add-on modules (e.g. monitor) register handler factories: DCC.handlerFactories.push(deps => ({...})).
-  extra: (DCC.handlerFactories || []).reduce((acc, make) => Object.assign(acc, make({ store, secrets, data, helper, openPage, chromeApi: chrome })), {}),
+  extra: (DCC.handlerFactories || []).reduce((acc, make) => Object.assign(acc, make({ store, secrets, data, helper, oauth, openPage, chromeApi: chrome })), {}),
 });
 (DCC.backgroundInits || []).forEach((init) => {
   try {
-    init({ store, secrets, data, helper, openPage, chromeApi: chrome });
+    init({ store, secrets, data, helper, oauth, openPage, chromeApi: chrome });
   } catch (e) {
     console.warn('DCC init', DCC.errors.redact(e && e.message));
   }

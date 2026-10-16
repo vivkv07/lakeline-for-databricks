@@ -172,7 +172,7 @@ test('same-origin link clicks navigate in place; modified clicks and external li
   const w = f.w;
   f.doc.querySelector('[data-fx-nav="job-runs"]').click();
   await waitFor(() => f.fx.info().route === 'job-runs' && f.main().querySelector('table'));
-  assert.equal(w.location.pathname + w.location.search, '/jobs/1001/runs' + O);
+  assert.equal(w.location.pathname + w.location.search, '/jobs/101/runs' + O);
   assert.equal(f.doc.querySelector('[data-fx-nav="job-runs"]').getAttribute('aria-current'), 'page');
   const ext = f.doc.getElementById('external');
   const ev = new w.MouseEvent('click', { bubbles: true, cancelable: true, button: 0 });
@@ -297,7 +297,7 @@ test('the real fixture fragments on disk (when present) render without the place
   }
   const f = await bootFixture({ fragments });
   // The canonical routes each shared fragment was written for (see its header comment).
-  const routes = { jobs: '/jobs', 'job-runs': '/jobs/1001/runs', 'pipeline-updates': '/pipelines/0a1b2c3d-1111-4a2b-8c3d-000000000001', 'query-history': '/sql/history', 'warehouses-list': '/sql/warehouses', 'warehouse-size': '/sql/warehouses/a1b2c3d4e5f60001/edit', 'compute-create': '/compute/clusters/create', apps: '/apps', notebooks: '/browse/folders/2001' };
+  const routes = { jobs: '/jobs', 'job-runs': '/jobs/101/runs', 'pipeline-updates': '/pipelines/0a1b2c3d-1111-4a2b-8c3d-000000000001', 'query-history': '/sql/history', 'warehouses-list': '/sql/warehouses', 'warehouse-size': '/sql/warehouses/a1b2c3d4e5f60001/edit', 'compute-create': '/compute/clusters/create', apps: '/apps', notebooks: '/browse/folders/2001' };
   for (const n of names) {
     await f.fx.navigate(routes[n] + O);
     const present = Boolean(fragments[n + '.html']);

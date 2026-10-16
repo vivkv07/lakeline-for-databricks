@@ -1,3 +1,4 @@
+import { legacyFragment } from './fixture-data.mjs';
 // Inline badges (row-refs, row-data, inline) in the SIMULATED jsdom environment with the real
 // content bootstrap (content-main.js) and a stand-in service worker. Not proof of behavior in a
 // real Databricks tab: jsdom has no layout, so geometry checks fall back to "unknown" except
@@ -15,7 +16,7 @@ const rowRefs = load('content/row-refs.js');
 const ORIGIN = 'https://dbc-1.cloud.databricks.com';
 const WSID = '1234567890';
 const FILES = [...BASE_CONTENT_FILES, 'src/content/row-refs.js', 'src/content/row-data.js', 'src/content/inline.js', 'src/content/content-main.js'];
-const fixture = (name) => readFileSync(new URL('./fixture/' + name, import.meta.url), 'utf8');
+const fixture = (name) => legacyFragment(readFileSync(new URL('./fixture/' + name, import.meta.url), 'utf8'));
 const page = (fragment) => `<!doctype html><html><head></head><body><nav aria-label="Top Navigation"><a href="/jobs?o=${WSID}">Jobs</a></nav><main data-testid="main-content">${fragment}</main></body></html>`;
 
 const summary = {

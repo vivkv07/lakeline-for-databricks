@@ -453,8 +453,8 @@ test('options: price-table dropdown has exactly the two allowed tables', async (
   assert.deepEqual(
     opts.map((o) => o.textContent),
     [
-      'List prices (system.billing.list_prices) — excludes private discounts',
-      'Account prices (system.billing.account_prices) — may be unavailable on some clouds/accounts; invoice adjustments not modeled',
+      'List prices (system.billing.list_prices): excludes private discounts',
+      'Account prices (system.billing.account_prices): may be unavailable on some clouds/accounts; invoice adjustments not modeled',
     ]
   );
   assert.equal(env.$('price-table').value, 'system.billing.list_prices');

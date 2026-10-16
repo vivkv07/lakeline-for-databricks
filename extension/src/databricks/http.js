@@ -62,6 +62,7 @@
       } catch (e) {
         throw new errors.DccError({ network: true, message: e && e.message });
       }
+      if (o.onHeaders && res.headers && typeof res.headers.get === 'function') o.onHeaders(res.headers);
       let json = null;
       const text = await res.text();
       try {

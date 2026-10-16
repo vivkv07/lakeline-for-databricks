@@ -14,6 +14,7 @@
     'src/core/ids.js',
     'src/core/periods.js',
     'src/core/labels.js',
+    'src/core/theme.js',
     'src/core/allocation.js',
     'src/content/dom.js',
     'src/content/native-adapter.js',

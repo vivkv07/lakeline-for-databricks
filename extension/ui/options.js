@@ -28,8 +28,8 @@
   const hasOwn = (o, k) => Boolean(o) && Object.prototype.hasOwnProperty.call(o, k);
 
   const PRICE_TABLE_LABELS = Object.freeze({
-    'system.billing.list_prices': 'List prices (system.billing.list_prices) — excludes private discounts',
-    'system.billing.account_prices': 'Account prices (system.billing.account_prices) — may be unavailable on some clouds/accounts; invoice adjustments not modeled',
+    'system.billing.list_prices': 'List prices (system.billing.list_prices): excludes private discounts',
+    'system.billing.account_prices': 'Account prices (system.billing.account_prices): may be unavailable on some clouds/accounts; invoice adjustments not modeled',
   });
   const SOURCE_LABELS = Object.freeze({
     pending: 'From the popup',
@@ -66,7 +66,7 @@
 
   /* ---------------------------------------------------------------- DOM helpers */
 
-  /** h('div', {class, onclick, ...}, children) — children may nest; text nodes only. */
+  /** h('div', {class, onclick, ...}, children): children may nest; text nodes only. */
   function h(tag, attrs, children) {
     const el = doc.createElement(tag);
     for (const [k, v] of Object.entries(attrs || {})) {
@@ -638,7 +638,7 @@
     const d = r.data || {};
     if (d.signedIn !== true) return show(out, messageBox('warn', 'Sign-in did not complete', ['Select the sign-in button to try again.']));
     const next = purpose === 'monitor' ? 'The monitor can now read run and compute status.' : 'Next: list warehouses in step 4.';
-    show(out, messageBox('ok', d.reused ? 'Already signed in — reusing the existing session' : 'Signed in', [next, d.profile ? 'CLI profile: ' + clean(d.profile, 80) : null]));
+    show(out, messageBox('ok', d.reused ? 'Already signed in, reusing the existing session' : 'Signed in', [next, d.profile ? 'CLI profile: ' + clean(d.profile, 80) : null]));
     if (purpose === 'cost') {
       invalidateWarehouses();
       renderWarehouse();
@@ -713,7 +713,7 @@
 
   function titleCase(s) {
     const t = V.safeText(s || '', 20).toLowerCase();
-    return t ? t.charAt(0).toUpperCase() + t.slice(1) : '—';
+    return t ? t.charAt(0).toUpperCase() + t.slice(1) : 'Unknown';
   }
 
   function savedLine(saved) {
@@ -723,7 +723,7 @@
     return h('p', { class: 'op-line' }, [
       'Saved choice: ',
       h('strong', {}, 'Automatic'),
-      saved.resolvedId ? [' — currently ', h('strong', {}, saved.resolvedName || 'Warehouse'), ' ', h('code', {}, saved.resolvedId)] : null,
+      saved.resolvedId ? [' (currently ', h('strong', {}, saved.resolvedName || 'Warehouse'), ' ', h('code', {}, saved.resolvedId), ')'] : null,
     ]);
   }
 
@@ -747,7 +747,7 @@
       h('td', {}, [h('label', { for: rid }, w.name || 'Saved warehouse'), w.serverless ? [' ', h('span', { class: 'dcc-pill' }, 'Serverless')] : null, flags.missing ? [' ', h('span', { class: 'dcc-pill dcc-pill--danger' }, 'Saved · not listed')] : null]),
       h('td', {}, h('code', {}, w.id)),
       h('td', {}, state),
-      h('td', {}, w.size || '—'),
+      h('td', {}, w.size || 'n/a'),
     ]);
   }
 
@@ -769,7 +769,7 @@
         autoInput,
         h('span', { class: 'op-option__main' }, [
           h('span', { class: 'op-option__title' }, 'Automatic (prefer running, then smallest)'),
-          h('span', { class: 'op-option__meta op-option__meta--text' }, auto ? ['Would use ', h('strong', {}, auto.name || 'Warehouse'), ' ', h('code', {}, auto.id), ' — resolved when you save, then kept until you save again.'] : 'No usable warehouse is visible to this sign-in.'),
+          h('span', { class: 'op-option__meta op-option__meta--text' }, auto ? ['Would use ', h('strong', {}, auto.name || 'Warehouse'), ' ', h('code', {}, auto.id), '. Resolved when you save, then kept until you save again.'] : 'No usable warehouse is visible to this sign-in.'),
         ]),
       ])
     );
@@ -792,7 +792,7 @@
       );
     }
     if (savedMissing) {
-      set.appendChild(messageBox('warn', 'Your saved warehouse is unavailable', ['It isn\'t in the current list — it may have been deleted, or this sign-in can\'t see it. It stays selected until you choose another one.']));
+      set.appendChild(messageBox('warn', 'Your saved warehouse is unavailable', ['It isn\'t in the current list. It may have been deleted, or this sign-in can\'t see it. It stays selected until you choose another one.']));
     }
     return set;
   }
@@ -936,7 +936,7 @@
     const gen = S.selGen;
     const host = S.sel.host;
     setBusy(btn, true);
-    show(out, busyLine(connection.warehouse.mode === 'auto' ? 'Saving — resolving Automatic from a fresh warehouse list…' : 'Saving…'));
+    show(out, busyLine(connection.warehouse.mode === 'auto' ? 'Saving: resolving Automatic from a fresh warehouse list…' : 'Saving…'));
     const res = await send({ type: 'admin:saveConnection', connection });
     setBusy(btn, false);
     await refreshState();

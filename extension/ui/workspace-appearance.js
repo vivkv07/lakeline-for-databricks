@@ -170,7 +170,7 @@
       const savedKeys = Object.keys(appearance.entries).sort();
       if (savedKeys.length) {
         const g = el('optgroup', { label: 'Saved colors' });
-        for (const k of savedKeys) g.appendChild(el('option', { value: k }, describeKey(k) + ' — ' + appearance.entries[k].color));
+        for (const k of savedKeys) g.appendChild(el('option', { value: k }, describeKey(k) + ' · ' + appearance.entries[k].color));
         savedSelect.appendChild(g);
       }
       const others = new Map();

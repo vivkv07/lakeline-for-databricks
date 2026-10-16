@@ -3,6 +3,7 @@
   (workspace 1234567890). Notebook rows link /editor/notebooks/<id> (and one legacy
   #notebook/<id> route); folders and files are not cost resources. Badges show serverless usage
   billed with the notebook's ID only; shared all-purpose cluster usage is not allocated.
+  Notebook IDs come from local/fixture-data.mjs (double-brace placeholders NOTEBOOK_N1/N2).
 -->
 <style data-fixture="notebooks">
   .fx-browse { font: 13px/1.4 system-ui, sans-serif; color: #11171c; padding: 0 16px; }
@@ -23,12 +24,12 @@
       <div role="gridcell"><a href="/browse/folders/2002?o=1234567890">reports</a></div>
       <div role="gridcell">Folder</div><div role="gridcell">owner@example.com</div><div role="gridcell">Oct 1, 2026</div>
     </div>
-    <div role="row" data-fx-item="notebook-3001">
-      <div role="gridcell"><a href="/editor/notebooks/3001?o=1234567890">daily_kpis</a></div>
+    <div role="row" data-fx-item="notebook-{{NOTEBOOK_N1}}">
+      <div role="gridcell"><a href="/editor/notebooks/{{NOTEBOOK_N1}}?o=1234567890">daily_kpis</a></div>
       <div role="gridcell">Notebook</div><div role="gridcell">owner@example.com</div><div role="gridcell">Oct 14, 2026</div>
     </div>
-    <div role="row" data-fx-item="notebook-3002">
-      <div role="gridcell"><a href="/#notebook/3002">feature_backfill</a></div>
+    <div role="row" data-fx-item="notebook-{{NOTEBOOK_N2}}">
+      <div role="gridcell"><a href="/#notebook/{{NOTEBOOK_N2}}">feature_backfill</a></div>
       <div role="gridcell">Notebook</div><div role="gridcell">owner@example.com</div><div role="gridcell">Oct 12, 2026</div>
     </div>
     <div role="row" data-fx-item="file">

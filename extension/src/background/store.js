@@ -31,6 +31,7 @@
       periodDays: 30,
       showCosts: true,
       monitor: { enabled: false, autoOpen: false, notifyFailures: false, intervalSec: 60, origin: null },
+      oauth: { clientId: null },
       revision: 1,
     };
   }
@@ -56,6 +57,8 @@
       intervalSec: [60, 120, 300].includes(m.intervalSec) ? m.intervalSec : 60,
       origin: typeof m.origin === 'string' ? m.origin : null,
     };
+    const oa = raw.oauth && typeof raw.oauth === 'object' ? raw.oauth : {};
+    out.oauth = { clientId: typeof oa.clientId === 'string' && /^[A-Za-z0-9][A-Za-z0-9._-]{5,127}$/.test(oa.clientId) ? oa.clientId : null };
     out.revision = Number.isInteger(raw.revision) && raw.revision > 0 ? raw.revision : 1;
     out.schemaVersion = SCHEMA_VERSION;
     return out;
@@ -96,7 +99,7 @@
       /** Patch validated fields only; bumps revision so in-flight results from old settings are discarded. */
       async updateSettings(patch) {
         const cur = await store.getSettings();
-        const next = migrateSettings(Object.assign({}, cur, patch, { monitor: Object.assign({}, cur.monitor, patch && patch.monitor) }));
+        const next = migrateSettings(Object.assign({}, cur, patch, { monitor: Object.assign({}, cur.monitor, patch && patch.monitor), oauth: Object.assign({}, cur.oauth, patch && patch.oauth) }));
         next.revision = cur.revision + 1;
         await area.set({ [KEYS.settings]: next });
         return next;

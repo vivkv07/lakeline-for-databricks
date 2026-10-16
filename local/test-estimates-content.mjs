@@ -1,3 +1,4 @@
+import { legacyFragment } from './fixture-data.mjs';
 // Content-side tests for Query History estimates and compute-size previews in the SIMULATED jsdom
 // environment (support/content-harness.mjs). Not proof of behavior in a real Databricks tab.
 import test from 'node:test';
@@ -10,7 +11,7 @@ import { createContentEnv, BASE_CONTENT_FILES, settle } from './support/content-
 import { SENTINEL_SQL_TEXT } from './support/sqlengine.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const fixture = (name) => readFileSync(path.join(HERE, 'fixture', name), 'utf8');
+const fixture = (name) => legacyFragment(readFileSync(path.join(HERE, 'fixture', name), 'utf8'));
 const ncd = load('content/native-cost-data.js');
 
 const FILES = [

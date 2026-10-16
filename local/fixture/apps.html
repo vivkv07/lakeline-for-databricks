@@ -2,6 +2,8 @@
   Fixture fragment: Databricks Apps list (route /apps). Synthetic data only (workspace
   1234567890). Apps are identified by their route name (/apps/<name>), matching
   usage_metadata.app_name. The external app URL, "Create app" and settings links are ignored.
+  The first app (double-brace placeholder APP_NAME) is billed in local/fixture-data.mjs; ops-assistant
+  has no usage on purpose.
 -->
 <style data-fixture="apps">
   .fx-apps { font: 13px/1.4 system-ui, sans-serif; color: #11171c; padding: 0 16px; }
@@ -20,11 +22,11 @@
       <tr><th scope="col">Name</th><th scope="col">URL</th><th scope="col">Status</th><th scope="col"></th></tr>
     </thead>
     <tbody>
-      <tr data-fx-app="sales-dashboard">
-        <td><a href="/apps/sales-dashboard?o=1234567890">sales-dashboard</a></td>
-        <td><a href="https://sales-dashboard-1234567890.example-apps.invalid/">Open app</a></td>
+      <tr data-fx-app="{{APP_NAME}}">
+        <td><a href="/apps/{{APP_NAME}}?o=1234567890">{{APP_NAME}}</a></td>
+        <td><a href="https://{{APP_NAME}}-1234567890.example-apps.invalid/">Open app</a></td>
         <td>Running</td>
-        <td><a href="/apps/sales-dashboard/settings?o=1234567890">Settings</a></td>
+        <td><a href="/apps/{{APP_NAME}}/settings?o=1234567890">Settings</a></td>
       </tr>
       <tr data-fx-app="ops-assistant">
         <td><a href="/apps/ops-assistant">ops-assistant</a></td>

@@ -104,6 +104,22 @@ function at(date, minutes) {
 }
 const tsMs = (s) => Date.parse(s + 'Z');
 
+/** Query-history index of the one non-warehouse statement (see buildDataset). */
+export const NON_WAREHOUSE_STATEMENT_INDEX = 90;
+
+/**
+ * Days before today of the most recent complete weekday with query history (1–29), or null.
+ * The Query History fixture page shows statements from this day.
+ */
+export function queryHistoryDaysAgo(nowMs) {
+  const todayMs = Date.parse(utcDate(nowMs) + 'T00:00:00Z');
+  for (let k = 1; k < 30; k++) {
+    const wd = new Date(todayMs - k * DAY).getUTCDay();
+    if (wd >= 1 && wd <= 5) return k;
+  }
+  return null;
+}
+
 export const epochDayOf = (date) => Math.floor(Date.parse(date + 'T00:00:00Z') / DAY);
 export const jobRunId = (jobId, epochDay) => String(Number(jobId) * 1000000 + epochDay);
 export const taskRunId = (jobId, epochDay, taskIndex) => String((Number(jobId) * 1000000 + epochDay) * 10 + taskIndex + 1);
@@ -257,6 +273,25 @@ export function buildDataset(o = {}) {
       addQuery(W2, 13 * 60 + 5, 120 + r() * 300);
       addQuery(W2, 14 * 60 + 20, 60 + r() * 120);
     }
+  }
+
+  // One statement that ran on non-warehouse compute (no rng draw, so every other row is
+  // unchanged): the Query History fixture page links it to show "Compute unsupported".
+  const qhK = queryHistoryDaysAgo(nowMs);
+  if (qhK !== null && qhK < days) {
+    const date = utcDate(todayMs - qhK * DAY);
+    history.push({
+      statement_id: historyStatementId(epochDayOf(date), NON_WAREHOUSE_STATEMENT_INDEX),
+      workspace_id: WORKSPACE_ID,
+      execution_status: 'FINISHED',
+      compute: { type: 'SERVERLESS_COMPUTE', warehouse_id: null, cluster_id: null },
+      start_time: at(date, 10 * 60 + 30),
+      end_time: at(date, 10 * 60 + 30 + 4.75 / 60),
+      total_duration_ms: 4750,
+      execution_duration_ms: 4100,
+      from_result_cache: false,
+      statement_text: SENTINEL_SQL_TEXT,
+    });
   }
 
   // Prices: one validity change for jobs compute; account prices at 85 % of list.
@@ -447,4 +482,220 @@ export function monitorSnapshot(nowMs = Date.now(), origin = 'http://127.0.0.1:8
   ];
 
   return { runs, pipelines, clusters };
+}
+
+/* ------------------------------------------------------------------ fixture page templating */
+
+/*
+ * The fragments in local/fixture/*.html name resources through placeholders such as {{JOB_101}}
+ * or {{JOB_101_RUN_D1}}, so the routed fixture SPA links IDs that exist in this dataset and
+ * connected-mode badges and estimates show real (simulated) amounts. The fixture server renders
+ * them with fixtureTemplateValues(dataset); values come only from this module, never from a
+ * request, and are HTML-escaped. LEGACY_TEMPLATE_VALUES reproduces the original hand-written
+ * synthetic IDs (job 1001, run 50101, …) for jsdom tests that load a fragment without a server:
+ *   legacyFragment(readFileSync(new URL('./fixture/job-runs.html', import.meta.url), 'utf8'))
+ * "Dk" = k UTC days before today (D1 = yesterday).
+ */
+
+export const TEMPLATE_PLACEHOLDER = /\{\{([A-Z][A-Z0-9_]{0,63})\}\}/g;
+
+const HTML_ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+export function escapeHtml(v) {
+  return String(v).replace(/[&<>"']/g, (c) => HTML_ESCAPES[c]);
+}
+
+/**
+ * Replace {{NAME}} placeholders with HTML-escaped values.
+ * @returns {{html: string, used: string[], unknown: string[]}} unknown = names without a value
+ */
+export function renderFixtureTemplate(text, values) {
+  const used = new Set();
+  const unknown = new Set();
+  const html = String(text).replace(TEMPLATE_PLACEHOLDER, (all, name) => {
+    if (!Object.prototype.hasOwnProperty.call(values, name) || typeof values[name] !== 'string') {
+      unknown.add(name);
+      return all;
+    }
+    used.add(name);
+    return escapeHtml(values[name]);
+  });
+  return { html, used: [...used].sort(), unknown: [...unknown].sort() };
+}
+
+/** Original hand-written synthetic IDs and display text of the fragments (jsdom unit tests). */
+export const LEGACY_TEMPLATE_VALUES = Object.freeze({
+  JOB_101: '1001',
+  JOB_101_NAME: 'nightly_sales_etl',
+  JOB_102: '1002',
+  JOB_102_NAME: 'hourly_events',
+  JOB_101_RUN_D1: '50101',
+  JOB_101_RUN_D2: '50102',
+  JOB_101_RUN_D3: '50103',
+  JOB_101_RUN_D4: '50104',
+  JOB_101_RUN_D5: '50100',
+  JOB_101_RUN_D1_START: 'Oct 14, 2026, 02:00:00 AM',
+  JOB_101_RUN_D2_START: 'Oct 13, 2026, 02:00:00 AM',
+  JOB_101_RUN_D3_START: 'Oct 12, 2026, 02:00:00 AM',
+  JOB_101_RUN_D4_START: 'Oct 11, 2026, 02:00:00 AM',
+  JOB_101_RUN_D5_START: 'Oct 10, 2026, 02:00:00 AM',
+  JOB_101_RUN_D1_DURATION: '12m 4s',
+  JOB_101_RUN_D2_DURATION: '15m 10s',
+  JOB_101_RUN_D3_DURATION: '2m 1s',
+  JOB_101_RUN_D4_DURATION: '13m 0s',
+  JOB_101_RUN_D5_DURATION: '12m 2s',
+  JOB_102_RUN_D1: '60001',
+  PIPELINE_P1: '0a1b2c3d-1111-4a2b-8c3d-000000000001',
+  PIPELINE_P1_NAME: 'bronze_ingest',
+  PIPELINE_P1_UPDATE_D1: '0a1b2c3d-2222-4a2b-8c3d-000000000011',
+  PIPELINE_P1_UPDATE_D2: '0a1b2c3d-2222-4a2b-8c3d-000000000012',
+  PIPELINE_P1_UPDATE_D3: '0a1b2c3d-2222-4a2b-8c3d-000000000013',
+  PIPELINE_P1_UPDATE_D1_START: 'Oct 14, 2026, 03:00 AM',
+  PIPELINE_P1_UPDATE_D2_START: 'Oct 13, 2026, 03:00 AM',
+  PIPELINE_P1_UPDATE_D3_START: 'Oct 12, 2026, 03:00 AM',
+  PIPELINE_P1_TRIGGER_JOB: '1001',
+  PIPELINE_P1_TRIGGER_JOB_NAME: 'nightly_sales_etl',
+  PIPELINE_P1_TRIGGER_RUN: '50101',
+  PIPELINE_P2: '0a1b2c3d-1111-4a2b-8c3d-000000000002',
+  PIPELINE_P2_NAME: 'silver_rollup',
+  PIPELINE_P2_UPDATE_D1: '0a1b2c3d-2222-4a2b-8c3d-000000000021',
+  WAREHOUSE_W1: 'a1b2c3d4e5f60001',
+  WAREHOUSE_W1_NAME: 'Shared BI warehouse',
+  WAREHOUSE_W1_SIZE: 'Small',
+  WAREHOUSE_W1_TYPE: 'Serverless',
+  WAREHOUSE_W2: 'a1b2c3d4e5f60002',
+  WAREHOUSE_W2_NAME: 'ETL warehouse',
+  WAREHOUSE_W2_SIZE: 'Medium',
+  WAREHOUSE_W2_TYPE: 'Pro',
+  WAREHOUSE_W3: 'a1b2c3d4e5f60003',
+  WAREHOUSE_W3_NAME: 'Ad hoc analysis',
+  WAREHOUSE_W3_SIZE: '2X-Small',
+  WAREHOUSE_W3_TYPE: 'Serverless',
+  NOTEBOOK_N1: '3001',
+  NOTEBOOK_N2: '3002',
+  APP_NAME: 'sales-dashboard',
+  STMT_FINISHED: '01f0a1b2-c3d4-1e5f-9a8b-7c6d5e4f3a21',
+  STMT_FINISHED_START: 'Oct 15, 2026, 10:23:45 AM',
+  STMT_FINISHED_DURATION: '1.2 s',
+  QH_META_START: 'Oct 15, 2026, 10:24:10 AM',
+  QH_META_DURATION: '2m 3s',
+  STMT_RUNNING: '01f0a1b2-c3d4-1e5f-9a8b-7c6d5e4f3a23',
+  STMT_RUNNING_START: 'Oct 15, 2026, 10:30:02 AM',
+  STMT_CACHED: '01f0a1b2-c3d4-1e5f-9a8b-7c6d5e4f3a24',
+  STMT_CACHED_START: 'Oct 15, 2026, 10:31:00 AM',
+  STMT_NON_WAREHOUSE: '01f0a1b2-c3d4-1e5f-9a8b-7c6d5e4f3a26',
+  STMT_NON_WAREHOUSE_START: 'Oct 15, 2026, 09:58:31 AM',
+  STMT_NON_WAREHOUSE_DURATION: '4.75 s',
+});
+
+/** A fragment rendered with LEGACY_TEMPLATE_VALUES; throws on a placeholder without a value. */
+export function legacyFragment(text) {
+  const out = renderFixtureTemplate(text, LEGACY_TEMPLATE_VALUES);
+  if (out.unknown.length) throw new Error('Unknown fixture placeholder(s): ' + out.unknown.join(', '));
+  return out.html;
+}
+
+/** '2026-10-14T02:00:00' → '2026-10-14 02:00 UTC' (display only; never parsed). */
+const minuteUtc = (ts) => ts.slice(0, 10) + ' ' + ts.slice(11, 16) + ' UTC';
+/** '2026-10-14T11:07:00' → '2026-10-14 11:07:00 +00:00': second precision with an explicit offset,
+ *  which native-cost-data.js parseDisplayedTime reads as UTC in any browser time zone. */
+const secondUtc = (ts) => ts.slice(0, 10) + ' ' + ts.slice(11, 19) + ' +00:00';
+
+/** Run length for display: '1h 40m', '12m 4s', '45s'. */
+function runDuration(ms) {
+  const s = Math.round(ms / 1000);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  if (h) return h + 'h ' + m + 'm';
+  return m ? m + 'm ' + (s % 60) + 's' : s + 's';
+}
+
+/** Query duration with one decimal of seconds ('4.8 s', '2m 3.5s'): parseDuration gives ±50 ms,
+ *  and rounding to 0.1 s always keeps the true total_duration_ms inside that window. */
+function queryDuration(ms) {
+  const tenths = Math.round(ms / 100);
+  if (tenths < 600) return (tenths / 10).toFixed(1) + ' s';
+  return Math.floor(tenths / 600) + 'm ' + ((tenths % 600) / 10).toFixed(1) + 's';
+}
+
+/**
+ * Placeholder values for a dataset (same names as LEGACY_TEMPLATE_VALUES). Derived from the
+ * dataset's own rows, so every linked ID has billing (job runs D1–D5, P1 updates D1–D3, query
+ * history from the most recent complete weekday).
+ * @param {{nowMs:number, today:string, tables:object}} dataset from buildDataset()
+ * @returns {Readonly<Record<string,string>>}
+ */
+export function fixtureTemplateValues(dataset) {
+  const { nowMs, today, tables } = dataset;
+  const todayMs = Date.parse(today + 'T00:00:00Z');
+  const dayAgo = (k) => utcDate(todayMs - k * DAY);
+  const need = (row, what) => {
+    if (!row) throw new Error('Fixture template: ' + what + ' is not in the dataset');
+    return row;
+  };
+  const jobRun = (jobId, k) => need(tables['lakeflow.job_run_timeline'].find((r) => r.job_id === jobId && r.run_id === jobRunId(jobId, epochDayOf(dayAgo(k)))), 'job ' + jobId + ' run D' + k);
+  const update = (p, k) => need(tables['lakeflow.pipeline_update_timeline'].find((u) => u.pipeline_id === p.pipeline_id && u.update_id === pipelineUpdateId(p.n, epochDayOf(dayAgo(k)))), p.name + ' update D' + k);
+  const qhK = need(queryHistoryDaysAgo(nowMs), 'a weekday with query history');
+  const qhEd = epochDayOf(dayAgo(qhK));
+  const stmt = (i) => need(tables['query.history'].find((h) => h.statement_id === historyStatementId(qhEd, i)), 'query history statement ' + i);
+  const [W1, W2, W3] = WAREHOUSES;
+  const [P1, P2] = PIPELINES;
+  const v = {
+    JOB_101: JOBS[0].job_id,
+    JOB_101_NAME: JOBS[0].name,
+    JOB_102: JOBS[1].job_id,
+    JOB_102_NAME: JOBS[1].name,
+  };
+  for (let k = 1; k <= 5; k++) {
+    const run = jobRun('101', k);
+    v['JOB_101_RUN_D' + k] = run.run_id;
+    v['JOB_101_RUN_D' + k + '_START'] = minuteUtc(run.period_start_time);
+    v['JOB_101_RUN_D' + k + '_DURATION'] = runDuration(tsMs(run.period_end_time) - tsMs(run.period_start_time));
+  }
+  v.JOB_102_RUN_D1 = jobRun('102', 1).run_id;
+  v.PIPELINE_P1 = P1.pipeline_id;
+  v.PIPELINE_P1_NAME = P1.name;
+  for (let k = 1; k <= 3; k++) {
+    const upd = update(P1, k);
+    v['PIPELINE_P1_UPDATE_D' + k] = upd.update_id;
+    v['PIPELINE_P1_UPDATE_D' + k + '_START'] = minuteUtc(upd.period_start_time);
+  }
+  // P1's D1 update was triggered by the refresh_pipeline task of job 102's D1 run.
+  const trig = update(P1, 1).trigger_details.job_task;
+  const task = need(tables['lakeflow.job_task_run_timeline'].find((t) => t.run_id === trig.job_task_run_id), 'triggering task run');
+  v.PIPELINE_P1_TRIGGER_JOB = trig.job_id;
+  v.PIPELINE_P1_TRIGGER_JOB_NAME = JOBS.find((j) => j.job_id === trig.job_id).name;
+  v.PIPELINE_P1_TRIGGER_RUN = task.job_run_id;
+  v.PIPELINE_P2 = P2.pipeline_id;
+  v.PIPELINE_P2_NAME = P2.name;
+  v.PIPELINE_P2_UPDATE_D1 = update(P2, 1).update_id;
+  const TYPE = (w) => (w.enable_serverless_compute ? 'Serverless' : w.warehouse_type === 'PRO' ? 'Pro' : 'Classic');
+  for (const [n, w] of [['W1', W1], ['W2', W2], ['W3', W3]]) {
+    v['WAREHOUSE_' + n] = w.id;
+    v['WAREHOUSE_' + n + '_NAME'] = w.name;
+    v['WAREHOUSE_' + n + '_SIZE'] = w.cluster_size;
+    v['WAREHOUSE_' + n + '_TYPE'] = TYPE(w);
+  }
+  v.NOTEBOOK_N1 = NOTEBOOKS[0].notebook_id;
+  v.NOTEBOOK_N2 = NOTEBOOKS[1].notebook_id;
+  v.APP_NAME = APPS[0].app_name;
+  // Query history (statement links and one metadata-only row). Indices: 0–7 on W1 in overlapping
+  // pairs (each start second unique per warehouse), 8–9 on W2, 90 on non-warehouse compute.
+  const finished = stmt(0);
+  v.STMT_FINISHED = finished.statement_id;
+  v.STMT_FINISHED_START = secondUtc(finished.start_time);
+  v.STMT_FINISHED_DURATION = queryDuration(finished.total_duration_ms);
+  const meta = stmt(2);
+  v.QH_META_START = secondUtc(meta.start_time);
+  v.QH_META_DURATION = queryDuration(meta.total_duration_ms);
+  // Still running on the page: not in history yet (the extension makes no request for it).
+  v.STMT_RUNNING = historyStatementId(epochDayOf(today), 99);
+  v.STMT_RUNNING_START = secondUtc(new Date(Math.floor((nowMs - 90000) / 1000) * 1000).toISOString().slice(0, 19));
+  const cached = stmt(4);
+  v.STMT_CACHED = cached.statement_id;
+  v.STMT_CACHED_START = secondUtc(cached.start_time);
+  const other = stmt(NON_WAREHOUSE_STATEMENT_INDEX);
+  v.STMT_NON_WAREHOUSE = other.statement_id;
+  v.STMT_NON_WAREHOUSE_START = secondUtc(other.start_time);
+  v.STMT_NON_WAREHOUSE_DURATION = queryDuration(other.total_duration_ms);
+  return Object.freeze(v);
 }
