@@ -1,5 +1,5 @@
 #!/bin/bash
-# Databricks Cost Companion: double-click to start the local helper on macOS.
+# Lakeline for Databricks: double-click to start the local helper on macOS.
 # Same behavior as start-helper.sh; keeps the window open if something goes wrong.
 DIR="$(cd "$(dirname "$0")" && pwd)"
 bash "$DIR/start-helper.sh" "$@"

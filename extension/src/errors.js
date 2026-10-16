@@ -82,7 +82,7 @@
     OAUTH_CLIENT_MISSING: {
       title: 'One-time sign-in setup needed',
       steps: [
-        'An account admin registers Cost Companion once: account console, Settings, App connections, Add connection. Redirect URL: the one shown in the extension. Scopes: SQL and All APIs. No client secret.',
+        'An account admin registers Lakeline once: account console, Settings, App connections, Add connection. Redirect URL: the one shown in the extension. Scopes: SQL and All APIs. No client secret.',
         'Paste the resulting client ID in the extension. After that, Connect is one click for every workspace in that account.',
       ],
     },

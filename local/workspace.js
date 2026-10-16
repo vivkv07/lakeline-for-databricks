@@ -1,5 +1,5 @@
 /*
- * SYNTHETIC FIXTURE SPA for Databricks Cost Companion tests. Not Databricks; made-up data only.
+ * SYNTHETIC FIXTURE SPA for Lakeline for Databricks tests. Not Databricks; made-up data only.
  *
  * - Routes with history.pushState under the fixture origin (deep links work because the server
  *   serves workspace.html for any non-file path; every asset URL here is root-relative).

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Databricks Cost Companion: start the local helper (macOS and Linux).
+# Lakeline for Databricks: start the local helper (macOS and Linux).
 #
 # - Needs Node.js 20 or newer. Browser sign-in also needs the Databricks CLI v1.12 or newer.
 # - If a helper of the same version is already running, it is reused: this script asks it to

@@ -14,7 +14,7 @@ const dataService = load('background/data-service.js');
 const helperClient = load('background/helper-client.js');
 
 const ORIGIN = 'https://dbc-00000000-test.cloud.databricks.com';
-const CLIENT = 'cost-companion-client-0001';
+const CLIENT = 'lakeline-client-0001';
 const REDIRECT = 'https://jfhjmnhnmkgknkjhmchcjddonpngcgna.chromiumapp.org/';
 const WH = 'a1b2c3d4e5f60001';
 const b64url = (buf) => Buffer.from(buf).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');

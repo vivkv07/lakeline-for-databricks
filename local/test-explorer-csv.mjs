@@ -47,7 +47,7 @@ test('numeric cells stay numbers: negatives preserved unquoted, missing is empty
 test('toCsv writes metadata rows, a blank line, the header and rows with CRLF', () => {
   const text = CSV.toCsv({
     meta: [
-      ['Source', 'Databricks Cost Companion · Cost Explorer: Top drivers'],
+      ['Source', 'Lakeline for Databricks · Cost Explorer: Top drivers'],
       ['Pricing basis', 'List price'],
       ['Price table', 'system.billing.list_prices'],
       ['Currency', 'USD'],
@@ -69,7 +69,7 @@ test('toCsv writes metadata rows, a blank line, the header and rows with CRLF', 
     ],
   });
   const lines = text.split('\r\n');
-  assert.equal(lines[0], 'Source,Databricks Cost Companion · Cost Explorer: Top drivers');
+  assert.equal(lines[0], 'Source,Lakeline for Databricks · Cost Explorer: Top drivers');
   assert.equal(lines[2], 'Price table,system.billing.list_prices');
   assert.equal(lines[4], '"Period start (UTC, inclusive)",2026-09-15');
   assert.equal(lines[7], 'Scope,"Workspace 42; Search = ""=evil"""');

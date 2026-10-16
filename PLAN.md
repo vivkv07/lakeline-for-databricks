@@ -1,4 +1,4 @@
-# Databricks Cost Companion: build plan
+# Lakeline for Databricks: build plan
 
 Baseline (2026-10-15): empty directory, not a git repo. Node 22.16, git 2.50 and Google Chrome are
 installed. Edge and the Databricks CLI are not. Playwright's cached Chromium is available for
@@ -121,9 +121,11 @@ buttons, numbered mono eyebrows and no em dashes. This supersedes the spec §1 "
 Accessibility rules still apply. The style is used without any brand names or marks. The work is
 published as the owner's own.
 
-Open question for publishing: the Chrome Web Store and Databricks trademark rules discourage a
-third-party mark at the start of a product name. "Cost Companion for Databricks" is safer than
-"Databricks Cost Companion". This needs the owner's decision before any public listing.
+Name (decided 2026-10-15): **Lakeline for Databricks**, or "Lakeline" where space is short. The
+third-party mark is not at the start of the name. Web searches found no software or Chrome
+extension called Lakeline (the nearest is Lakeside Software, a different company). A trademark
+search is still worth doing before any public launch. The product is growing beyond costs: next
+is a Genie side panel (see the Stage 13 notes below).
 
 ## Decisions (answered 2026-10-15)
 

@@ -30,7 +30,7 @@
   const ASSUMPTIONS = (allocation && allocation.ASSUMPTIONS) || [];
 
   const NOTE_TEXT =
-    'Cost Companion: the amount beside each query is an allocated estimate (approx.), not measured CPU or memory and not an invoice line. ' +
+    'Lakeline: the amount beside each query is an allocated estimate (approx.), not measured CPU or memory and not an invoice line. ' +
     "Each SQL warehouse billing interval's cost is assumed uniform over the interval and shared equally among the queries active at the same time; " +
     'idle time and unused capacity stay unallocated, so estimates need not add up to the warehouse bill. ' +
     'Active time is approximated from query metadata, executions hidden from you are not counted, and billing can be delayed or partial. ' +

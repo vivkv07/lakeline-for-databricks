@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /*
- * Databricks Cost Companion local helper (Node 20+, no runtime dependencies).
+ * Lakeline for Databricks local helper (Node 20+, no runtime dependencies).
  *
  *   node local/server.mjs --open          start on 127.0.0.1:8766 and open setup in the browser
  *   node local/server.mjs --fixture       also start the dev-only synthetic fixture (port 8765)
@@ -584,7 +584,7 @@ function parseArgs(argv) {
   return out;
 }
 
-const USAGE = `Databricks Cost Companion local helper ${VERSION}
+const USAGE = `Lakeline for Databricks local helper ${VERSION}
 Usage: node local/server.mjs [--open] [--fixture] [--port N]
        node local/server.mjs --fixture-only
        node local/server.mjs --version
@@ -642,7 +642,7 @@ async function main(argv) {
     }
     throw e;
   }
-  process.stdout.write('Databricks Cost Companion helper ' + VERSION + ' listening on ' + helper.origin + ' (this computer only).\n');
+  process.stdout.write('Lakeline for Databricks helper ' + VERSION + ' listening on ' + helper.origin + ' (this computer only).\n');
 
   let fixtureChild = null;
   if (args.fixture) {

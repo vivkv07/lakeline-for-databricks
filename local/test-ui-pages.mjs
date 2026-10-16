@@ -354,10 +354,10 @@ test('popup: first connect shows the one-time client ID setup with the redirect 
   env.$('oauth-save-connect').click();
   await settle();
   assert.match(env.text('page-alert'), /client ID/);
-  env.$('oauth-client-id').value = 'cost-companion-client-0001';
+  env.$('oauth-client-id').value = 'lakeline-client-0001';
   env.$('oauth-save-connect').click();
   await settle();
-  assert.deepEqual(env.messages.filter((m) => m.type === 'connect:oneClick').at(-1), { type: 'connect:oneClick', url: A + '/jobs?o=42', clientId: 'cost-companion-client-0001' });
+  assert.deepEqual(env.messages.filter((m) => m.type === 'connect:oneClick').at(-1), { type: 'connect:oneClick', url: A + '/jobs?o=42', clientId: 'lakeline-client-0001' });
   assert.equal(env.$('oauth-setup').hidden, true);
   assert.deepEqual(env.perms.requests, [], 'already-granted access is not requested again');
   env.close();

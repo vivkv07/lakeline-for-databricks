@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
-  <title>Databricks Cost Companion</title>
+  <title>Lakeline for Databricks</title>
   <link rel="stylesheet" href="brand.css">
   <link rel="stylesheet" href="popup.css">
   <link rel="stylesheet" href="workspace-appearance.css">
@@ -13,7 +13,7 @@
   <header class="pp-header">
     <svg class="dcc-mark pp-mark" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect width="16" height="16" rx="4" fill="#000000"/><rect x="3.5" y="8.5" width="2" height="4" fill="#FFFFFF"/><rect x="7" y="5.5" width="2" height="7" fill="#FFFFFF"/><rect x="10.5" y="3.5" width="2" height="9" fill="#5B8CFF"/></svg>
     <div class="pp-title">
-      <h1>Cost Companion</h1>
+      <h1>Lakeline</h1>
       <p class="pp-sub" id="mode-summary" aria-live="polite">Loading…</p>
     </div>
     <button type="button" class="dcc-btn pp-icon-btn" id="open-options" aria-label="Connection preferences" title="Connection preferences">
@@ -31,7 +31,7 @@
       <button type="button" class="dcc-btn dcc-btn--primary" id="connect-btn">Connect Databricks</button>
     </div>
     <div id="oauth-setup" class="pp-oauth-setup dcc-card" hidden>
-      <p class="pp-line"><strong>One-time setup.</strong> An account admin registers Cost Companion in Databricks once. After that, Connect is one click for every workspace in the account.</p>
+      <p class="pp-line"><strong>One-time setup.</strong> An account admin registers Lakeline in Databricks once. After that, Connect is one click for every workspace in the account.</p>
       <ol class="pp-steps">
         <li>Account console, Settings, App connections, Add connection.</li>
         <li>Redirect URL: <code id="oauth-redirect" class="pp-code"></code> <button type="button" class="dcc-btn pp-copy" id="oauth-copy">Copy</button></li>

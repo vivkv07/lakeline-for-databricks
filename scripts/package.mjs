@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /*
  * Build the sanitized distributable ZIP from an EXPLICIT allowlist, then inspect it.
- * Usage: node scripts/package.mjs [--out dist/databricks-cost-companion-<version>.zip]
+ * Usage: node scripts/package.mjs [--out dist/lakeline-for-databricks-<version>.zip]
  *
  * Included: extension assets, helper source, launcher scripts, docs, example data, synthetic
  * fixture pages. Excluded by construction (never listed) and re-checked after build: auth/CLI
@@ -141,14 +141,14 @@ function zip(entries) {
 function main() {
   const args = process.argv.slice(2);
   const outArg = args.indexOf('--out');
-  const out = path.resolve(ROOT, outArg !== -1 ? args[outArg + 1] : `dist/databricks-cost-companion-${version}.zip`);
+  const out = path.resolve(ROOT, outArg !== -1 ? args[outArg + 1] : `dist/lakeline-for-databricks-${version}.zip`);
   const files = collect();
   const problems = inspect(files);
   if (problems.length) {
     console.error('Refusing to package:\n  ' + problems.join('\n  '));
     process.exit(1);
   }
-  const prefix = 'databricks-cost-companion/';
+  const prefix = 'lakeline-for-databricks/';
   const archive = zip(files.map((f) => ({ name: prefix + f, data: readFileSync(path.join(ROOT, f)) })));
   mkdirSync(path.dirname(out), { recursive: true });
   writeFileSync(out, archive);

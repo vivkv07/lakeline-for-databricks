@@ -1,5 +1,5 @@
 {
-  "name": "databricks-cost-companion",
+  "name": "lakeline-for-databricks",
   "version": "0.1.0",
   "private": true,
   "description": "Chrome/Edge MV3 extension that shows estimated Databricks costs inside the workspace.",

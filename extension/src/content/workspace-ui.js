@@ -276,7 +276,7 @@ td.num { font-family: var(--mono); }
         case 'paused':
           return 'Cost display paused';
         case 'disconnected':
-          return 'Cost Companion is not connected to this workspace';
+          return 'Lakeline is not connected to this workspace';
         case 'unidentified':
           return state.conflict ? 'Conflicting workspace IDs in this URL' : 'Workspace ID not identified';
         case 'mismatch':
