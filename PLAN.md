@@ -113,6 +113,18 @@ bill you.
   - Serving endpoints, Genie and Lakebase show up through `billing_origin_product` in the
     banner and Explorer. Resource badges for them are a later add-on.
 
+## Visual style (owner request, 2026-10-15)
+
+All extension surfaces use the owner's house style from `notes/STYLE.md`: pure black or white
+surfaces, Inter and IBM Plex Mono, one blue accent plus warm amber for data, hairline cards, pill
+buttons, numbered mono eyebrows and no em dashes. This supersedes the spec §1 "neutral" palette.
+Accessibility rules still apply. The style is used without any brand names or marks. The work is
+published as the owner's own.
+
+Open question for publishing: the Chrome Web Store and Databricks trademark rules discourage a
+third-party mark at the start of a product name. "Cost Companion for Databricks" is safer than
+"Databricks Cost Companion". This needs the owner's decision before any public listing.
+
 ## Decisions (answered 2026-10-15)
 
 - **Widget.** A floating monitor window, opt-in auto-open on Chrome start, a "Float" button for an
