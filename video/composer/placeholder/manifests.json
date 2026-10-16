@@ -1,0 +1,130 @@
+{
+  "_comment": "Development placeholders only. Files resolve under the placeholder root (render.mjs --placeholder-root, env LAKELINE_PLACEHOLDER_ROOT). Any scene drawn from here gets the PLACEHOLDER watermark. Boxes are CSS px of each image; texts are read off the placeholder screenshots so the caption pipeline can be exercised.",
+  "3": {
+    "scene": "03-connect (placeholder)",
+    "placeholder": true,
+    "states": [
+      { "id": "page-prod", "kind": "page", "theme": "light", "file": "e2e-shots-themefix/03-job-101-runs.png", "viewport": { "width": 1280, "height": 900 }, "deviceScaleFactor": 1 },
+      { "id": "popup-connect", "kind": "popup", "theme": "light", "file": "design-v2/after/after-popup-default-360-light.png", "viewport": { "width": 360, "height": 520 }, "deviceScaleFactor": 2,
+        "boxes": { "connect-button": { "x": 16, "y": 129, "width": 211, "height": 36 } } },
+      { "id": "popup-connected", "kind": "popup", "theme": "light", "file": "design-v2/after/after-popup-connected-360-light.png", "viewport": { "width": 360, "height": 500 }, "deviceScaleFactor": 2,
+        "boxes": { "status": { "x": 14, "y": 98, "width": 172, "height": 20 } } }
+    ]
+  },
+  "4": {
+    "scene": "04-banner (placeholder)",
+    "placeholder": true,
+    "states": [
+      { "id": "banner-30d", "kind": "page", "theme": "light", "file": "e2e-shots-themefix/02-jobs-banner-30d.png", "viewport": { "width": 1280, "height": 900 }, "deviceScaleFactor": 1,
+        "boxes": { "banner": { "x": 221, "y": 103, "width": 1059, "height": 146 }, "top-bar": { "x": 0, "y": 53, "width": 1280, "height": 50 },
+                   "amount": { "x": 237, "y": 116, "width": 228, "height": 24 }, "change": { "x": 606, "y": 110, "width": 632, "height": 32 },
+                   "period-7d": { "x": 812, "y": 150, "width": 36, "height": 26 }, "period-30d": { "x": 850, "y": 150, "width": 40, "height": 26 }, "period-90d": { "x": 893, "y": 150, "width": 42, "height": 26 } },
+        "texts": { "amount": "$1,189.05", "change": "+0.6% vs prior", "period": "Last 30 days" } },
+      { "id": "banner-7d", "kind": "page", "theme": "light", "file": "e2e-shots-themefix/05-jobs-banner-7d.png", "viewport": { "width": 1280, "height": 900 }, "deviceScaleFactor": 1,
+        "boxes": { "period-30d": { "x": 850, "y": 114, "width": 40, "height": 26 }, "amount": { "x": 237, "y": 116, "width": 128, "height": 24 }, "change": { "x": 376, "y": 110, "width": 410, "height": 32 } },
+        "texts": { "amount": "$272.42", "change": "-2.3% vs prior", "period": "Last 7 days" } },
+      { "id": "banner-90d", "kind": "page", "theme": "light", "file": "shots/inpage-jobs-banner-1280-light.png", "viewport": { "width": 1280, "height": 900 }, "deviceScaleFactor": 1,
+        "boxes": { "amount": { "x": 237, "y": 108, "width": 140, "height": 24 }, "change": { "x": 455, "y": 102, "width": 330, "height": 32 } } }
+    ]
+  },
+  "5": {
+    "scene": "05-runs (placeholder)",
+    "placeholder": true,
+    "states": [
+      { "id": "runs-nightly-sales-etl", "kind": "page", "theme": "light", "file": "e2e-shots-themefix/03-job-101-runs.png", "viewport": { "width": 1280, "height": 900 }, "deviceScaleFactor": 1,
+        "boxes": { "runs-table": { "x": 257, "y": 488, "width": 987, "height": 194 }, "spike-run": { "x": 257, "y": 618, "width": 987, "height": 32 }, "spike-badge": { "x": 414, "y": 625, "width": 68, "height": 19 } },
+        "texts": { "spike-amount": "$2.37 est.", "spike-date": "2026-10-12" } },
+      { "id": "detail-customer-360-refresh", "kind": "page", "theme": "light", "file": "e2e-shots-themefix/04-job-102-run-with-pipeline.png", "viewport": { "width": 1280, "height": 900 }, "deviceScaleFactor": 1,
+        "boxes": { "title": { "x": 257, "y": 318, "width": 136, "height": 36 }, "title-total": { "x": 257, "y": 377, "width": 136, "height": 21 } },
+        "texts": { "title-total": "$2.28" } }
+    ]
+  },
+  "6": {
+    "scene": "06-queries (placeholder)",
+    "placeholder": true,
+    "states": [
+      { "id": "query-history", "kind": "page", "theme": "light", "file": "e2e-shots-themefix/06-query-history-estimates.png", "viewport": { "width": 1280, "height": 900 }, "deviceScaleFactor": 1,
+        "boxes": { "note": { "x": 257, "y": 279, "width": 987, "height": 116 }, "rows": { "x": 257, "y": 436, "width": 987, "height": 320 }, "heavy-query": { "x": 257, "y": 519, "width": 987, "height": 51 } },
+        "texts": { "heavy-query-cost": "≈ $0.0476 approx." } },
+      { "id": "warehouse-size", "kind": "page", "theme": "light", "file": "e2e-shots-themefix/08-demo-mode.png", "viewport": { "width": 1280, "height": 900 }, "deviceScaleFactor": 1,
+        "boxes": { "picker": { "x": 257, "y": 300, "width": 300, "height": 40 }, "rate": { "x": 257, "y": 344, "width": 400, "height": 24 } } }
+    ]
+  },
+  "7": {
+    "scene": "07-explorer (placeholder)",
+    "placeholder": true,
+    "states": [
+      { "id": "explorer-products", "kind": "page", "theme": "light", "file": "shots/inpage-explorer-products-1280-light.png", "viewport": { "width": 1280, "height": 900 }, "deviceScaleFactor": 1,
+        "boxes": { "explorer": { "x": 229, "y": 166, "width": 1043, "height": 630 }, "chart": { "x": 237, "y": 430, "width": 1035, "height": 312 }, "tab-top-drivers": { "x": 312, "y": 293, "width": 78, "height": 24 } } },
+      { "id": "explorer-top-drivers", "kind": "page", "theme": "light", "file": "e2e-shots-themefix/07-explorer-top-drivers.png", "viewport": { "width": 1280, "height": 900 }, "deviceScaleFactor": 1,
+        "boxes": { "chart": { "x": 237, "y": 512, "width": 1035, "height": 300 }, "tab-calendar": { "x": 444, "y": 316, "width": 66, "height": 24 } },
+        "texts": { "top-driver-name": "SQL warehouse 0a1b2c3d4e5f6…", "top-driver-amount": "$81.18" } },
+      { "id": "explorer-calendar", "kind": "page", "theme": "light", "file": "shots/inpage-explorer-calendar-1280-light.png", "viewport": { "width": 1280, "height": 900 }, "deviceScaleFactor": 1,
+        "boxes": { "heatmap": { "x": 237, "y": 340, "width": 260, "height": 192 }, "spike": { "x": 346, "y": 384, "width": 28, "height": 28 } } }
+    ]
+  },
+  "8": {
+    "scene": "08-theme (placeholder)",
+    "placeholder": true,
+    "states": [
+      { "id": "explorer-light", "kind": "page", "theme": "light", "file": "shots/inpage-explorer-products-1280-light.png", "viewport": { "width": 1280, "height": 900 }, "deviceScaleFactor": 1,
+        "boxes": { "explorer": { "x": 229, "y": 100, "width": 1043, "height": 690 } } },
+      { "id": "explorer-dark", "kind": "page", "theme": "dark", "file": "shots/inpage-explorer-products-1280-dark.png", "viewport": { "width": 1280, "height": 900 }, "deviceScaleFactor": 1 }
+    ]
+  },
+  "9": {
+    "scene": "09-genie (placeholder)",
+    "placeholder": true,
+    "states": [
+      { "id": "page-prod", "kind": "page", "theme": "dark", "file": "shots/inpage-jobs-banner-1280-dark.png", "viewport": { "width": 1280, "height": 900 }, "deviceScaleFactor": 1 },
+      { "id": "page-video", "kind": "page", "theme": "dark", "file": "shots/guide-1280-dark.png", "viewport": { "width": 1280, "height": 900 }, "deviceScaleFactor": 1, "scrollY": 2400,
+        "texts": { "tab-title": "Recorded tech talk" } },
+      { "id": "page-doc", "kind": "page", "theme": "light", "file": "shots/guide-1280-light.png", "viewport": { "width": 1280, "height": 900 }, "deviceScaleFactor": 1,
+        "boxes": { "body": { "x": 300, "y": 600, "width": 600, "height": 80 } }, "texts": { "tab-title": "Weekly cost review" } },
+      { "id": "page-doc-pasted-answer", "kind": "page", "theme": "light", "file": "shots/guide-1280-light.png", "viewport": { "width": 1280, "height": 900 }, "deviceScaleFactor": 1, "scrollY": 700,
+        "boxes": { "body": { "x": 300, "y": 640, "width": 600, "height": 80 }, "pasted": { "x": 260, "y": 120, "width": 760, "height": 500 } } },
+      { "id": "page-doc-pasted-table", "kind": "page", "theme": "light", "file": "shots/guide-1280-light.png", "viewport": { "width": 1280, "height": 900 }, "deviceScaleFactor": 1, "scrollY": 1400,
+        "boxes": { "pasted": { "x": 260, "y": 120, "width": 760, "height": 500 } } },
+      { "id": "page-analytics", "kind": "page", "theme": "light", "file": "e2e-shots-themefix/09-paused-with-workspace-color.png", "viewport": { "width": 1280, "height": 900 }, "deviceScaleFactor": 1 },
+      { "id": "panel-ask", "kind": "panel", "theme": "dark", "file": "genie-shots-v2/demo-480-dark-00-empty.png", "viewport": { "width": 480, "height": 820 }, "deviceScaleFactor": 1,
+        "boxes": { "input": { "x": 16, "y": 726, "width": 448, "height": 40 }, "send": { "x": 378, "y": 730, "width": 80, "height": 32 } } },
+      { "id": "panel-working", "kind": "panel", "theme": "dark", "file": "genie-shots-v2/demo-480-dark-ops-01-bar-picker.png", "viewport": { "width": 480, "height": 900 }, "deviceScaleFactor": 1, "scrollY": 0,
+        "boxes": { "working": { "x": 16, "y": 155, "width": 200, "height": 22 } } },
+      { "id": "panel-answer-platform-ops", "kind": "panel", "theme": "dark", "file": "genie-shots-v2/demo-480-dark-ops-01-bar-picker.png", "viewport": { "width": 480, "height": 900 }, "deviceScaleFactor": 1,
+        "boxes": { "answer": { "x": 16, "y": 120, "width": 448, "height": 580 }, "more": { "x": 436, "y": 154, "width": 28, "height": 26 }, "agent-selector": { "x": 96, "y": 46, "width": 368, "height": 28 } } },
+      { "id": "panel-copy-menu", "kind": "panel", "theme": "dark", "file": "genie-shots-v2/demo-480-dark-revenue-01-menu-open.png", "viewport": { "width": 480, "height": 900 }, "deviceScaleFactor": 1,
+        "boxes": { "copy-answer": { "x": 300, "y": 192, "width": 160, "height": 30 }, "copy-table": { "x": 300, "y": 228, "width": 160, "height": 30 } } },
+      { "id": "panel-revenue-kpi", "kind": "panel", "theme": "dark", "file": "genie-shots-v2/demo-480-dark-revenue-03-kpi.png", "viewport": { "width": 480, "height": 900 }, "deviceScaleFactor": 1,
+        "boxes": { "kpi": { "x": 16, "y": 120, "width": 448, "height": 500 }, "workspace-selector": { "x": 96, "y": 80, "width": 368, "height": 24 } } },
+      { "id": "panel-analytics-line", "kind": "panel", "theme": "dark", "file": "genie-shots-v2/demo-480-dark-revenue-02-line-multi.png", "viewport": { "width": 480, "height": 900 }, "deviceScaleFactor": 1,
+        "boxes": { "chart": { "x": 16, "y": 120, "width": 448, "height": 580 } } }
+    ]
+  },
+  "10": {
+    "scene": "10-monitor (placeholder)",
+    "placeholder": true,
+    "notification": { "title": "Databricks job run failed", "message": "customer_360_refresh · Failed", "context": "northpeak-prod.cloud.databricks.com" },
+    "states": [
+      { "id": "page-prod", "kind": "page", "theme": "dark", "file": "shots/inpage-jobs-banner-1280-dark.png", "viewport": { "width": 1280, "height": 900 }, "deviceScaleFactor": 1 },
+      { "id": "monitor-failed", "kind": "monitor", "theme": "dark", "file": "shots/monitor-380-dark.png", "viewport": { "width": 380, "height": 600 }, "deviceScaleFactor": 1,
+        "boxes": { "failed-run": { "x": 14, "y": 426, "width": 352, "height": 46 } } }
+    ]
+  },
+  "11": {
+    "scene": "11-colors (placeholder)",
+    "placeholder": true,
+    "states": [
+      { "id": "dev-default", "kind": "page", "theme": "light", "file": "e2e-shots-themefix/03-job-101-runs.png", "viewport": { "width": 1280, "height": 900 }, "deviceScaleFactor": 1,
+        "boxes": { "top-bar": { "x": 0, "y": 53, "width": 1280, "height": 50 } } },
+      { "id": "stage-default", "kind": "page", "theme": "light", "file": "e2e-shots-themefix/02-jobs-banner-30d.png", "viewport": { "width": 1280, "height": 900 }, "deviceScaleFactor": 1 },
+      { "id": "prod-default", "kind": "page", "theme": "light", "file": "e2e-shots-themefix/06-query-history-estimates.png", "viewport": { "width": 1280, "height": 900 }, "deviceScaleFactor": 1 },
+      { "id": "popup-workspace-colors", "kind": "popup", "theme": "light", "file": "e2e-shots-themefix/14-popup-light.png", "viewport": { "width": 420, "height": 1662 }, "deviceScaleFactor": 1,
+        "boxes": { "workspace-colors": { "x": 0, "y": 655, "width": 360, "height": 640 }, "swatch": { "x": 92, "y": 1040, "width": 30, "height": 30 } } },
+      { "id": "popup-workspace-colors-picked", "kind": "popup", "theme": "light", "file": "e2e-shots-themefix/14-popup-light.png", "viewport": { "width": 420, "height": 1662 }, "deviceScaleFactor": 1,
+        "boxes": { "workspace-colors": { "x": 0, "y": 655, "width": 360, "height": 640 } } },
+      { "id": "dev-colored", "kind": "page", "theme": "light", "file": "e2e-shots-themefix/09-paused-with-workspace-color.png", "viewport": { "width": 1280, "height": 900 }, "deviceScaleFactor": 1 },
+      { "id": "stage-colored", "kind": "page", "theme": "light", "file": "e2e-shots-themefix/09-paused-with-workspace-color.png", "viewport": { "width": 1280, "height": 900 }, "deviceScaleFactor": 1 },
+      { "id": "prod-colored", "kind": "page", "theme": "light", "file": "e2e-shots-themefix/09-paused-with-workspace-color.png", "viewport": { "width": 1280, "height": 900 }, "deviceScaleFactor": 1 }
+    ]
+  }
+}

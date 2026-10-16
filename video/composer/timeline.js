@@ -26,5 +26,10 @@ export const FADE_OUT = { t0: 117, t1: 118 };
 
 export const T = Object.fromEntries(TIMELINE.map((s) => [s.n, s]));
 
-/** Scene 8 radial light→dark wipe, shared by the background canvas and the scene layers. */
-export const FLIP = { t0: T[8].t0 + 0.95, d: 1.35, cx: 1580, cy: 300 };
+/**
+ * Scene 8 light→dark crossfade, swept radially from the top right with a wide feathered edge.
+ * Shared by the background canvas and the scene layers so stage and window flip together.
+ */
+export const FLIP = { t0: T[8].t0 + 0.85, d: 1.7, cx: 2150, cy: -250, feather: 520, r0: 340, rMax: 3100 };
+/** Sweep radius at time t (origin off-frame, top right). */
+export const flipRadius = (t, ease) => FLIP.r0 + (FLIP.rMax - FLIP.r0) * ease(Math.min(1, Math.max(0, (t - FLIP.t0) / FLIP.d)));

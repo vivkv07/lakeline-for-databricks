@@ -12,7 +12,10 @@
     "test:browser": "node --test --test-concurrency=1 local/browser/test-*.mjs",
     "helper": "node local/server.mjs --open",
     "fixture": "node local/server.mjs --fixture-only",
-    "package": "node scripts/package.mjs"
+    "package": "node scripts/package.mjs",
+    "video:capture": "node local/video/capture.mjs",
+    "video:music": "node video/music/compose.mjs",
+    "video:render": "node video/composer/render.mjs"
   },
   "devDependencies": {
     "@duckdb/node-api": "^1.5.6-r.1",

@@ -1,7 +1,7 @@
 // Composer entry point. Boots the stage, loads manifests and captures, builds every scene and
 // exposes window.__composer = { ready, seek(t), info() } for render.mjs. Rendering is a pure
 // function of t: seek(t) writes every style and redraws the background canvas for that instant.
-import { TIMELINE, DURATION, FPS, T, FLIP, FADE_OUT } from './timeline.js';
+import { TIMELINE, DURATION, FPS, T, FLIP, FADE_OUT, flipRadius } from './timeline.js';
 import { E, clamp, prog, keys, lerp } from './lib/ease.js';
 import { loadAll, loadImages, SCENES } from './lib/manifest.js';
 import { createWaves } from './lib/waves.js';
@@ -24,11 +24,11 @@ const RENDER = params.has('render');
 /* --------------------------------------------------------------- background */
 
 function bgParams(t) {
-  const flipR = E.inOutCubic(prog(t, FLIP.t0, FLIP.t0 + FLIP.d)) * 2100;
+  const flipR = flipRadius(t, E.inOutCubic);
   const p = { base: '#000000', level: 0, linesIn: 1, lineAlpha: 1, drift: 1 };
   if (t < T[3].t0 - 0.7) p.base = '#000000';
   else if (t < FLIP.t0) p.base = '#FFFFFF';
-  else if (t < FLIP.t0 + FLIP.d) { p.base = '#FFFFFF'; p.circle = { color: '#000000', cx: FLIP.cx, cy: FLIP.cy, r: flipR }; }
+  else if (t < FLIP.t0 + FLIP.d) { p.base = '#FFFFFF'; p.circle = { color: '#000000', cx: FLIP.cx, cy: FLIP.cy, r: flipR, feather: FLIP.feather }; }
   else if (t < T[11].t0 - 0.55) p.base = '#000000';
   else if (t < T[11].t0 + 0.25) { p.base = '#000000'; p.sheet = { color: '#FFFFFF', y: lerp(1080, 0, E.camera(prog(t, T[11].t0 - 0.55, T[11].t0 + 0.25))) }; }
   else if (t < T[12].t0 + 0.3) p.base = '#FFFFFF';
@@ -44,6 +44,9 @@ function bgParams(t) {
   return p;
 }
 
+/** While the navy rises into scene 12 it is a curtain over the outgoing light scene. */
+const CURTAIN = { t0: T[12].t0 - 0.7, t1: T[12].t0 + 0.3 };
+
 /* -------------------------------------------------------------------- boot */
 
 async function fontsReady() {
@@ -56,6 +59,9 @@ async function boot() {
   const stage = document.getElementById('stage');
   const dpr = window.devicePixelRatio || 1;
   const waves = createWaves(document.getElementById('bg'), dpr);
+  const fgCanvas = document.getElementById('fg');
+  const fgWaves = createWaves(fgCanvas, dpr);
+  let fgOn = true;
   await fontsReady();
   const manifests = await loadAll();
   const warnings = manifests.warnings;
@@ -89,14 +95,23 @@ async function boot() {
   const wm = document.getElementById('wm');
   if (placeholders.length) {
     wm.style.display = 'block';
-    const grid = el('div', 'grid', wm);
-    for (let i = 0; i < 40; i++) el('span', null, grid).textContent = 'PLACEHOLDER';
+    // ?wm=tag (render.mjs --review, stills only) keeps just the tag so layout can be inspected.
+    if (params.get('wm') !== 'tag') {
+      const grid = el('div', 'grid', wm);
+      for (let i = 0; i < 40; i++) el('span', null, grid).textContent = 'PLACEHOLDER';
+    }
     el('div', 'tag', wm).textContent = `PLACEHOLDER CAPTURES · NOT FOR RELEASE · scenes ${placeholders.join(', ')}`;
   }
 
   function seek(t) {
     t = clamp(t, 0, DURATION);
-    waves.draw(t, bgParams(t));
+    const bp = bgParams(t);
+    const curtain = t >= CURTAIN.t0 && t < CURTAIN.t1;
+    if (curtain) {
+      waves.draw(t, Object.assign({}, bp, { level: 0 }));
+      fgWaves.draw(t, Object.assign({}, bp, { base: null }));
+    } else waves.draw(t, bp);
+    if (curtain !== fgOn) { fgOn = curtain; fgCanvas.style.display = curtain ? '' : 'none'; }
     for (const sc of built) {
       const a = sc.t0 - (sc.pre || 0), b = sc.t1 + (sc.post || 0);
       const on = t >= a && t < b;

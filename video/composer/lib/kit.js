@@ -110,20 +110,21 @@ function cleanParts(parts) {
 }
 
 /**
- * Caption blocks in stage space. item: {t0, t1, eyebrow, head, detail:[str | {num:str}], mode:'top'|'left', y}
- * The detail line is built only from manifest strings plus static separators.
+ * Lower-third pill captions in stage space. item: {t0, t1, eyebrow, head, detail | details}.
+ * Each pill sits at the bottom-left or bottom-right; layout(choose) picks the side per pill
+ * (choose(item, rectLeft, rectRight) → 'left' | 'right'), so it can avoid the camera's focus.
+ * The detail line is built only from manifest strings plus static labels and separators.
  */
+export const CAP = { margin: 48, bottom: 1080 - 44 };
+
 export function captions(parent, theme) {
-  const root = el('div', 'abs t-' + theme, parent, { width: W + 'px', height: H + 'px' });
+  const root = el('div', 'abs t-' + theme, parent, { width: W + 'px', height: H + 'px', zIndex: 80 });
+  const scrim = el('div', 'scrim', root);
   const items = [];
   return {
-    root,
+    root, items,
     add(item) {
-      const mode = item.mode || 'top';
-      const node = el('div', 'cap ' + mode, root);
-      const y = item.y != null ? item.y : mode === 'top' ? 74 : 380;
-      node.style.top = y + 'px';
-      if (item.x != null) node.style.left = item.x + 'px';
+      const node = el('div', 'cap', root);
       let eb = null;
       if (item.eyebrow) { eb = el('div', 'eyebrow', node); eb.textContent = item.eyebrow; }
       const head = el('div', 'head', node);
@@ -131,65 +132,89 @@ export function captions(parent, theme) {
       const spans = [];
       words.forEach((w, i) => {
         const wrap = el('span', 'w', head, { display: 'inline-block', overflow: 'hidden', verticalAlign: 'top', padding: '0.04em 0.02em 0.14em', margin: '-0.04em -0.02em -0.14em' });
-        const s = el('span', null, wrap, { display: 'inline-block' });
-        s.textContent = w;
-        spans.push(s);
+        const sp = el('span', null, wrap, { display: 'inline-block' });
+        sp.textContent = w;
+        spans.push(sp);
         if (i < words.length - 1) head.appendChild(document.createTextNode(' '));
       });
-      // Detail lines: one, or several steps that cross-fade ({t, parts}) as the shown state changes.
-      const steps = item.details || (item.detail ? [{ t: t0Of(item), parts: item.detail }] : []);
+      // Detail lines: one, or several steps that swap ({t, parts}) as the shown state changes.
+      const steps = item.details || (item.detail ? [{ t: item.t0, parts: item.detail }] : []);
       const dets = [];
       let holder = null;
-      for (const st of steps) {
-        const clean = cleanParts(st.parts);
-        const hasNum = clean.some((p) => typeof p === 'object');
-        if (!clean.length || !(hasNum || item.detailStatic)) continue;
-        if (!holder) holder = el('div', 'detail', node, { position: 'relative' });
-        const d = el('div', null, holder, dets.length ? { position: 'absolute', left: '0px', top: '0px' } : {});
-        for (const p of clean) {
-          if (p === '·') { const s = el('span', 'sep', d); s.textContent = '·'; }
-          else if (typeof p === 'object') { const s = el('span', 'num', d); s.textContent = p.num; }
-          else d.appendChild(document.createTextNode(p));
-        }
-        dets.push({ t: st.t, el: d });
+      const cleaned = steps.map((st) => {
+        const c = cleanParts(st.parts);
+        return c.length && (c.some((p) => typeof p === 'object') || item.detailStatic) ? c : [];
+      });
+      if (cleaned.some((c) => c.length)) {
+        holder = el('div', 'detail', node, { position: 'relative' });
+        steps.forEach((st, k) => {
+          const d = el('div', null, holder, dets.length ? { position: 'absolute', left: '0px', top: '0px' } : {});
+          for (const p of cleaned[k]) {
+            if (p === '·') { const sp = el('span', 'sep', d); sp.textContent = '·'; }
+            else if (typeof p === 'object') {
+              if (p.label) d.appendChild(document.createTextNode(p.label + ' '));
+              const sp = el('span', 'num', d);
+              sp.textContent = p.num;
+              if (p.suffix) d.appendChild(document.createTextNode(' ' + p.suffix));
+            } else d.appendChild(document.createTextNode(p));
+          }
+          if (!cleaned[k].length) d.textContent = '\u00a0';
+          dets.push({ t: st.t, el: d });
+        });
+        // The holder is as wide as the widest step so swapping numbers never reflows the pill.
+        holder.style.width = Math.max(...dets.map((d) => d.el.scrollWidth)) + 'px';
       }
-      const det = holder;
-      items.push({ item, node, eb, spans, det, dets });
+      const rec = { item, node, eb, spans, det: holder, dets, side: item.side || 'left' };
+      items.push(rec);
       return node;
     },
+    /** Measure each pill and place it bottom-left or bottom-right. */
+    layout(choose) {
+      for (const r of items) {
+        const w = r.node.offsetWidth, h = r.node.offsetHeight;
+        const top = CAP.bottom - h;
+        const L = { x: CAP.margin, y: top, w, h }, R = { x: W - CAP.margin - w, y: top, w, h };
+        if (!r.item.side && choose) r.side = choose(r.item, L, R);
+        const pos = r.side === 'right' ? R : L;
+        r.node.style.left = pos.x + 'px';
+        r.node.style.top = pos.y + 'px';
+        r.rect = pos;
+      }
+    },
     update(t) {
+      let scrimO = 0;
       for (const { item, node, eb, spans, det, dets } of items) {
         const { t0, t1 } = item;
         const vis = t >= t0 - 0.01 && t <= t1;
         show(node, vis);
         if (!vis) continue;
-        const out = Number.isFinite(t1) ? E.exit(prog(t, t1 - 0.4, t1)) : 0;
-        node.style.opacity = (1 - out).toFixed(4);
-        node.style.transform = `translateY(${(-18 * out).toFixed(3)}px)`;
-        if (eb) {
-          const p = ep(t, t0, 0.7);
-          eb.style.opacity = p.toFixed(4);
-          eb.style.transform = `translateX(${((1 - p) * -14).toFixed(3)}px)`;
-        }
-        spans.forEach((s, i) => {
-          const p = ep(t, t0 + 0.08 + i * 0.055, 0.85);
-          s.style.transform = `translateY(${((1 - p) * 105).toFixed(3)}%)`;
+        const pin = ep(t, t0, 0.6, E.enter);
+        const out = Number.isFinite(t1) ? E.exit(prog(t, t1 - 0.35, t1)) : 0;
+        const o = Math.min(clamp(pin * 1.4), 1 - out);
+        scrimO = Math.max(scrimO, o);
+        node.style.opacity = o.toFixed(4);
+        node.style.transform = `translateY(${((1 - pin) * 22 + out * 14).toFixed(3)}px)`;
+        if (eb) eb.style.opacity = ep(t, t0 + 0.1, 0.6).toFixed(4);
+        spans.forEach((sp, i) => {
+          const p = ep(t, t0 + 0.12 + i * 0.045, 0.8);
+          sp.style.transform = `translateY(${((1 - p) * 105).toFixed(3)}%)`;
         });
         if (det) {
-          const p = ep(t, t0 + 0.35 + spans.length * 0.055, 0.8);
+          const p = ep(t, t0 + 0.3 + spans.length * 0.045, 0.7);
           det.style.opacity = p.toFixed(4);
-          det.style.transform = `translateY(${((1 - p) * 14).toFixed(3)}px)`;
+          // Swap numbers in sequence: the old line leaves first, then the new one rises in.
           dets.forEach((d, k) => {
             const next = dets[k + 1];
-            const a = k === 0 ? 1 : ep(t, d.t, 0.45, E.outCubic);
-            const b = next ? 1 - E.inCubic(prog(t, next.t - 0.05, next.t + 0.25)) : 1;
-            const o = Math.min(a, b);
-            d.el.style.opacity = o.toFixed(4);
-            d.el.style.transform = k === 0 ? '' : `translateY(${((1 - a) * 10).toFixed(3)}px)`;
-            d.el.style.visibility = o > 0.001 ? 'visible' : 'hidden';
+            const a = k === 0 ? 1 : ep(t, d.t + 0.12, 0.4, E.enter);
+            const b = next ? 1 - E.inCubic(prog(t, next.t - 0.1, next.t + 0.1)) : 1;
+            const oo = Math.min(a, b);
+            d.el.style.opacity = oo.toFixed(4);
+            d.el.style.transform = `translateY(${(k === 0 ? 0 : (1 - a) * 10 - (1 - b) * 6).toFixed(3)}px)`;
+            d.el.style.visibility = oo > 0.001 ? 'visible' : 'hidden';
           });
         }
       }
+      scrim.style.opacity = (scrimO * 0.9).toFixed(4);
     },
   };
 }
@@ -201,43 +226,47 @@ const FWD_SVG = `<svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stro
 const RLD_SVG = `<svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 9a5.5 5.5 0 1 1-1.7-4"/><path d="M13.5 2.5v3h-3"/></svg>`;
 const LOCK_SVG = `<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><rect x="2.5" y="6" width="9" height="6.5" rx="1.6"/><path d="M4.5 6V4.5a2.5 2.5 0 0 1 5 0V6"/></svg>`;
 
+/** Height of the browser chrome: one thin row with tabs, address pill and the extension icon. */
+export const CHROME_H = 50;
+
 /**
- * Minimal neutral browser window drawn in house tokens. Window coordinates: (0,0) is the outer
- * top-left; page content starts at (0, CH). Optional side panel docks at the right of the page.
+ * Minimal neutral browser window drawn in house tokens: a single 50 px row (window dots, tabs,
+ * navigation, address pill, extension icon). Window coordinates: (0,0) is the outer top-left; page
+ * content starts at (0, CH). An optional side panel docks at the right of the page.
  */
-export function browserWindow(parent, { theme, w, h, host, path = '', tab, tabs: tabList, active = 0, panelW = 0, favColor, tabW = 236 }) {
-  const CH = 88;
+export function browserWindow(parent, { theme, w, h, host, path = '', tab, tabs: tabList, active = 0, panelW = 0, favColor, tabW = 210 }) {
+  const CH = CHROME_H;
   const PW = panelW ? panelW + 1 : 0;
   const Wd = w + PW;
   const root = el('div', 'win t-' + theme, parent, { width: Wd + 'px', height: CH + h + 'px' });
   const frame = el('div', 'frame', root);
-  const strip = el('div', 'tabs', frame);
-  const dots = el('div', 'dots', strip);
+  const bar = el('div', 'chrome', frame);
+  const dots = el('div', 'dots', bar);
   for (let i = 0; i < 3; i++) el('i', null, dots);
   const list = tabList && tabList.length ? tabList : [{ title: tab || host, host, path, fav: favColor }];
+  const tabX0 = 74;
   const titleEls = [];
   const tabEls = list.map((tb, i) => {
-    const n = el('div', 'tab', strip, { left: 92 + i * (tabW + 4) + 'px', width: tabW + 'px' });
+    const n = el('div', 'tab', bar, { left: tabX0 + i * (tabW + 6) + 'px', width: tabW + 'px' });
     el('span', 'fav', n, { background: tb.fav || 'var(--line2)' });
-    const tt = el('span', null, n, { overflow: 'hidden', textOverflow: 'ellipsis' });
+    const tt = el('span', 'tt', n);
     tt.textContent = tb.title || tb.host || '';
     titleEls.push(tt);
-    const x = el('span', 'x', n);
-    x.textContent = '×';
     return n;
   });
-  const bar = el('div', 'toolbar', frame);
-  const nav = el('div', 'nav', bar);
+  const navX = tabX0 + list.length * (tabW + 6) + 10;
+  const nav = el('div', 'nav', bar, { left: navX + 'px' });
   svg(NAV_SVG, nav); svg(FWD_SVG, nav); svg(RLD_SVG, nav);
-  const addr = el('div', 'addr', bar);
+  const addrX = navX + 96;
+  const addr = el('div', 'addr', bar, { left: addrX + 'px' });
   svg(LOCK_SVG, addr);
   const hs = el('span', null, addr, { color: 'var(--text)' });
-  const ps = el('span', 'path', addr, { marginLeft: '-10px' });
-  const extX = Wd - 18 - 24 - 16 - 28;
-  addr.style.width = extX - 16 - 132 + 'px';
+  const ps = el('span', 'path', addr, { marginLeft: '-8px' });
+  const extX = Wd - 16 - 24 - 14 - 30;
+  addr.style.width = Math.max(220, extX - 14 - addrX) + 'px';
   const ext = el('div', 'ext', bar, { left: extX + 'px' });
   ext.appendChild(svg(iconMarkSvg(18)));
-  el('div', 'avatar', bar, { left: Wd - 18 - 24 + 'px' });
+  el('div', 'avatar', bar, { left: Wd - 16 - 24 + 'px' });
   const content = el('div', 'content', frame, { top: CH + 'px', width: w + 'px', height: h + 'px' });
   let panel = null;
   if (panelW) panel = el('div', 'panelwrap', frame, { top: CH + 'px', left: w + 'px', width: PW + 'px', height: h + 'px' });
@@ -245,12 +274,7 @@ export function browserWindow(parent, { theme, w, h, host, path = '', tab, tabs:
   function setActive(i) {
     if (i === cur) return;
     cur = i;
-    tabEls.forEach((n, k) => {
-      const on = k === i;
-      n.style.background = on ? 'var(--bg)' : 'transparent';
-      n.style.borderColor = on ? 'var(--line)' : 'transparent';
-      n.style.color = on ? 'var(--text)' : 'var(--muted)';
-    });
+    tabEls.forEach((n, k) => { n.classList.toggle('on', k === i); });
     const tb = list[i] || list[0];
     hs.textContent = tb.host || '';
     ps.textContent = tb.path || '';
@@ -268,8 +292,8 @@ export function browserWindow(parent, { theme, w, h, host, path = '', tab, tabs:
   return {
     el: root, frame, content, panel, ext, CH, W: Wd, H: CH + h, w, h, setActive, setTab,
     /** Window-coordinate center of tab i (for cursor clicks). */
-    tabCenter(i) { return { x: 92 + i * (tabW + 4) + tabW / 2, y: 8 + 17 }; },
-    icon: { x: extX + 14, y: 42 + 9 + 14 },
+    tabCenter(i) { return { x: tabX0 + i * (tabW + 6) + tabW / 2, y: CH / 2 }; },
+    icon: { x: extX + 15, y: CH / 2 },
     /** Window-coordinate rect of a box given in page (or panel) CSS px. */
     pageRect(b, pad = 0) { return { x: b.x - pad, y: CH + b.y - pad, w: b.w + 2 * pad, h: b.h + 2 * pad }; },
     panelRect(b, pad = 0) { return { x: w + 1 + b.x - pad, y: CH + b.y - pad, w: b.w + 2 * pad, h: b.h + 2 * pad }; },
@@ -331,6 +355,17 @@ export function camera(worldEl) {
       }
       return cur;
     },
+    /** Stage transform at t: world → stage is (x * s + tx, y * s + ty). */
+    transformAt(t) {
+      const v = api.at(t);
+      return { s: v.s, tx: v.px - v.s * v.fx, ty: v.py - v.s * v.fy };
+    },
+    /** The focus rect of the latest camera target at t (for caption placement). */
+    rectAt(t) {
+      let r = base && base.rect;
+      for (const m of moves) if (t >= m.t0) r = m.v.rect || r;
+      return r;
+    },
     apply(t, extra = {}) {
       const v = api.at(t);
       const s = v.s * (extra.scale || 1);
@@ -354,7 +389,7 @@ function mix(a, b, p) {
 /* ------------------------------------------------------------------- rings */
 
 /** Highlight ring around a world rect, drawn just outside it so it never covers UI text. */
-export function ring(parent, rect, { t0, t1 = Infinity, pad = 8, warm = false, radius = 12 }) {
+export function ring(parent, rect, { t0, t1 = Infinity, pad = 4, warm = false, radius = 10 }) {
   const r = el('div', 'ring' + (warm ? ' warm' : ''), parent);
   const R = { x: rect.x - pad, y: rect.y - pad, w: rect.w + 2 * pad, h: rect.h + 2 * pad };
   Object.assign(r.style, { left: R.x + 'px', top: R.y + 'px', width: R.w + 'px', height: R.h + 'px', borderRadius: radius + 'px' });
@@ -380,7 +415,7 @@ export function ring(parent, rect, { t0, t1 = Infinity, pad = 8, warm = false, r
 const CURSOR_SVG = `<svg viewBox="0 0 26 32" xmlns="http://www.w3.org/2000/svg"><path d="M3 2.2v23.6l6.1-5.8 4.1 9.2 3.9-1.7-4-9h8.4z" fill="#fff" stroke="#0A0A0A" stroke-width="1.6" stroke-linejoin="round"/></svg>`;
 
 /**
- * Smooth cursor in world coordinates. path: [{t, x, y, click?}] — moves between waypoints with
+ * Smooth cursor in world coordinates. path: [{t, x, y, click?}]; moves between waypoints with
  * an eased arc; a click presses the pointer and emits a ripple.
  */
 export function cursor(parent, path, { size = 1, appear, vanish } = {}) {
@@ -393,7 +428,10 @@ export function cursor(parent, path, { size = 1, appear, vanish } = {}) {
     if (t <= path[0].t) return [path[0].x, path[0].y];
     for (let i = 1; i < path.length; i++) {
       const a = path[i - 1], b = path[i];
-      const start = b.from != null ? b.from : a.t + (a.click ? 0.18 : 0);
+      // Each move takes a distance-based duration and ends exactly on the waypoint time.
+      const dist = Math.hypot(b.x - a.x, b.y - a.y);
+      const dur = clamp(0.38 + dist / 1500, 0.45, 1.15);
+      const start = b.from != null ? b.from : Math.max(a.t + (a.click ? 0.18 : 0), b.t - dur);
       if (t <= b.t) {
         if (t <= start) return [a.x, a.y];
         const p = E.inOutCubic(prog(t, start, b.t));
