@@ -337,7 +337,7 @@
   }
 
   function fillForm(conn) {
-    const auth = conn && config.AUTH_MODES.includes(conn.authMode) ? conn.authMode : 'helper';
+    const auth = conn && config.AUTH_MODES.includes(conn.authMode) ? conn.authMode : 'oauth';
     for (const r of doc.querySelectorAll('input[name="auth"]')) r.checked = r.value === auth;
     $('price-table').value = conn && hasOwn(pricing.PRICE_TABLES, conn.priceTable) ? conn.priceTable : pricing.DEFAULT_PRICE_TABLE;
     $('currency').value = conn && V.isCurrency(conn.currency) ? conn.currency : 'USD';
@@ -345,7 +345,7 @@
     $('history-source').value = (conn && conn.historySource) || config.DEFAULT_HISTORY_SOURCE;
     $('advanced').open = Boolean(conn && (conn.usageSource !== config.DEFAULT_USAGE_SOURCE || conn.historySource !== config.DEFAULT_HISTORY_SOURCE));
     for (const id of ['ws-id', 'currency', 'usage-source', 'history-source']) setFieldError(id, null);
-    for (const id of ['access-result', 'helper-result', 'helper-monitor-result', 'pat-result', 'save-result']) show($(id), null);
+    for (const id of ['access-result', 'oauth-result', 'helper-result', 'helper-monitor-result', 'pat-result', 'save-result']) show($(id), null);
   }
 
   /**
@@ -545,9 +545,13 @@
 
   function renderAuth() {
     const mode = currentAuthMode();
+    $('auth-oauth').hidden = mode !== 'oauth';
     $('auth-helper').hidden = mode !== 'helper';
     $('auth-pat').hidden = mode !== 'pat';
     const workspaceOk = Boolean(S.sel && S.sel.kind === 'workspace');
+    $('oauth-signin').disabled = !workspaceOk;
+    renderOauthStatus();
+    if (mode === 'oauth') fillRedirectUrl();
     $('helper-login').disabled = !workspaceOk;
     $('helper-login-monitor').disabled = !workspaceOk;
     $('pat-input').disabled = !S.sel;
@@ -580,6 +584,56 @@
     if (adapter < 2 || caps.accountPrices !== true || caps.jobPipelineAttribution !== true) {
       box.appendChild(messageBox('warn', 'The running helper is outdated for some features', ['Stop it (close its terminal window or press Ctrl+C), run start-helper.command again, then select Check helper. A version difference alone doesn\'t require a restart.']));
     }
+  }
+
+  function renderOauthStatus() {
+    const p = $('oauth-status');
+    p.textContent = '';
+    if (!S.sel) return void p.appendChild(h('span', {}, 'Choose a workspace first.'));
+    if (S.sel.kind !== 'workspace') return void p.appendChild(h('span', {}, 'The local test workspace uses a personal access token instead.'));
+    const conn = S.sel.conn;
+    const on = Boolean(conn && conn.authMode === 'oauth');
+    p.append(h('span', { class: 'op-dot' + (on ? ' op-dot--ok' : ''), 'aria-hidden': 'true' }), on ? 'Connected with Databricks sign-in. Sign in again any time it asks.' : 'Not signed in yet.');
+    const saved = S.page && S.page.settings && S.page.settings.oauth && S.page.settings.oauth.clientId;
+    if (saved && !$('oauth-client-id-opt').value) $('oauth-client-id-opt').value = saved;
+    if (!saved) $('oauth-setup-opt').open = true;
+  }
+
+  async function fillRedirectUrl() {
+    if ($('oauth-redirect-opt').textContent) return;
+    const r = await send({ type: 'connect:redirectUrl' });
+    if (r.ok && r.data) $('oauth-redirect-opt').textContent = r.data.redirectUrl;
+  }
+
+  /** Site access first (inside the click), then sign in, detect the warehouse and save. */
+  function onOauthSignIn() {
+    if (!S.sel || S.sel.kind !== 'workspace') return;
+    const sel = S.sel;
+    const gen = S.selGen;
+    const pending = S.access === true ? Promise.resolve(true) : chromeApi.permissions.request({ origins: [sel.origin + '/*'] });
+    pending.then(async (granted) => {
+      const out = $('oauth-result');
+      if (!granted) return show(out, messageBox('error', 'Site access was not allowed', ['Allow access to ' + sel.host + ' so the extension can show costs there.']));
+      const typedId = $('ws-id').value.trim();
+      const clientId = $('oauth-client-id-opt').value.trim();
+      const msg = { type: 'connect:oneClick', url: sel.origin + (V.isWorkspaceId(typedId) ? '/?o=' + typedId : '/') };
+      if (clientId) msg.clientId = clientId;
+      setBusy($('oauth-signin'), true);
+      show(out, busyLine('Signing in with Databricks… finish in the window that opens.'));
+      const res = await send(msg);
+      setBusy($('oauth-signin'), false);
+      await refreshState();
+      if (gen !== S.selGen) return show(out, null);
+      if (!res.ok) return show(out, errorBox(res.error));
+      if (res.data && res.data.needsClientId) {
+        $('oauth-setup-opt').open = true;
+        await fillRedirectUrl();
+        return show(out, messageBox('warn', 'One-time setup needed', ['Paste the OAuth client ID from your Databricks admin below, then select Sign in with Databricks again.']));
+      }
+      await selectWorkspace(sel.origin + '/?o=' + res.data.workspaceId);
+      show($('oauth-result'), messageBox('ok', 'Connected ' + sel.host, ['Workspace ' + res.data.workspaceId + (res.data.warehouseName ? ' · Automatic → ' + res.data.warehouseName : '') + ' · list prices.', 'Costs now show inside the workspace. You can change the warehouse or price table below.']));
+      return undefined;
+    }).catch((e) => show($('oauth-result'), errorBox(backgroundError(e && e.message))));
   }
 
   function renderPatStatus() {
@@ -895,7 +949,7 @@
       problems.push('Enter the numeric workspace ID in step 1.');
     }
     const authMode = currentAuthMode();
-    if (!config.AUTH_MODES.includes(authMode)) problems.push('Choose browser sign-in or personal access token in step 3.');
+    if (!config.AUTH_MODES.includes(authMode)) problems.push('Choose a sign-in method in step 3.');
     const priceTable = $('price-table').value;
     if (!hasOwn(pricing.PRICE_TABLES, priceTable)) problems.push('Choose one of the two supported price tables.');
     const currency = $('currency').value.trim().toUpperCase();
@@ -948,7 +1002,7 @@
     const wh = saved.warehouse || {};
     const whText = wh.mode === 'manual' ? 'warehouse ' + (wh.name || wh.id) : 'Automatic → ' + (wh.resolvedName || wh.resolvedId || 'unresolved');
     const lines = [
-      'Workspace ' + saved.workspaceId + ' · ' + (saved.authMode === 'pat' ? 'personal access token' : 'browser sign-in') + ' · ' + whText + '.',
+      'Workspace ' + saved.workspaceId + ' · ' + ({ oauth: 'Sign in with Databricks', pat: 'personal access token', helper: 'local helper' }[saved.authMode] || saved.authMode) + ' · ' + whText + '.',
       'Listing a warehouse doesn\'t prove CAN USE or billing-table access. If the first cost query fails, its error names the missing permission.',
       S.access === false ? 'Next: allow site access in step 2 so costs appear inside the workspace.' : null,
     ];
@@ -1177,6 +1231,7 @@
     $('access-grant').addEventListener('click', onGrantAccess);
     $('access-remove').addEventListener('click', onRemoveAccess);
     $('helper-check').addEventListener('click', onHelperCheck);
+    $('oauth-signin').addEventListener('click', onOauthSignIn);
     $('helper-login').addEventListener('click', () => onHelperLogin('cost'));
     $('helper-login-monitor').addEventListener('click', () => onHelperLogin('monitor'));
     $('pair-submit').addEventListener('click', onPairManual);

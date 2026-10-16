@@ -96,21 +96,50 @@
           <legend class="op-label">How should the extension query Databricks?</legend>
           <div class="op-options">
             <label class="op-option">
-              <input type="radio" name="auth" value="helper" id="auth-helper-radio">
+              <input type="radio" name="auth" value="oauth" id="auth-oauth-radio">
               <span class="op-option__main">
-                <span class="op-option__title">Browser sign-in (local helper)</span>
-                <span class="op-option__meta">You sign in to Databricks in your browser. A small helper on this computer runs the read-only SQL with a SQL-only scope; its sign-in stays in the Databricks CLI and never enters the extension.</span>
+                <span class="op-option__title">Sign in with Databricks (recommended)</span>
+                <span class="op-option__meta">One click with your normal Databricks login. Nothing to install, no tokens to copy. Cost queries use a SQL-only sign-in.</span>
               </span>
             </label>
             <label class="op-option">
               <input type="radio" name="auth" value="pat" id="auth-pat-radio">
               <span class="op-option__main">
                 <span class="op-option__title">Personal access token</span>
-                <span class="op-option__meta">Works without the helper. The token is kept only for this browser session.</span>
+                <span class="op-option__meta">Paste a token you create in Databricks. Kept only for this browser session.</span>
+              </span>
+            </label>
+            <label class="op-option">
+              <input type="radio" name="auth" value="helper" id="auth-helper-radio">
+              <span class="op-option__main">
+                <span class="op-option__title">Local helper (advanced)</span>
+                <span class="op-option__meta">Only if your organization can't use the options above. Needs Node.js and the Databricks CLI on this computer.</span>
               </span>
             </label>
           </div>
         </fieldset>
+
+        <div id="auth-oauth" class="op-subpanel" hidden>
+          <h3 id="sign-in">Sign in with Databricks</h3>
+          <p id="oauth-status" class="op-status"></p>
+          <div class="op-actions">
+            <button type="button" id="oauth-signin" class="dcc-btn dcc-btn--primary">Sign in with Databricks</button>
+          </div>
+          <div id="oauth-result" class="op-result" aria-live="polite"></div>
+          <details id="oauth-setup-opt" class="op-disclosure">
+            <summary>First time in this Databricks account? One-time setup by an admin</summary>
+            <ol class="op-steps">
+              <li>In the Databricks account console: Settings, App connections, Add connection.</li>
+              <li>Redirect URL: <code id="oauth-redirect-opt" class="dcc-input--mono"></code></li>
+              <li>Scopes: SQL and All APIs. Leave "Generate a client secret" off.</li>
+              <li>Paste the client ID here. One registration covers every workspace in the account. New connections can take about 30 minutes to activate.</li>
+            </ol>
+            <div class="op-field">
+              <label for="oauth-client-id-opt" class="op-label">OAuth client ID</label>
+              <input id="oauth-client-id-opt" class="dcc-input dcc-input--mono" type="text" autocomplete="off" spellcheck="false">
+            </div>
+          </details>
+        </div>
 
         <div id="auth-helper" class="op-subpanel">
           <h3 id="helper">Local helper</h3>

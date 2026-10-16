@@ -551,7 +551,7 @@ test('options: warehouse list renders Automatic plus one row per warehouse', asy
   await settle();
   const req = env.sent('admin:listWarehouses')[0];
   assert.equal(req.origin, A);
-  assert.equal(req.authMode, 'helper');
+  assert.equal(req.authMode, 'oauth', 'Sign in with Databricks is the default sign-in');
   assert.match(req.requestId, /^wh-/);
   const radios = [...env.document.querySelectorAll('input[name="wh"]')];
   assert.equal(radios[0].value, 'auto');
@@ -884,5 +884,31 @@ test('options: local import shows validation errors and success', async () => {
   pick('[]');
   await settle(40);
   assert.match(env.text('import-result'), /Imported 2 summaries/);
+  env.close();
+});
+
+test('options: Sign in with Databricks is the default; it requests access in the click, then connects in one step', async () => {
+  let n = 0;
+  const { env } = await openOptions({
+    pending: { origin: A, workspaceId: '42', conflict: false },
+    hooks: {
+      'connect:redirectUrl': async () => ok({ redirectUrl: 'https://testextensionid.chromiumapp.org/' }),
+      'connect:oneClick': async () => (++n === 1 ? ok({ needsClientId: true, redirectUrl: 'https://testextensionid.chromiumapp.org/' }) : ok({ connected: true, origin: A, workspaceId: '42', warehouseName: 'Starter' })),
+    },
+  });
+  assert.equal(env.document.querySelector('input[name="auth"]:checked').value, 'oauth');
+  assert.equal(env.$('auth-oauth').hidden, false);
+  assert.equal(env.$('auth-helper').hidden, true, 'the CLI-based helper is not shown unless chosen');
+  env.$('oauth-signin').click();
+  await settle();
+  assert.deepEqual(env.perms.requests.at(-1), { origins: [A + '/*'] });
+  assert.equal(env.$('oauth-setup-opt').open, true, 'first time: the one-time setup opens');
+  assert.equal(env.$('oauth-redirect-opt').textContent, 'https://testextensionid.chromiumapp.org/');
+  env.$('oauth-client-id-opt').value = 'lakeline-client-0001';
+  env.$('oauth-signin').click();
+  await settle(60);
+  const last = env.sent('connect:oneClick').at(-1);
+  assert.equal(last.clientId, 'lakeline-client-0001');
+  assert.match(env.text('oauth-result'), /Connected/);
   env.close();
 });
