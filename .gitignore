@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.dcc-local/
+.databricks/
+*.pem
+*.key
+.env*
+costs.json
+diagnostics/
+playwright-report/
+test-results/
+.DS_Store

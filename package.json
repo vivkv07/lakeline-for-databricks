@@ -1,0 +1,17 @@
+{
+  "name": "databricks-cost-companion",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Chrome/Edge MV3 extension that shows estimated Databricks costs inside the workspace.",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test local/",
+    "test:browser": "node --test local/browser/",
+    "helper": "node local/server.mjs --open",
+    "fixture": "node local/server.mjs --fixture-only",
+    "package": "node scripts/package.mjs"
+  }
+}
