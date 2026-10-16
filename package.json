@@ -13,5 +13,9 @@
     "helper": "node local/server.mjs --open",
     "fixture": "node local/server.mjs --fixture-only",
     "package": "node scripts/package.mjs"
+  },
+  "devDependencies": {
+    "@duckdb/node-api": "^1.5.6-r.1",
+    "jsdom": "^29.1.1"
   }
 }
