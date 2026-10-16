@@ -1,0 +1,5 @@
+{
+  "type": "module",
+  "private": true,
+  "description": "Launch video composer (ES modules). Not a package; marks the folder as ESM for Node."
+}

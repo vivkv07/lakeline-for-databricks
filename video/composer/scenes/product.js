@@ -5,14 +5,16 @@
 import { E, clamp, prog, env, ep, lerp } from '../lib/ease.js';
 import { el, op, show, camera, view, captions, ring, cursor, shot, decodeAll, px } from '../lib/kit.js';
 import { findState, findBox, findText } from '../lib/manifest.js';
+import { T, RULES } from '../timeline.js';
 
 /**
- * Framing (notes/VIDEO.md, framing rules): the full-window shot spans the stage width with
- * FRAME.mx margins and the window top at FRAME.top (a tall page may run off the bottom edge);
- * push-ins scale 1.3–2.2× from there and place the focus box in the upper part of the frame,
- * above the lower-third captions.
+ * Framing (notes/VIDEO.md, framing rules and Pacing v2): the full-window shot spans the stage
+ * width with FRAME.mx margins and the window top at FRAME.top; push-ins scale 1.25–1.8× from there
+ * and place the focus box in the upper part of the frame, above the lower-third captions.
  */
-export const FRAME = { mx: 32, top: 24, focusArea: { w: 1760, h: 690 }, focusAt: { x: 960, y: 455 }, minK: 1.3, maxK: 2.2 };
+export const FRAME = { mx: 32, top: 24, focusArea: { w: 1760, h: 690 }, focusAt: { x: 960, y: 455 }, minK: 1.25, maxK: RULES.maxZoom };
+/** Default timings used by the scenes (seconds). */
+export const PACE = { move: 1.5, click: RULES.clickPause, xfade: 0.5, hover: 0.4, tab: RULES.tab };
 /** Kept for scenes that frame a rect inside a stage area directly. */
 export const AREAS = { full: { x: 32, y: 24, w: 1856, h: 1032 } };
 export function productScene(ctx, { n, t0, t1, theme, enter = 'rise', exit = 'sink', sheet = null }) {
@@ -31,10 +33,19 @@ export function productScene(ctx, { n, t0, t1, theme, enter = 'rise', exit = 'si
   const caps = captions(layer, theme);
   const parts = [];
   const rings = [];
+  const states = []; // logged UI changes {t, d, kind, label} for the pacing check
+  const cursors = [];
   let win = null;
   const sc = {
     n, t0, t1, theme, m, layer, zone, wrap, world, fxLayer, cam, caps, warn,
     area: AREAS.full,
+    beats: (T[n] && T[n].beats) || [['intro', 0]],
+    /** Absolute time of a named camera beat. */
+    beat(name) { const b = sc.beats.find(([nm]) => nm === name); return b ? t0 + b[1] : null; },
+    /** Log a UI change (crossfade 'state', 'tab' switch, or 'open' for popups and panels). */
+    log(t, d, kind = 'state', label = '') { if (t > -1e8) states.push({ t, d, kind, label }); },
+    /** One camera move: ease-in-out cubic, no overshoot (default 1.5 s). */
+    move(t, v, d = PACE.move) { cam.to(t, d, v, E.inOutCubic); return sc; },
     /** Register the browser window the camera frames. */
     setWindow(w) { win = w; return w; },
     /** Full-window shot: the window spans the stage width (≥ 92 %), top at FRAME.top. */
@@ -76,11 +87,35 @@ export function productScene(ctx, { n, t0, t1, theme, enter = 'rise', exit = 'si
       return r;
     },
     cursor(path, opts) {
-      const pts = path.filter((p) => p && Number.isFinite(p.x) && Number.isFinite(p.y));
+      const pts = path.filter((p) => p && Number.isFinite(p.x) && Number.isFinite(p.y)).sort((a, b) => a.t - b.t);
       if (!pts.length) return null;
       const c = cursor(fxLayer, pts, opts);
+      cursors.push(c);
       parts.push((t, s) => c.update(t, s));
       return c;
+    },
+    /** Pacing data for render.mjs --info (camera moves, captions, clicks, UI changes). */
+    pacing() {
+      const full = sc.full();
+      const fullT = { s: full.s, tx: full.px - full.s * full.fx, ty: full.py - full.s * full.fy };
+      const isFull = (t) => { const tr = cam.transformAt(t); return Math.abs(tr.s - fullT.s) < 1e-3 && Math.abs(tr.tx - fullT.tx) < 0.5 && Math.abs(tr.ty - fullT.ty) < 0.5; };
+      return {
+        n, t0, t1, beats: sc.beats,
+        startFull: isFull(t0), endFull: isFull(t1),
+        moves: cam.moves.map((mv) => {
+          // The world rect visible when the move starts, and the rect it moves to.
+          const tr = cam.transformAt(mv.t0);
+          const vis = { x: -tr.tx / tr.s, y: -tr.ty / tr.s, w: 1920 / tr.s, h: 1080 / tr.s };
+          return {
+            t0: mv.t0, dur: mv.dur, ease: mv.ease === E.inOutCubic ? 'inOutCubic' : 'other',
+            kFrom: cam.at(mv.t0).s / full.s, kTo: mv.v.s / full.s, fromVisible: vis, toRect: mv.v.rect || null,
+          };
+        }),
+        captions: caps.items.map((r) => ({ t0: r.item.t0, t1: r.item.t1, head: r.item.head })),
+        clicks: cursors.flatMap((c) => c.clicks),
+        cursor: cursors.flatMap((c) => c.segments.map((g) => ({ start: g.start, end: g.end, dist: g.dist }))),
+        states: states.slice().sort((a, b) => a.t - b.t),
+      };
     },
     /** Entrance and exit envelope applied to the whole product zone. */
     transition(t) {
@@ -148,11 +183,13 @@ export function productScene(ctx, { n, t0, t1, theme, enter = 'rise', exit = 'si
 }
 
 /**
- * Cross-fading stack of capture states inside a container. sched: [{t, i, d?, from?}]; the first
- * entry is the initial state. The incoming layer fades in on top; the outgoing stays opaque under
- * it until the fade completes, so the composite is a clean dissolve between two real captures.
+ * Cross-fading stack of capture states inside a container. sched: [{t, i, d?, kind?}]; the first
+ * entry is the initial state. kind 'state' (default, a crossfade of 0.5 s) or 'tab' (0.3 s). The
+ * incoming layer fades in on top; the outgoing stays opaque under it until the fade completes, so
+ * the composite is a clean dissolve between two real captures. With log (a scene), every change
+ * is logged for the pacing check.
  */
-export function crossStack(parent, states, sched, { offsetY = 0, offsetFor } = {}) {
+export function crossStack(parent, states, sched, { offsetY = 0, offsetFor, log, label = '' } = {}) {
   const uniq = [];
   const idx = states.map((s) => {
     if (!s) return -1;
@@ -166,8 +203,17 @@ export function crossStack(parent, states, sched, { offsetY = 0, offsetFor } = {
     return im;
   });
   // Steps that point at a missing (optional) state are skipped: the previous state stays up.
-  const steps = sched.map((x) => Object.assign({ d: 0.2 }, x, { k: idx[x.i] })).filter((x) => x.k >= 0);
+  const steps = sched
+    .map((x) => Object.assign({ kind: 'state' }, x, { d: x.d != null ? x.d : x.kind === 'tab' ? PACE.tab : PACE.xfade, k: idx[x.i] }))
+    .filter((x) => x.k >= 0);
   if (!steps.length) steps.push({ t: -1e9, k: 0, d: 0 });
+  if (log) {
+    let cur = steps[0].k;
+    for (const st of steps.slice(1)) {
+      if (st.k !== cur) log.log(st.t, st.d, st.kind, label + ':' + (uniq[st.k] && uniq[st.k].id));
+      cur = st.k;
+    }
+  }
   return {
     imgs, uniq,
     current(t) {
@@ -180,7 +226,7 @@ export function crossStack(parent, states, sched, { offsetY = 0, offsetFor } = {
       for (let j = 1; j < steps.length; j++) {
         const st = steps[j];
         if (t >= st.t) {
-          if (st.k !== cur) { prev = cur; cur = st.k; p = E.outCubic(prog(t, st.t, st.t + st.d)); }
+          if (st.k !== cur) { prev = cur; cur = st.k; p = E.inOutCubic(prog(t, st.t, st.t + st.d)); }
         }
       }
       imgs.forEach((im, k) => {
@@ -215,7 +261,9 @@ export function popup(sc, win, states, sched, { open, close = Infinity, maxH = 6
     const f = focusFor ? focusFor(st) : null;
     return f ? clamp(f.y + f.h / 2 - maxH / 2, 0, st.vh - maxH) : 0;
   };
-  const stack = crossStack(box, states, sched, { offsetFor: (st) => -scrollFor(st) });
+  const stack = crossStack(box, states, sched, { offsetFor: (st) => -scrollFor(st), log: sc, label: 'popup' });
+  sc.log(open, 0.22, 'open', 'popup open');
+  if (Number.isFinite(close)) sc.log(close - 0.18, 0.18, 'open', 'popup close');
   const api = {
     box, x, y, w: pw, stack, k,
     heightAt(t) { const st = stack.current(t); return st ? Math.min(st.vh, maxH) : 0; },
@@ -268,3 +316,36 @@ export const rx = (text, re, g = 1) => {
 };
 
 export { E, clamp, prog, env, ep, lerp, el, op, show, view, px };
+
+/**
+ * Locate the selected tab's accent underline inside box (CSS px) of a capture state, by scanning
+ * the real capture's pixels for the longest horizontal run of accent-blue. Returns the tab's rect
+ * in the state's CSS px (full box height), or null. Used to click the real tab positions.
+ */
+export function accentRun(state, box) {
+  if (!state || !state.img || !box) return null;
+  const k = state.dsf;
+  const sx = Math.max(0, Math.round(box.x * k)), sy = Math.max(0, Math.round(box.y * k));
+  const sw = Math.round(box.w * k), sh = Math.round(box.h * k);
+  const cv = document.createElement('canvas');
+  cv.width = sw;
+  cv.height = sh;
+  const g = cv.getContext('2d', { willReadFrequently: true });
+  g.drawImage(state.img, sx, sy, sw, sh, 0, 0, sw, sh);
+  const d = g.getImageData(0, 0, sw, sh).data;
+  let best = null;
+  for (let y = 0; y < sh; y++) {
+    let run = 0;
+    for (let x = 0; x <= sw; x++) {
+      const i = (y * sw + x) * 4;
+      const on = x < sw && d[i + 2] - d[i] > 60 && d[i + 2] - d[i + 1] > 30;
+      if (on) run++;
+      else {
+        if (run > 0 && (!best || run > best.len)) best = { len: run, x0: x - run, y };
+        run = 0;
+      }
+    }
+  }
+  if (!best || best.len < 16 * k) return null;
+  return { x: box.x + best.x0 / k, y: box.y, w: best.len / k, h: box.h };
+}

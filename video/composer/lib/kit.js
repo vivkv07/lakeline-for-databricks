@@ -1,6 +1,6 @@
 // Motion-graphics building blocks. Each component builds its DOM once and exposes update(t),
 // which writes styles as a pure function of the virtual time t (seconds).
-import { E, clamp, lerp, prog, env, ep } from './ease.js';
+import { E, clamp, lerp, prog, env, ep, bezier } from './ease.js';
 
 export const W = 1920, H = 1080;
 
@@ -125,8 +125,18 @@ export function captions(parent, theme) {
     root, items,
     add(item) {
       const node = el('div', 'cap', root);
-      let eb = null;
-      if (item.eyebrow) { eb = el('div', 'eyebrow', node); eb.textContent = item.eyebrow; }
+      let eb = null, steps = null;
+      if (item.steps) {
+        // Step labels, e.g. "1 Ask · 2 Keep working · 3 Answer ready", current one highlighted.
+        steps = { el: el('div', 'steps', node), items: [], times: item.steps.times };
+        item.steps.labels.forEach((label, i) => {
+          if (i) el('span', 'sep', steps.el).textContent = '·';
+          const st = el('span', 'st', steps.el);
+          el('span', 'no', st).textContent = String(i + 1);
+          el('span', null, st).textContent = label;
+          steps.items.push(st);
+        });
+      } else if (item.eyebrow) { eb = el('div', 'eyebrow', node); eb.textContent = item.eyebrow; }
       const head = el('div', 'head', node);
       const words = item.head.split(' ');
       const spans = [];
@@ -138,16 +148,16 @@ export function captions(parent, theme) {
         if (i < words.length - 1) head.appendChild(document.createTextNode(' '));
       });
       // Detail lines: one, or several steps that swap ({t, parts}) as the shown state changes.
-      const steps = item.details || (item.detail ? [{ t: item.t0, parts: item.detail }] : []);
+      const detSteps = item.details || (item.detail ? [{ t: item.t0, parts: item.detail }] : []);
       const dets = [];
       let holder = null;
-      const cleaned = steps.map((st) => {
+      const cleaned = detSteps.map((st) => {
         const c = cleanParts(st.parts);
         return c.length && (c.some((p) => typeof p === 'object') || item.detailStatic) ? c : [];
       });
       if (cleaned.some((c) => c.length)) {
         holder = el('div', 'detail', node, { position: 'relative' });
-        steps.forEach((st, k) => {
+        detSteps.forEach((st, k) => {
           const d = el('div', null, holder, dets.length ? { position: 'absolute', left: '0px', top: '0px' } : {});
           for (const p of cleaned[k]) {
             if (p === '·') { const sp = el('span', 'sep', d); sp.textContent = '·'; }
@@ -164,7 +174,7 @@ export function captions(parent, theme) {
         // The holder is as wide as the widest step so swapping numbers never reflows the pill.
         holder.style.width = Math.max(...dets.map((d) => d.el.scrollWidth)) + 'px';
       }
-      const rec = { item, node, eb, spans, det: holder, dets, side: item.side || 'left' };
+      const rec = { item, node, eb, steps, spans, det: holder, dets, side: item.side || 'left' };
       items.push(rec);
       return node;
     },
@@ -183,30 +193,41 @@ export function captions(parent, theme) {
     },
     update(t) {
       let scrimO = 0;
-      for (const { item, node, eb, spans, det, dets } of items) {
+      for (const { item, node, eb, steps, spans, det, dets } of items) {
         const { t0, t1 } = item;
         const vis = t >= t0 - 0.01 && t <= t1;
         show(node, vis);
         if (!vis) continue;
-        const pin = ep(t, t0, 0.6, E.enter);
+        // The whole entrance (pill, words, detail line) completes within CAP_IN seconds.
+        const pin = ep(t, t0, 0.55, E.enter);
         const out = Number.isFinite(t1) ? E.exit(prog(t, t1 - 0.35, t1)) : 0;
         const o = Math.min(clamp(pin * 1.4), 1 - out);
         scrimO = Math.max(scrimO, o);
         node.style.opacity = o.toFixed(4);
-        node.style.transform = `translateY(${((1 - pin) * 22 + out * 14).toFixed(3)}px)`;
-        if (eb) eb.style.opacity = ep(t, t0 + 0.1, 0.6).toFixed(4);
+        node.style.transform = `translateY(${((1 - pin) * 18 + out * 12).toFixed(3)}px)`;
+        if (eb) eb.style.opacity = ep(t, t0 + 0.1, 0.5).toFixed(4);
+        if (steps) {
+          steps.el.style.opacity = ep(t, t0 + 0.1, 0.5).toFixed(4);
+          let cur = 0;
+          steps.times.forEach((ts, i) => { if (t >= ts) cur = i; });
+          steps.items.forEach((st, i) => {
+            const cls = 'st' + (i === cur ? ' on' : i < cur ? ' done' : '');
+            if (st.className !== cls) st.className = cls;
+          });
+        }
+        const stagger = Math.min(0.045, 0.3 / Math.max(1, spans.length));
         spans.forEach((sp, i) => {
-          const p = ep(t, t0 + 0.12 + i * 0.045, 0.8);
+          const p = ep(t, t0 + 0.12 + i * stagger, 0.55);
           sp.style.transform = `translateY(${((1 - p) * 105).toFixed(3)}%)`;
         });
         if (det) {
-          const p = ep(t, t0 + 0.3 + spans.length * 0.045, 0.7);
+          const p = ep(t, t0 + 0.45, 0.5);
           det.style.opacity = p.toFixed(4);
           // Swap numbers in sequence: the old line leaves first, then the new one rises in.
           dets.forEach((d, k) => {
             const next = dets[k + 1];
-            const a = k === 0 ? 1 : ep(t, d.t + 0.12, 0.4, E.enter);
-            const b = next ? 1 - E.inCubic(prog(t, next.t - 0.1, next.t + 0.1)) : 1;
+            const a = k === 0 ? 1 : ep(t, d.t + 0.12, 0.45, E.enter);
+            const b = next ? 1 - E.inCubic(prog(t, next.t - 0.15, next.t + 0.1)) : 1;
             const oo = Math.min(a, b);
             d.el.style.opacity = oo.toFixed(4);
             d.el.style.transform = `translateY(${(k === 0 ? 0 : (1 - a) * 10 - (1 - b) * 6).toFixed(3)}px)`;
@@ -414,9 +435,14 @@ export function ring(parent, rect, { t0, t1 = Infinity, pad = 4, warm = false, r
 
 const CURSOR_SVG = `<svg viewBox="0 0 26 32" xmlns="http://www.w3.org/2000/svg"><path d="M3 2.2v23.6l6.1-5.8 4.1 9.2 3.9-1.7-4-9h8.4z" fill="#fff" stroke="#0A0A0A" stroke-width="1.6" stroke-linejoin="round"/></svg>`;
 
+/** Cursor timing (notes/VIDEO.md, Pacing v2): moves take at least 0.6 s and decelerate. */
+export const CURSOR = { minMove: 0.6, maxMove: 1.1, afterClick: 0.5 };
+const CURSOR_EASE = bezier(0.3, 0, 0.1, 1);
+
 /**
- * Smooth cursor in world coordinates. path: [{t, x, y, click?}]; moves between waypoints with
- * an eased arc; a click presses the pointer and emits a ripple.
+ * Smooth cursor in world coordinates. path: [{t, x, y, click?}], sorted by t; the cursor arrives
+ * at each waypoint at its t. Each move takes a distance-based 0.6–1.1 s with a decelerating
+ * curve and a gentle arc; after a click it rests for the click pause before moving on.
  */
 export function cursor(parent, path, { size = 1, appear, vanish } = {}) {
   const c = el('div', 'cursor', parent);
@@ -424,21 +450,24 @@ export function cursor(parent, path, { size = 1, appear, vanish } = {}) {
   const ripples = path.filter((p) => p.click).map((p) => ({ p, el: el('div', 'ripple', parent) }));
   const t0 = appear != null ? appear : path[0].t - 0.3;
   const t1 = vanish != null ? vanish : path[path.length - 1].t + 0.8;
+  const segs = [];
+  for (let i = 1; i < path.length; i++) {
+    const a = path[i - 1], b = path[i];
+    const dist = Math.hypot(b.x - a.x, b.y - a.y);
+    const dur = clamp(CURSOR.minMove + dist / 1800, CURSOR.minMove, CURSOR.maxMove);
+    const start = b.from != null ? b.from : Math.max(a.t + (a.click ? CURSOR.afterClick : 0.05), b.t - dur);
+    segs.push({ a, b, start, end: b.t, dist });
+  }
   function pos(t) {
     if (t <= path[0].t) return [path[0].x, path[0].y];
-    for (let i = 1; i < path.length; i++) {
-      const a = path[i - 1], b = path[i];
-      // Each move takes a distance-based duration and ends exactly on the waypoint time.
-      const dist = Math.hypot(b.x - a.x, b.y - a.y);
-      const dur = clamp(0.38 + dist / 1500, 0.45, 1.15);
-      const start = b.from != null ? b.from : Math.max(a.t + (a.click ? 0.18 : 0), b.t - dur);
-      if (t <= b.t) {
+    for (const { a, b, start, end } of segs) {
+      if (t <= end) {
         if (t <= start) return [a.x, a.y];
-        const p = E.inOutCubic(prog(t, start, b.t));
+        const p = CURSOR_EASE(prog(t, start, end));
         // A gentle arc: control point offset perpendicular to the move.
         const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
         const dx = b.x - a.x, dy = b.y - a.y;
-        const k = 0.12;
+        const k = 0.1;
         const cx = mx - dy * k, cy = my + dx * k;
         const u = 1 - p;
         return [u * u * a.x + 2 * u * p * cx + p * p * b.x, u * u * a.y + 2 * u * p * cy + p * p * b.y];
@@ -449,6 +478,8 @@ export function cursor(parent, path, { size = 1, appear, vanish } = {}) {
   }
   return {
     el: c,
+    segments: segs,
+    clicks: path.filter((p) => p.click).map((p) => p.t),
     update(t, camS = 1) {
       const vis = env(t, t0, t1, 0.3, 0.3);
       op(c, vis);
