@@ -103,6 +103,13 @@
               </span>
             </label>
             <label class="op-option">
+              <input type="radio" name="auth" value="session" id="auth-session-radio">
+              <span class="op-option__main">
+                <span class="op-option__title">Use my Databricks login (experimental)</span>
+                <span class="op-option__meta">No setup at all: requests go through your open Databricks tab using the login you already have. Uses an undocumented Databricks API that can change or be blocked, carries your full user access, and works only while a tab for this workspace is open.</span>
+              </span>
+            </label>
+            <label class="op-option">
               <input type="radio" name="auth" value="pat" id="auth-pat-radio">
               <span class="op-option__main">
                 <span class="op-option__title">Personal access token</span>
@@ -183,6 +190,15 @@
           </div>
         </div>
 
+        <div id="auth-session" class="op-subpanel" hidden>
+          <h3 id="session-login">Use my Databricks login</h3>
+          <p class="op-help">Keep a tab of this workspace open while you use cost badges, the monitor or Genie. If your Databricks login expires, sign in again in that tab. For background features without an open tab, prefer Sign in with Databricks.</p>
+          <div class="op-actions">
+            <button type="button" id="session-connect" class="dcc-btn dcc-btn--primary">Connect using my login</button>
+          </div>
+          <div id="session-result" class="op-result" aria-live="polite"></div>
+        </div>
+
         <div id="auth-pat" class="op-subpanel" hidden>
           <h3 id="pat">Personal access token</h3>
           <p id="pat-status" class="op-status"></p>
@@ -192,7 +208,8 @@
               <input id="pat-input" class="dcc-input dcc-input--mono" type="password" autocomplete="off" spellcheck="false" aria-describedby="pat-help">
               <button type="button" id="pat-save" class="dcc-btn dcc-btn--primary">Save token</button>
             </div>
-            <p id="pat-help" class="op-help">Kept in session storage for this browser session only (cleared when the browser closes) and never shown again. Use a token for an identity that can use the SQL warehouse and read the billing tables, and nothing more.</p>
+            <label class="op-check" for="pat-remember"><input type="checkbox" id="pat-remember"> Remember on this computer (survives browser restarts; stored in this browser profile)</label>
+            <p id="pat-help" class="op-help">Tip: create the token with the <code>sql</code> API scope so it can only run SQL. Kept in session storage for this browser session only (cleared when the browser closes) and never shown again. Use a token for an identity that can use the SQL warehouse and read the billing tables, and nothing more.</p>
           </div>
           <div id="pat-result" class="op-result" aria-live="polite"></div>
           <div class="op-actions">

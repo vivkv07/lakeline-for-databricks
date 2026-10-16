@@ -715,7 +715,7 @@ test('options: a personal access token is never displayed or kept in the page', 
   env.type('pat-input', token);
   env.$('pat-save').click();
   await settle();
-  assert.deepEqual(env.sent('admin:setPat'), [{ type: 'admin:setPat', origin: A, token }]);
+  assert.deepEqual(env.sent('admin:setPat'), [{ type: 'admin:setPat', origin: A, token, remember: false }], 'session-only unless Remember is ticked');
   assert.equal(env.$('pat-input').value, '', 'field is cleared after save');
   assert.match(env.text('pat-result'), /Token saved for this browser session \(cleared when the browser closes\)/);
   const html = env.document.documentElement.outerHTML;

@@ -46,6 +46,7 @@ export function createContentEnv({ url, html, files, onMessage, storage = {} }) 
         return onMessage ? structuredClone(await onMessage(msg)) : { ok: false, error: { code: 'UNKNOWN' } };
       },
       getURL: (p) => 'chrome-extension://testextensionid/' + p,
+      onMessage: { addListener() {} },
     },
     storage: {
       local: {
