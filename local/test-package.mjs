@@ -38,6 +38,7 @@ test('store build: manifest at the root without a key, experimental browser logi
   assert.equal(manifest.name, 'Lakeline for Databricks');
   const flags = entries.find((e) => e.name === 'src/core/flags.js').data.toString('utf8');
   assert.match(flags, /sessionLogin:\s*false/);
+  assert.match(flags, /devTools:\s*false/);
   assert.ok(names.includes('fonts/OFL-Inter.txt') && names.includes('icons/icon-128.png'));
   assert.deepEqual(inspect(entries.map((e) => ({ name: e.name, text: e.data.toString('latin1') }))), []);
 });

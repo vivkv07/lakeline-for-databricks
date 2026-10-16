@@ -1,0 +1,147 @@
+<!doctype html>
+<!--
+  SYNTHETIC "other work" page for the launch video (served by local/video/video-server.mjs at
+  https://docs.example/). A neutral, generic doc editor (contenteditable) with someone's own notes:
+  no brand UI or logos. Pasting plain text renders a small Markdown subset (paragraphs, "- " and
+  "1. " lists, **bold**, `code`) and tab-separated blocks as a table, like many editors do.
+  window.__pastes keeps every pasted text/plain string exactly as received (the capture script
+  reads it back). Follows the browser's light/dark preference. Saves nothing.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Weekly cost review · Docs</title>
+<style>
+  :root { --desk: #f1f3f5; --paper: #ffffff; --line: #e1e4e8; --text: #16191d; --muted: #646c76; --accent: #3b6fd8; --tool: #ffffff; --th: #f3f5f8; }
+  @media (prefers-color-scheme: dark) { :root { --desk: #101215; --paper: #1a1d21; --line: #2c3036; --text: #e9ecef; --muted: #9aa3ad; --accent: #7aa2ff; --tool: #16191d; --th: #22262b; } }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--desk); color: var(--text); font: 15px/1.6 Inter, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  .top { display: flex; align-items: center; gap: 14px; height: 56px; padding: 0 20px; background: var(--tool); border-bottom: 1px solid var(--line); }
+  .top .icon { width: 30px; height: 30px; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center; background: var(--th); color: var(--muted); }
+  .top .name { font-weight: 600; font-size: 16px; }
+  .top .saved { color: var(--muted); font-size: 13px; }
+  .top .grow { flex: 1; }
+  .top .avatar { width: 30px; height: 30px; border-radius: 50%; background: #5b6b79; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-weight: 600; font-size: 12px; }
+  .tools { display: flex; align-items: center; gap: 4px; height: 44px; padding: 0 20px; background: var(--tool); border-bottom: 1px solid var(--line); color: var(--muted); }
+  .tools span { min-width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; font-size: 14px; }
+  .tools .sep { min-width: 1px; width: 1px; height: 20px; background: var(--line); margin: 0 6px; border-radius: 0; }
+  .tools .style { padding: 0 10px; border: 1px solid var(--line); }
+  .desk { height: calc(100% - 100px); overflow: auto; padding: 28px 0 60px; }
+  .paper { width: 820px; min-height: 1060px; margin: 0 auto; padding: 64px 84px; background: var(--paper); border: 1px solid var(--line); border-radius: 6px; }
+  .paper:focus { outline: none; }
+  .paper h1 { font-size: 30px; line-height: 1.25; margin: 0 0 6px; letter-spacing: -0.015em; }
+  .paper h2 { font-size: 19px; margin: 26px 0 8px; }
+  .paper p { margin: 0 0 10px; }
+  .paper .byline { color: var(--muted); margin-bottom: 18px; }
+  .paper ul, .paper ol { margin: 0 0 10px; padding-left: 24px; }
+  .paper code { font: 13.5px "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--th); padding: 0 4px; border-radius: 4px; }
+  .paper table { border-collapse: collapse; margin: 6px 0 14px; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+  .paper th, .paper td { border: 1px solid var(--line); padding: 5px 10px; text-align: left; }
+  .paper th { background: var(--th); font-weight: 600; }
+  .paper .pasted { border-left: 3px solid var(--accent); padding-left: 14px; margin: 4px 0 12px -17px; }
+  .paper .caret-line { min-height: 1.6em; }
+</style>
+</head>
+<body>
+  <div class="top">
+    <span class="icon" aria-hidden="true"><svg viewBox="0 0 16 16" width="16" height="16"><path d="M4 1.5h5.5L13 5v9.5H4z" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M9.5 1.5V5H13M6 8h5M6 10.5h5M6 13h3" stroke="currentColor" stroke-width="1.3" fill="none"/></svg></span>
+    <span class="name">Weekly cost review</span>
+    <span class="saved" id="saved">All changes saved</span>
+    <span class="grow"></span>
+    <span class="avatar" aria-label="Account">AK</span>
+  </div>
+  <div class="tools" aria-hidden="true">
+    <span>↶</span><span>↷</span><span class="sep"></span><span class="style">Normal text ▾</span><span class="sep"></span>
+    <span><b>B</b></span><span><i>I</i></span><span><u>U</u></span><span class="sep"></span><span>•≡</span><span>1≡</span><span>⊞</span><span>🔗︎</span>
+  </div>
+  <div class="desk">
+    <article class="paper" id="doc" contenteditable="true" spellcheck="false" aria-label="Document">
+      <h1>Weekly cost review</h1>
+      <p class="byline" id="byline">Platform team · Draft</p>
+      <h2>Agenda</h2>
+      <ul>
+        <li>Why compute jumped last week</li>
+        <li>Backfill policy for nightly_sales_etl</li>
+        <li>BI Serverless sizing before the holiday peak</li>
+      </ul>
+      <h2>Notes</h2>
+      <p>Spend is up again. I asked Genie which jobs drove it while I was catching up on a talk. Its answer:</p>
+      <p class="caret-line" id="answer-here"><br></p>
+      <h2>Appendix: daily compute cost</h2>
+      <p class="caret-line" id="table-here"><br></p>
+    </article>
+  </div>
+<script>
+  (function () {
+    var byline = document.getElementById('byline');
+    byline.textContent = new Date().toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' }) + ' · Platform team · Draft';
+    window.__pastes = [];
+    var doc = document.getElementById('doc');
+
+    function inline(parent, text) {
+      // **bold** and `code`; everything else is text (textContent only).
+      var re = /(\*\*([^*]+)\*\*|`([^`]+)`)/g, last = 0, m;
+      while ((m = re.exec(text))) {
+        if (m.index > last) parent.appendChild(document.createTextNode(text.slice(last, m.index)));
+        var el = document.createElement(m[2] !== undefined ? 'strong' : 'code');
+        el.textContent = m[2] !== undefined ? m[2] : m[3];
+        parent.appendChild(el);
+        last = re.lastIndex;
+      }
+      if (last < text.length) parent.appendChild(document.createTextNode(text.slice(last)));
+    }
+
+    function render(text) {
+      var frag = document.createDocumentFragment();
+      var lines = text.replace(/\r\n?/g, '\n').split('\n');
+      var blocks = [], cur = [];
+      lines.forEach(function (l) { if (l.trim() === '') { if (cur.length) blocks.push(cur); cur = []; } else cur.push(l); });
+      if (cur.length) blocks.push(cur);
+      blocks.forEach(function (b) {
+        if (b.length >= 2 && b.every(function (l) { return l.indexOf('\t') >= 0; })) {
+          var table = document.createElement('table');
+          b.forEach(function (l, i) {
+            var tr = document.createElement('tr');
+            l.split('\t').forEach(function (c) { var cell = document.createElement(i === 0 ? 'th' : 'td'); cell.textContent = c; tr.appendChild(cell); });
+            table.appendChild(tr);
+          });
+          frag.appendChild(table);
+        } else if (b.every(function (l) { return /^\s*[-*] /.test(l); })) {
+          var ul = document.createElement('ul');
+          b.forEach(function (l) { var li = document.createElement('li'); inline(li, l.replace(/^\s*[-*] /, '')); ul.appendChild(li); });
+          frag.appendChild(ul);
+        } else if (b.every(function (l) { return /^\s*\d+\. /.test(l); })) {
+          var ol = document.createElement('ol');
+          b.forEach(function (l) { var li = document.createElement('li'); inline(li, l.replace(/^\s*\d+\. /, '')); ol.appendChild(li); });
+          frag.appendChild(ol);
+        } else {
+          var p = document.createElement('p');
+          inline(p, b.join(' '));
+          frag.appendChild(p);
+        }
+      });
+      return frag;
+    }
+
+    doc.addEventListener('paste', function (ev) {
+      var text = ev.clipboardData ? ev.clipboardData.getData('text/plain') : '';
+      ev.preventDefault();
+      if (!text) return;
+      window.__pastes.push(text);
+      var sel = window.getSelection();
+      var anchor = sel && sel.anchorNode ? (sel.anchorNode.nodeType === 1 ? sel.anchorNode : sel.anchorNode.parentElement) : null;
+      var line = anchor && anchor.closest ? anchor.closest('.caret-line') : null;
+      var box = document.createElement('div');
+      box.className = 'pasted';
+      box.setAttribute('data-paste', String(window.__pastes.length));
+      box.appendChild(render(text));
+      if (line) line.parentNode.insertBefore(box, line);
+      else doc.appendChild(box);
+      document.getElementById('saved').textContent = 'All changes saved';
+    });
+  })();
+</script>
+</body>
+</html>

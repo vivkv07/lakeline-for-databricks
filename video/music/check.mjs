@@ -30,7 +30,6 @@ const PLAN = {
   bright: { min: -15, max: -10 },
   calm: { min: -26, max: -15 },
   resolve: { min: -24, max: -12 },
-  tail: { min: -90, max: -20 },
 };
 
 function fft(re, im) {
@@ -171,7 +170,20 @@ export function check({ wav, markers, outDir, loudnorm = null }) {
     return { id: s.id, start: s.start, end: s.end, ...st, plan: plan ? `${plan.min}..${plan.max}` : '', ok };
   });
 
-  // The last 0.2 s must be silent (tail fades out before the file ends).
+  // Transitions: loudness of the 1 s before and after each section mark, so the
+  // marks are audible where the storyboard expects them.
+  const transitions = markers.sections.slice(1).map((s) => {
+    const before = sectionStats(L, R, { start: s.start - 1, end: s.start });
+    const after = sectionStats(L, R, { start: s.start, end: s.start + 1 });
+    return { at: s.start, into: s.id, beforeRmsDb: before.rmsDb, afterRmsDb: after.rmsDb, deltaDb: +(after.rmsDb - before.rmsDb).toFixed(1) };
+  });
+
+  // The tail must decay: the last 0.5 s far below the music, and the last
+  // 0.2 s digitally silent (the fade ends before the file does).
+  const end = L.length / SR;
+  const tailEnd = sectionStats(L, R, { start: end - 0.5, end });
+  if (!(tailEnd.rmsDb < -55)) failures.push(`tail not decayed: last 0.5 s at ${tailEnd.rmsDb} dBFS RMS`);
+  // The last 0.2 s must be silent.
   let tailPk = 0;
   for (let i = L.length - Math.round(0.2 * SR); i < L.length; i++) tailPk = Math.max(tailPk, Math.abs(L[i]), Math.abs(R[i]));
   if (tailPk > 1e-4) failures.push(`file end not silent (peak ${tailPk})`);
@@ -201,6 +213,7 @@ export function check({ wav, markers, outDir, loudnorm = null }) {
     correlation: overall.corr,
     loudnorm: loudnorm ? { type: loudnorm.pass2.normalization_type, input_i: loudnorm.pass1.input_i, input_tp: loudnorm.pass1.input_tp, output_i: loudnorm.pass2.output_i, output_tp: loudnorm.pass2.output_tp } : null,
     sections,
+    transitions,
     spectrum,
     pass: failures.length === 0,
     failures,
@@ -216,6 +229,8 @@ export function check({ wav, markers, outDir, loudnorm = null }) {
       `${s.id.padEnd(10)} ${String(s.start).padStart(6)} ${String(s.end).padStart(6)} ${String(s.rmsDb).padStart(8)} ${String(s.lufs).padStart(6)} ${String(s.peakDb).padStart(6)} ${String(s.corr).padStart(6)}  ${s.plan.padEnd(10)} ${s.ok ? 'yes' : 'NO'}`,
     );
   }
+  console.log('\ntransitions (RMS dBFS, 1 s before -> 1 s after each mark):');
+  for (const t of transitions) console.log(`  ${String(t.at).padStart(5)} s  ${t.into.padEnd(10)} ${String(t.beforeRmsDb).padStart(6)} -> ${String(t.afterRmsDb).padStart(6)}  (${t.deltaDb > 0 ? '+' : ''}${t.deltaDb})`);
   console.log('\nspectrum (share of total power):');
   for (const b of spectrum) console.log(`  ${b.band.padEnd(18)} ${String(b.dB).padStart(6)} dB`);
   console.log(`\nQC ${qc.pass ? 'PASS' : 'FAIL'}${failures.length ? ': ' + failures.join('; ') : ''}`);

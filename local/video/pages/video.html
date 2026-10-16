@@ -1,0 +1,157 @@
+<!doctype html>
+<!--
+  SYNTHETIC "other work" page for the launch video (served by local/video/video-server.mjs at
+  https://videos.example/). A neutral, generic video player showing a recorded tech talk: no
+  brand UI, logos, real people or footage; the "video" frame is an abstract illustration drawn
+  here. Query: ?t=<seconds played>&d=<duration seconds>&state=playing|paused. Follows the
+  browser's light/dark preference. Nothing is played; nothing is loaded from elsewhere.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Incremental pipelines at retail scale · Recorded talks</title>
+<style>
+  :root { --bg: #ffffff; --surface: #f4f5f7; --line: #e3e5e9; --text: #121417; --muted: #5d6570; --accent: #0f8b8d; --accent2: #6a5acd; --chip: #eceef1; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #0e1013; --surface: #171a1f; --line: #262a31; --text: #eef0f3; --muted: #9aa3ad; --accent: #2bb7b3; --accent2: #9a8cff; --chip: #1f232a; } }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 Inter, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  header { display: flex; align-items: center; gap: 16px; height: 60px; padding: 0 28px; border-bottom: 1px solid var(--line); }
+  .mark { display: inline-flex; align-items: center; gap: 10px; font-weight: 650; font-size: 16px; letter-spacing: -0.01em; }
+  .mark svg { color: var(--accent); }
+  .search { flex: 1; display: flex; justify-content: center; }
+  .search span { width: min(520px, 100%); height: 36px; display: flex; align-items: center; gap: 8px; padding: 0 14px; border: 1px solid var(--line); border-radius: 18px; color: var(--muted); background: var(--surface); }
+  .avatar { width: 32px; height: 32px; border-radius: 50%; background: #5b6b79; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-weight: 600; font-size: 12px; }
+  main { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 28px; padding: 24px 28px; }
+  .player { position: relative; aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden; background: #0b1324; }
+  .player svg.frame { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .controls { position: absolute; left: 0; right: 0; bottom: 0; padding: 40px 18px 12px; background: linear-gradient(to top, rgba(0,0,0,0.72), rgba(0,0,0,0)); color: #fff; }
+  .bar { position: relative; height: 5px; border-radius: 3px; background: rgba(255,255,255,0.28); margin-bottom: 12px; }
+  .bar .buf { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; background: rgba(255,255,255,0.45); }
+  .bar .played { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; background: #2bd4cf; }
+  .bar .knob { position: absolute; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 3px rgba(43,212,207,0.35); }
+  .row { display: flex; align-items: center; gap: 16px; font-size: 13px; font-variant-numeric: tabular-nums; }
+  .row .grow { flex: 1; }
+  .row svg { display: block; }
+  .chapter { opacity: 0.85; }
+  h1 { font-size: 22px; line-height: 1.3; margin: 18px 0 6px; letter-spacing: -0.01em; }
+  .meta { color: var(--muted); }
+  .chips { display: flex; gap: 8px; margin: 12px 0; }
+  .chips span { padding: 4px 10px; border-radius: 14px; background: var(--chip); color: var(--muted); font-size: 12.5px; }
+  .desc { padding: 14px 16px; border-radius: 12px; background: var(--surface); color: var(--text); }
+  .desc p { margin: 0 0 8px; }
+  .chapters { list-style: none; padding: 0; margin: 10px 0 0; display: grid; gap: 4px; }
+  .chapters li { display: flex; gap: 12px; color: var(--muted); }
+  .chapters li b { color: var(--accent); font-weight: 600; font-variant-numeric: tabular-nums; min-width: 44px; }
+  .chapters li.now { color: var(--text); font-weight: 600; }
+  aside h2 { font-size: 14px; margin: 0 0 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
+  .next { display: grid; grid-template-columns: 150px 1fr; gap: 12px; margin-bottom: 14px; }
+  .thumb { position: relative; aspect-ratio: 16 / 9; border-radius: 10px; overflow: hidden; }
+  .thumb i { position: absolute; right: 6px; bottom: 6px; padding: 1px 6px; border-radius: 4px; background: rgba(0,0,0,0.72); color: #fff; font-style: normal; font-size: 11px; }
+  .next b { display: block; font-size: 13.5px; line-height: 1.35; font-weight: 600; }
+  .next span { color: var(--muted); font-size: 12.5px; }
+</style>
+</head>
+<body>
+<header>
+  <span class="mark"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><rect x="1.5" y="4" width="21" height="16" rx="5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M10 9l5 3-5 3z" fill="currentColor"/></svg>Recorded talks</span>
+  <div class="search"><span><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M7 2a5 5 0 0 1 3.9 8.1l3 3-1 1-3-3A5 5 0 1 1 7 2zm0 1.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z"/></svg>Search talks</span></div>
+  <span class="avatar" aria-label="Account">AK</span>
+</header>
+<main>
+  <section>
+    <div class="player" role="region" aria-label="Video player">
+      <svg class="frame" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        <defs>
+          <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0b1a3a"/><stop offset="0.55" stop-color="#0d2d4a"/><stop offset="1" stop-color="#0a3b3f"/></linearGradient>
+          <linearGradient id="flow" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#2bd4cf" stop-opacity="0"/><stop offset="0.5" stop-color="#2bd4cf" stop-opacity="0.65"/><stop offset="1" stop-color="#9a8cff" stop-opacity="0"/></linearGradient>
+        </defs>
+        <rect width="1600" height="900" fill="url(#bg)"/>
+        <g fill="none" stroke="url(#flow)" stroke-width="2">
+          <path d="M0 640 C 300 560, 520 720, 820 610 S 1300 520, 1600 600"/>
+          <path d="M0 690 C 280 620, 560 760, 860 660 S 1320 580, 1600 650" opacity="0.7"/>
+          <path d="M0 740 C 320 680, 600 800, 900 710 S 1340 640, 1600 700" opacity="0.45"/>
+        </g>
+        <g fill="#c7d5ff" font-family="Inter, -apple-system, Segoe UI, Roboto, Arial, sans-serif">
+          <text x="120" y="190" font-size="30" letter-spacing="6" fill="#8fb0ff">SESSION 4 · PART 2</text>
+          <text x="120" y="290" font-size="76" font-weight="700" fill="#f5f5f4">Backfills without surprises</text>
+          <text x="120" y="360" font-size="34" fill="#c7d5ff">Incremental pipelines at retail scale</text>
+        </g>
+        <g transform="translate(1040 400)">
+          <rect x="0" y="0" width="420" height="250" rx="18" fill="#ffffff" fill-opacity="0.06" stroke="#ffffff" stroke-opacity="0.15"/>
+          <g fill="#2bd4cf"><rect x="40" y="160" width="36" height="60" rx="4"/><rect x="96" y="140" width="36" height="80" rx="4"/><rect x="152" y="150" width="36" height="70" rx="4"/><rect x="208" y="70" width="36" height="150" rx="4" fill="#f5b83d"/><rect x="264" y="135" width="36" height="85" rx="4"/><rect x="320" y="128" width="36" height="92" rx="4"/></g>
+          <path d="M40 120 L 380 120" stroke="#ffffff" stroke-opacity="0.25" stroke-dasharray="6 8"/>
+          <text x="40" y="52" font-size="22" fill="#e8ecef" font-family="Inter, -apple-system, Segoe UI, Roboto, Arial, sans-serif">Partition by day, replay one range</text>
+        </g>
+      </svg>
+      <div class="controls">
+        <div class="bar" aria-label="Progress"><span class="buf" id="buf"></span><span class="played" id="played"></span><span class="knob" id="knob"></span></div>
+        <div class="row">
+          <span id="pp" aria-label="Pause"></span>
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z" fill="#fff"/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+          <span id="time">0:00 / 0:00</span>
+          <span class="chapter" id="chapter"></span>
+          <span class="grow"></span>
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3" fill="none" stroke="#fff" stroke-width="2"/><path d="M7 11h4M7 14h6M13 11h4M15 14h2" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="12" cy="12" r="3" fill="#fff"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+        </div>
+      </div>
+    </div>
+    <h1>Incremental pipelines at retail scale</h1>
+    <div class="meta">Data platform meetup · Session 4 · Recorded talk · 41 min</div>
+    <div class="chips"><span>Data engineering</span><span>Backfills</span><span>Cost</span></div>
+    <div class="desc">
+      <p>How one retail data team replays a single day of history without rerunning everything: partitioned tables, idempotent merges and a budget check before every backfill.</p>
+      <ol class="chapters" id="chapters"></ol>
+    </div>
+  </section>
+  <aside>
+    <h2>Up next</h2>
+    <div class="next"><span class="thumb" style="background: linear-gradient(135deg, #1d3b6f, #2bb7b3)"><i>28:14</i></span><span><b>Right-sizing SQL warehouses</b><span>Session 5 · 28 min</span></span></div>
+    <div class="next"><span class="thumb" style="background: linear-gradient(135deg, #3a2a6f, #9a8cff)"><i>33:02</i></span><span><b>Change data capture with less code</b><span>Session 3 · 33 min</span></span></div>
+    <div class="next"><span class="thumb" style="background: linear-gradient(135deg, #2d4a2a, #7cc47a)"><i>19:45</i></span><span><b>Testing data pipelines like software</b><span>Session 6 · 20 min</span></span></div>
+    <div class="next"><span class="thumb" style="background: linear-gradient(135deg, #5a3a14, #f5b83d)"><i>24:31</i></span><span><b>A practical guide to data governance</b><span>Session 2 · 25 min</span></span></div>
+  </aside>
+</main>
+<script>
+  (function () {
+    var q = new URLSearchParams(location.search);
+    var dur = Math.max(60, Number(q.get('d')) || 2472);
+    var t = Math.min(dur, Math.max(0, Number(q.get('t')) || 768));
+    var playing = q.get('state') !== 'paused';
+    var fmt = function (s) { s = Math.round(s); var m = Math.floor(s / 60); return m + ':' + String(s % 60).padStart(2, '0'); };
+    var pct = (t / dur) * 100;
+    document.getElementById('played').style.width = pct + '%';
+    document.getElementById('knob').style.left = pct + '%';
+    document.getElementById('buf').style.width = Math.min(100, pct + 9) + '%';
+    document.getElementById('time').textContent = fmt(t) + ' / ' + fmt(dur);
+    var chapters = [[0, 'Why backfills get expensive'], [420, 'Partition by day'], [780, 'Idempotent merges'], [1320, 'A budget check before you replay'], [1980, 'Questions']];
+    var now = 0;
+    chapters.forEach(function (c, i) { if (t >= c[0]) now = i; });
+    document.getElementById('chapter').textContent = '· ' + chapters[now][1];
+    var ol = document.getElementById('chapters');
+    chapters.forEach(function (c, i) {
+      var li = document.createElement('li');
+      if (i === now) li.className = 'now';
+      var b = document.createElement('b');
+      b.textContent = fmt(c[0]);
+      li.appendChild(b);
+      li.appendChild(document.createTextNode(c[1]));
+      ol.appendChild(li);
+    });
+    var pp = document.getElementById('pp');
+    var ns = 'http://www.w3.org/2000/svg';
+    var svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('width', '24'); svg.setAttribute('height', '24');
+    var path = document.createElementNS(ns, 'path');
+    path.setAttribute('fill', '#fff');
+    path.setAttribute('d', playing ? 'M6 4h4v16H6zM14 4h4v16h-4z' : 'M7 4l13 8-13 8z');
+    svg.appendChild(path); pp.appendChild(svg);
+    pp.setAttribute('aria-label', playing ? 'Pause' : 'Play');
+    document.documentElement.setAttribute('data-state', playing ? 'playing' : 'paused');
+  })();
+</script>
+</body>
+</html>

@@ -379,7 +379,7 @@ export function bellNote(bus, t0, gate, midi, o, rng) {
   const flt = new SVF(cut, 0.7);
   const [pl, pr] = panLR(pan);
   const i0 = startIndex(t0);
-  const len = Math.ceil(Math.min(4, gate + release * 9) * SR);
+  const len = Math.ceil((gate + release * 9) * SR);
   const g = gain * vel;
   const dt1 = f / SR;
   const dt2 = (2 * f) / SR;
@@ -455,6 +455,7 @@ export function bassNote(bus, t0, gate, midi, o, rng) {
     sustain = 0.78,
     release = 0.05,
     sawMix = 0.5,
+    sub = 1,
   } = o;
   const f = mtof(midi);
   const s1 = new Osc(0);
@@ -470,7 +471,7 @@ export function bassNote(bus, t0, gate, midi, o, rng) {
     if (idx >= bus.n) break;
     const t = i / SR;
     if ((i & 7) === 0) flt.set(cut + env * vel * Math.exp(-t / envDecay), 0.8);
-    const x = s1.sine(dt) + flt.tick(s2.saw(dt)) * sawMix;
+    const x = s1.sine(dt) * sub + flt.tick(s2.saw(dt)) * sawMix;
     const y = Math.tanh(drive * x * 0.8) * norm * adsr(t, gate, attack, decay, sustain, release) * g;
     if (idx < 0) continue;
     bus.L[idx] += y;
@@ -544,8 +545,9 @@ export function clap(bus, t0, o, rng) {
     bl.tick(nl);
     br.tick(nr);
     const tone = Math.sin(TAU * 188 * t) * Math.exp(-t / 0.045) * body;
-    const yl = (ll.tick(bl.bp * 2.2) * e + tone) * g;
-    const yr = (lr.tick(br.bp * 2.2) * e + tone) * g;
+    const fade = Math.min(1, (len - t) / 0.08);
+    const yl = (ll.tick(bl.bp * 2.2) * e + tone) * g * fade;
+    const yr = (lr.tick(br.bp * 2.2) * e + tone) * g * fade;
     if (idx < 0) continue;
     bus.L[idx] += yl;
     bus.R[idx] += yr;
@@ -902,17 +904,21 @@ export function saturate(bus, drive = 1.2) {
 }
 
 /**
- * Look-ahead brickwall limiter on sample peaks. A forward-looking minimum of
+ * Look-ahead brickwall limiter on true peaks (4x oversampled estimate; sample
+ * peaks with truePeak=false). A forward-looking minimum of
  * the required gain, smoothed by a moving average of the same length, can never
  * let a sample exceed the ceiling; release is a one-pole recovery.
  */
-export function limiter(bus, { ceilingDb = -2, lookahead = 0.004, release = 0.09 } = {}) {
+export function limiter(bus, { ceilingDb = -2, lookahead = 0.004, release = 0.09, truePeak = true, peakEnv = null, envScale = 1 } = {}) {
   const n = bus.n;
   const c = dbToGain(ceilingDb);
   const W = Math.max(2, Math.round(lookahead * SR));
   const req = new Float32Array(n);
+  // peakEnv: a true-peak envelope computed earlier on the same signal before a
+  // pure gain change (envScale), so iterating on gain does not recompute it.
+  const pk = peakEnv ?? (truePeak ? truePeakEnvelope(bus) : null);
   for (let i = 0; i < n; i++) {
-    const p = Math.max(Math.abs(bus.L[i]), Math.abs(bus.R[i]));
+    const p = pk ? pk[i] * envScale : Math.max(Math.abs(bus.L[i]), Math.abs(bus.R[i]));
     req[i] = p > c ? c / p : 1;
   }
   // m[i] = min(req[i .. i+W-1]) with a monotonic deque
@@ -943,6 +949,43 @@ export function limiter(bus, { ceilingDb = -2, lookahead = 0.004, release = 0.09
     bus.R[i] *= g;
   }
   return { maxReductionDb: -gainToDb(minG) };
+}
+
+/**
+ * Per-sample true-peak estimate: the larger of |x[i]| and the 4x-oversampled
+ * (windowed-sinc) inter-sample values on either side of it, over both channels.
+ */
+export function truePeakEnvelope(bus) {
+  const M = 16;
+  const phases = [0.25, 0.5, 0.75].map((ph) => {
+    const h = new Float64Array(2 * M);
+    for (let k = -(M - 1); k <= M; k++) {
+      const t = ph - k;
+      const sinc = Math.sin(Math.PI * t) / (Math.PI * t);
+      const w = 0.42 + 0.5 * Math.cos((Math.PI * t) / M) + 0.08 * Math.cos((2 * Math.PI * t) / M);
+      h[k + M - 1] = sinc * w;
+    }
+    return h;
+  });
+  const n = bus.n;
+  const env = new Float32Array(n);
+  for (const x of [bus.L, bus.R]) {
+    for (let i = 0; i < n; i++) {
+      const a = Math.abs(x[i]);
+      if (a > env[i]) env[i] = a;
+      if (i < M - 1 || i + M >= n) continue;
+      let m = 0;
+      for (const h of phases) {
+        let y = 0;
+        for (let k = 0; k < 2 * M; k++) y += x[i - (M - 1) + k] * h[k];
+        const ay = Math.abs(y);
+        if (ay > m) m = ay;
+      }
+      if (m > env[i]) env[i] = m;
+      if (m > env[i + 1]) env[i + 1] = m;
+    }
+  }
+  return env;
 }
 
 /** ITU-R BS.1770-4 integrated loudness (LUFS) of a 48 kHz stereo signal. */

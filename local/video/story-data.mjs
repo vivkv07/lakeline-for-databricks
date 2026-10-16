@@ -8,7 +8,7 @@
  *
  * The storyboard beats (notes/VIDEO.md) are TRUE in this data, not painted on:
  *   - 30-day spend is up about 10–15 % on the prior 30 days (organic growth of BI, pipelines and
- *     jobs, plus marketing_attribution, which started 40 days ago, plus one backfill).
+ *     jobs, plus marketing_attribution, which started 55 days ago, plus one backfill).
  *   - nightly_sales_etl has one manual backfill run on a weekday 4–8 days ago (BACKFILL_DAYS_AGO);
  *     that day is flagged as a spike in the Explorer calendar (workspace daily total ≈ 2.3×).
  *   - customer_360_refresh's task refresh_cust360 triggers pipeline cust360_dlt every day
@@ -333,7 +333,7 @@ export function buildStoryDataset(wsKey, o = {}) {
       // nightly_sales_etl: 01:00, about 1 h 50 m on job compute, growing ~8 %/month.
       {
         const dur = 104 + 10 * r();
-        const dbu = 1450 * trend(k, 0.08) * noise(0.06);
+        const dbu = 1450 * trend(k, 0.06) * noise(0.06);
         const id = jobRun(ETL, date, k, 0, 60, 60 + dur, 'By scheduler', [['extract_pos', 60, 85], ['transform_sales', 85, 60 + dur - 22], ['publish_marts', 60 + dur - 22, 60 + dur]]);
         sliced(date, 60, 60 + dur, dbu, { sku: 'PREMIUM_JOBS_COMPUTE', product: 'JOBS', job_id: ETL.job_id, job_run_id: id, job_name: ETL.name, cluster_id: R.clusters.jobA, photon: true });
         if (k === backfillK) {
@@ -353,7 +353,7 @@ export function buildStoryDataset(wsKey, o = {}) {
         const id = jobRun(C360, date, k, 0, s, s + p1 + p2, 'By scheduler', [['prepare_inputs', s, s + p1], ['refresh_cust360', s + p1, s + p1 + p2]]);
         sliced(date, s, s + p1, 260 * trend(k, 0.06) * noise(0.08), { sku: 'PREMIUM_JOBS_COMPUTE', product: 'JOBS', job_id: C360.job_id, job_run_id: id, job_name: C360.name, cluster_id: R.clusters.jobB });
         const upd = updateId(CUST360, ed);
-        sliced(date, s + p1, s + p1 + p2, 560 * trend(k, 0.12) * noise(0.06), { sku: 'PREMIUM_DLT_ADVANCED_COMPUTE', product: 'DLT', pipeline_id: CUST360.pipeline_id, update_id: upd });
+        sliced(date, s + p1, s + p1 + p2, 560 * trend(k, 0.1) * noise(0.06), { sku: 'PREMIUM_DLT_ADVANCED_COMPUTE', product: 'DLT', pipeline_id: CUST360.pipeline_id, update_id: upd });
         pipelineUpdates.push({ workspace_id: W.workspaceId, pipeline_id: CUST360.pipeline_id, update_id: upd, trigger_type: 'JOB_TASK', trigger_details: { job_task: { job_id: C360.job_id, job_task_run_id: taskRunId(id, 1) } }, period_start_time: at(date, s + p1), period_end_time: at(date, s + p1 + p2), result_state: 'COMPLETED' });
       }
 
@@ -363,8 +363,8 @@ export function buildStoryDataset(wsKey, o = {}) {
         sliced(date, 300, 312, 80 * noise(0.1), { sku: 'PREMIUM_JOBS_SERVERLESS_COMPUTE_US_EAST', product: 'JOBS', job_id: INV.job_id, job_run_id: id, job_name: INV.name, serverless: true });
       }
 
-      // marketing_attribution: new job, started 40 days ago.
-      if (k <= 40) {
+      // marketing_attribution: new job, started 55 days ago.
+      if (k <= 55) {
         const id = jobRun(MKT, date, k, 0, 360, 410, 'By scheduler', [['attribute', 360, 410]]);
         sliced(date, 360, 410, 480 * noise(0.07), { sku: 'PREMIUM_JOBS_COMPUTE', product: 'JOBS', job_id: MKT.job_id, job_run_id: id, job_name: MKT.name, cluster_id: R.clusters.jobA });
       }
@@ -387,7 +387,7 @@ export function buildStoryDataset(wsKey, o = {}) {
       const hours = weekday ? PROFILE.map((p, i) => [7 + i, p]) : [[10, 0.35], [11, 0.4], [12, 0.3]];
       for (const [h, p] of hours) {
         const clusters = p >= 0.9 ? 1.4 : 1;
-        usage.push(u({ sku: 'PREMIUM_SERVERLESS_SQL_COMPUTE_US_EAST', start: at(date, h * 60), end: at(date, h * 60 + 60), qty: 40 * p * clusters * trend(k, 0.12) * noise(0.05), product: 'SQL', warehouse_id: BI.id, serverless: true, sql_tier: 'PRO' }));
+        usage.push(u({ sku: 'PREMIUM_SERVERLESS_SQL_COMPUTE_US_EAST', start: at(date, h * 60), end: at(date, h * 60 + 60), qty: 40 * p * clusters * trend(k, 0.09) * noise(0.05), product: 'SQL', warehouse_id: BI.id, serverless: true, sql_tier: 'PRO' }));
       }
       // ETL Pro (Small, 12 DBU/h): dbt runs 02–05 every day.
       for (const h of [2, 3, 4]) usage.push(u({ sku: 'PREMIUM_SQL_PRO_COMPUTE_US_EAST', start: at(date, h * 60), end: at(date, h * 60 + 60), qty: 12 * 0.9 * noise(0.05), product: 'SQL', warehouse_id: ETLWH.id, sql_tier: 'PRO' }));
@@ -595,6 +595,9 @@ export function storyTemplateValues(dataset) {
   R.pipelines.forEach((p, i) => {
     v['PIPELINE_' + (i + 1)] = p.pipeline_id;
     v['PIPELINE_' + (i + 1) + '_NAME'] = p.name;
+    const upd = dataset.tables['lakeflow.pipeline_update_timeline'].find((u) => u.pipeline_id === p.pipeline_id);
+    const job = upd && upd.trigger_type === 'JOB_TASK' ? R.jobs.find((j) => j.job_id === upd.trigger_details.job_task.job_id) : null;
+    v['PIPELINE_' + (i + 1) + '_TRIGGER'] = job ? 'Triggered by ' + job.name : 'Continuous';
   });
   R.warehouses.forEach((w, i) => {
     v['WH_' + (i + 1)] = w.id;
@@ -606,15 +609,19 @@ export function storyTemplateValues(dataset) {
 
   // Runs list of job 1 (newest first) and of job 2: 9 and 6 rows.
   const runsOf = (jobId, n) => dataset.runs.filter((x) => x.jobId === jobId && x.k >= 1).sort((a, b) => tsMs(b.start) - tsMs(a.start)).slice(0, n);
-  const fill = (prefix, list) =>
+  const fill = (prefix, list) => {
+    const longest = Math.max(...list.map((x) => tsMs(x.end) - tsMs(x.start)));
     list.forEach((x, i) => {
       const n = prefix + (i + 1);
+      const ms = tsMs(x.end) - tsMs(x.start);
       v[n] = x.runId;
       v[n + '_START'] = HTML_DATE(x.start);
-      v[n + '_DURATION'] = runLength(tsMs(x.end) - tsMs(x.start));
+      v[n + '_DURATION'] = runLength(ms);
       v[n + '_LAUNCHED'] = x.launched;
-      v[n + '_BAR'] = String(Math.max(6, Math.min(160, Math.round((tsMs(x.end) - tsMs(x.start)) / 60000 / 3))));
+      v[n + '_H'] = String(Math.max(4, Math.round((72 * ms) / longest))); // run chart bar height (px)
+      v[n + '_W'] = String(Math.max(6, Math.round((160 * ms) / longest))); // duration bar width (px)
     });
+  };
   if (R.jobs[0]) fill('J1_RUN_', runsOf(R.jobs[0].job_id, 9));
   if (R.jobs[1]) fill('J2_RUN_', runsOf(R.jobs[1].job_id, 6));
   if (dataset.wsKey === 'prod') {
@@ -781,8 +788,12 @@ async function createBusinessTables(engine, dataset) {
   const mrows = [];
   for (let k = 60; k >= 1; k--) {
     const date = utcDate(todayMs - k * DAY);
+    const wd = new Date(date + 'T00:00:00Z').getUTCDay();
+    const weekend = wd === 0 || wd === 6 ? 0.72 : 1;
+    const campaign = k === 5 || k === 6 ? (k === 6 ? 1.38 : 1.22) : 1; // autumn email + social push
     for (const [channel, base, cpc] of [['Paid search', 42000, 0.62], ['Social', 31000, 0.41], ['Email', 18500, 0], ['Organic', 56000, 0], ['Affiliates', 9200, 0.85]]) {
-      const sessions = Math.round(base * (1 + 0.1 * (1 - k / 60)) * (0.9 + 0.2 * r()));
+      const lift = channel === 'Email' || channel === 'Social' ? campaign : 1 + (campaign - 1) / 3;
+      const sessions = Math.round(base * (1 + 0.1 * (1 - k / 60)) * weekend * lift * (0.95 + 0.1 * r()));
       mrows.push(`(DATE '${date}', '${channel}', ${sessions}, ${Math.round(sessions * (0.021 + 0.01 * r()))}, ${(sessions * cpc).toFixed(2)})`);
     }
   }
@@ -1017,7 +1028,7 @@ ORDER BY session_date`;
     const conv = res.rows.reduce((s, x) => s + Number(x[2]), 0);
     const peak = res.rows.reduce((a, b) => (Number(b[1]) > Number(a[1]) ? b : a));
     answers.set('sessionsDaily', {
-      text: `Sessions averaged **${Math.round(sessions.reduce((s, x) => s + x, 0) / sessions.length).toLocaleString('en-US')} a day** over the last 14 days, with ${conv.toLocaleString('en-US')} conversions.\n\nThe busiest day was ${fmtDay(peak[0])} (${Number(peak[1]).toLocaleString('en-US')} sessions).`,
+      text: `Sessions averaged **${Math.round(sessions.reduce((s, x) => s + x, 0) / sessions.length).toLocaleString('en-US')} a day** over the last 14 days, with ${conv.toLocaleString('en-US')} conversions.\n\nThe busiest day was ${fmtDay(peak[0])} (${Number(peak[1]).toLocaleString('en-US')} sessions)${peak[0] === d(6) ? ', when the email and social campaign went out' : ''}. Weekends run about a quarter lower.`,
       title: 'Daily sessions and conversions, last 14 days',
       description: 'Sums northpeak.marketing.sessions_daily per UTC day, all channels.',
       sql,

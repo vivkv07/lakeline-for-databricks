@@ -139,7 +139,7 @@ function zip(entries) {
 }
 
 /** Flags the store build writes into src/core/flags.js. */
-const STORE_FLAGS = Object.freeze({ sessionLogin: false });
+const STORE_FLAGS = Object.freeze({ sessionLogin: false, devTools: false });
 
 /** Entries for the Chrome Web Store upload ZIP (manifest at the root, no key, store flags). */
 function storeEntries() {
