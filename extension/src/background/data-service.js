@@ -31,7 +31,8 @@
     async function clientFor(origin, authMode, { onHeaders, purpose = 'cost', scope = null } = {}) {
       const s = scope === 'genie' ? 'genie' : null; // a Genie client reaches only Genie paths
       if (authMode === 'session') {
-        if (!sessionTransport) throw new errors.DccError({ code: 'SESSION_TAB_REQUIRED', message: 'Browser login unavailable' });
+        const flags = NODE ? null : root.DCC.flags;
+        if (!sessionTransport || (flags && flags.sessionLogin === false)) throw new errors.DccError({ code: 'SESSION_REJECTED', message: 'Browser login is not available in this build' });
         return http.create({ origin, token: null, fetch: sessionTransport.fetchFor(origin, { scope: s }), onHeaders, scope: s });
       }
       return http.create({ origin, token: await directToken(origin, authMode, purpose), fetch: doFetch, onHeaders, scope: s });

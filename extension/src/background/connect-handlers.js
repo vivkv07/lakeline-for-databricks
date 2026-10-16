@@ -49,6 +49,8 @@
 
       const settings = await store.getSettings();
       const clientId = msg.clientId !== undefined && msg.clientId !== '' ? String(msg.clientId).trim() : settings.oauth.clientId;
+      const sessionAllowed = !(DCC.flags && DCC.flags.sessionLogin === false);
+      if (msg.method === 'session' && !sessionAllowed) throw new errors.DccError({ code: 'UNKNOWN', message: 'This sign-in method is not available in this build' });
       let method = msg.method === 'session' || msg.method === 'oauth' ? msg.method : null;
       if (!method) method = DCC.oauth.isClientId(clientId) ? 'oauth' : null;
       if (!method || (method === 'oauth' && !DCC.oauth.isClientId(clientId))) {

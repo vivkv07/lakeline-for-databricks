@@ -138,8 +138,58 @@ function zip(entries) {
   return Buffer.concat([...local, cd, end]);
 }
 
+/** Flags the store build writes into src/core/flags.js. */
+const STORE_FLAGS = Object.freeze({ sessionLogin: false });
+
+/** Entries for the Chrome Web Store upload ZIP (manifest at the root, no key, store flags). */
+function storeEntries() {
+  const out = [];
+  for (const f of collect()) {
+    if (!f.startsWith('extension/') || f === 'extension/EXTENSION_ID') continue;
+    const name = f.slice('extension/'.length);
+    let data = readFileSync(path.join(ROOT, f));
+    if (name === 'manifest.json') {
+      const m = JSON.parse(data.toString('utf8'));
+      delete m.key;
+      // The synthetic test workspace (127.0.0.1:8765) is development-only.
+      m.optional_host_permissions = (m.optional_host_permissions || []).filter((p) => !p.startsWith('http://127.0.0.1:8765'));
+      data = Buffer.from(JSON.stringify(m, null, 2) + '\n');
+    } else if (name === 'src/core/flags.js') {
+      let text = data.toString('utf8');
+      for (const [k, v] of Object.entries(STORE_FLAGS)) {
+        const re = new RegExp('(\\b' + k + ':\\s*)(true|false)');
+        if (!re.test(text)) throw new Error('flags.js has no ' + k + ' flag to rewrite');
+        text = text.replace(re, '$1' + String(v));
+      }
+      data = Buffer.from(text);
+    }
+    out.push({ name, data });
+  }
+  return out;
+}
+
+function mainStore(args) {
+  const outArg = args.indexOf('--out');
+  const out = path.resolve(ROOT, outArg !== -1 ? args[outArg + 1] : `dist/lakeline-for-databricks-store-${version}.zip`);
+  const entries = storeEntries();
+  const problems = inspect(entries.map((e) => ({ name: e.name, text: e.data.toString('latin1') })));
+  const manifest = JSON.parse(entries.find((e) => e.name === 'manifest.json').data.toString('utf8'));
+  if ('key' in manifest) problems.push('manifest still has a key');
+  if (!entries.some((e) => e.name === 'manifest.json')) problems.push('manifest.json missing at the root');
+  if (problems.length) {
+    console.error('Refusing to package for the store:\n  ' + problems.join('\n  '));
+    process.exit(1);
+  }
+  const archive = zip(entries);
+  mkdirSync(path.dirname(out), { recursive: true });
+  writeFileSync(out, archive);
+  console.log(`Wrote ${path.relative(ROOT, out)} (${entries.length} files, ${archive.length} bytes; key removed; flags ${JSON.stringify(STORE_FLAGS)})`);
+  if (args.includes('--list')) for (const e of entries) console.log('  ' + e.name);
+}
+
 function main() {
   const args = process.argv.slice(2);
+  if (args.includes('--store')) return mainStore(args);
   const outArg = args.indexOf('--out');
   const out = path.resolve(ROOT, outArg !== -1 ? args[outArg + 1] : `dist/lakeline-for-databricks-${version}.zip`);
   const files = collect();
@@ -157,4 +207,4 @@ function main() {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main();
-export { collect, inspect, ALLOW, FORBIDDEN_PATH, SECRET_CONTENT };
+export { collect, inspect, storeEntries, STORE_FLAGS, ALLOW, FORBIDDEN_PATH, SECRET_CONTENT };
