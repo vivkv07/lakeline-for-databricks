@@ -1,0 +1,94 @@
+<!--
+  Fixture fragment: SQL Query History (route /sql/history). Synthetic data only (workspace
+  1234567890, warehouses a1b2c3d4e5f60001 / a1b2c3d4e5f60002). Each row gets ONE per-execution
+  estimate badge in its Duration cell; the page gets an explanatory note under the heading and no
+  warehouse-total badges.
+  Rows:
+    1. statement link (execution-detail href)          → statement-ID target
+    2. no statement link; warehouse link + start + duration → unique metadata match
+    3. Running                                          → "Execution pending" (no request)
+    4. served from cache (icon label)                   → "Cached · unallocated" (no request)
+    5. no IDs and no usable start/duration              → "Row unavailable"
+    6. statement link that ran on non-warehouse compute → "Compute unsupported" (from the service)
+  Every SQL text cell holds SENTINEL_SQL_TEXT_MUST_NEVER_BE_READ (text and title). The extension
+  must never read these cells; tests fail if it does.
+-->
+<style data-fixture="query-history">
+  .fx-qh { font: 13px/1.4 system-ui, sans-serif; color: #11171c; padding: 0 16px; }
+  .fx-qh table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  .fx-qh th, .fx-qh td { padding: 6px 10px; border-bottom: 1px solid #e0e4e8; text-align: left; vertical-align: top; }
+  .fx-qh th { color: #5f7281; font-weight: 600; }
+  .fx-qh a { color: #2272b4; text-decoration: none; }
+  .fx-qh code { font: 12px ui-monospace, Menlo, monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+  .fx-qh .fx-filters { display: flex; gap: 8px; color: #5f7281; padding: 4px 0 8px; }
+  .fx-status { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #3ba65e; margin-right: 4px; }
+  .fx-status.run { background: #2272b4; }
+</style>
+<section class="fx-qh" data-testid="query-history-page">
+  <h1>Query history</h1>
+  <div class="fx-filters" role="toolbar" aria-label="Filters">
+    <span>Last 24 hours</span><span>Compute: All</span><span>User: All</span>
+  </div>
+  <table role="grid" aria-label="Query history">
+    <thead>
+      <tr>
+        <th scope="col">Query</th>
+        <th scope="col">Started at</th>
+        <th scope="col">Duration</th>
+        <th scope="col">Status</th>
+        <th scope="col">Compute</th>
+        <th scope="col">User</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr data-fx-row="1">
+        <td class="fx-sql" title="SENTINEL_SQL_TEXT_MUST_NEVER_BE_READ"><a href="/sql/history?o=1234567890&amp;queryId=01f0a1b2-c3d4-1e5f-9a8b-7c6d5e4f3a21"><code>SENTINEL_SQL_TEXT_MUST_NEVER_BE_READ</code></a></td>
+        <td>Oct 15, 2026, 10:23:45 AM</td>
+        <td>1.2 s</td>
+        <td><span class="fx-status" aria-label="Finished"></span>Finished</td>
+        <td><a href="/sql/warehouses/a1b2c3d4e5f60001?o=1234567890">Shared BI warehouse</a></td>
+        <td>analyst@example.com</td>
+      </tr>
+      <tr data-fx-row="2">
+        <td class="fx-sql" title="SENTINEL_SQL_TEXT_MUST_NEVER_BE_READ"><code>SENTINEL_SQL_TEXT_MUST_NEVER_BE_READ</code></td>
+        <td>Oct 15, 2026, 10:24:10 AM</td>
+        <td>2m 3s</td>
+        <td><span class="fx-status" aria-label="Finished"></span>Finished</td>
+        <td><a href="/sql/warehouses/a1b2c3d4e5f60001?o=1234567890">Shared BI warehouse</a></td>
+        <td>analyst@example.com</td>
+      </tr>
+      <tr data-fx-row="3">
+        <td class="fx-sql" title="SENTINEL_SQL_TEXT_MUST_NEVER_BE_READ"><a href="/sql/history?o=1234567890&amp;queryId=01f0a1b2-c3d4-1e5f-9a8b-7c6d5e4f3a23"><code>SENTINEL_SQL_TEXT_MUST_NEVER_BE_READ</code></a></td>
+        <td>Oct 15, 2026, 10:30:02 AM</td>
+        <td>15 s</td>
+        <td><span class="fx-status run" aria-label="Running"></span>Running</td>
+        <td><a href="/sql/warehouses/a1b2c3d4e5f60002?o=1234567890">ETL warehouse</a></td>
+        <td>etl@example.com</td>
+      </tr>
+      <tr data-fx-row="4">
+        <td class="fx-sql" title="SENTINEL_SQL_TEXT_MUST_NEVER_BE_READ"><a href="/sql/history?o=1234567890&amp;queryId=01f0a1b2-c3d4-1e5f-9a8b-7c6d5e4f3a24"><code>SENTINEL_SQL_TEXT_MUST_NEVER_BE_READ</code></a></td>
+        <td>Oct 15, 2026, 10:31:00 AM</td>
+        <td>35 ms <span aria-label="Result fetched from cache" title="Result fetched from cache">⚡</span></td>
+        <td><span class="fx-status" aria-label="Finished"></span>Finished</td>
+        <td><a href="/sql/warehouses/a1b2c3d4e5f60001?o=1234567890">Shared BI warehouse</a></td>
+        <td>analyst@example.com</td>
+      </tr>
+      <tr data-fx-row="5">
+        <td class="fx-sql" title="SENTINEL_SQL_TEXT_MUST_NEVER_BE_READ"><code>SENTINEL_SQL_TEXT_MUST_NEVER_BE_READ</code></td>
+        <td>—</td>
+        <td>—</td>
+        <td><span class="fx-status" aria-label="Finished"></span>Finished</td>
+        <td>Unknown compute</td>
+        <td>analyst@example.com</td>
+      </tr>
+      <tr data-fx-row="6">
+        <td class="fx-sql" title="SENTINEL_SQL_TEXT_MUST_NEVER_BE_READ"><a href="/sql/history?o=1234567890&amp;queryId=01f0a1b2-c3d4-1e5f-9a8b-7c6d5e4f3a26"><code>SENTINEL_SQL_TEXT_MUST_NEVER_BE_READ</code></a></td>
+        <td>Oct 15, 2026, 09:58:31 AM</td>
+        <td>4.75 s</td>
+        <td><span class="fx-status" aria-label="Finished"></span>Finished</td>
+        <td>Serverless notebook compute</td>
+        <td>ds@example.com</td>
+      </tr>
+    </tbody>
+  </table>
+</section>

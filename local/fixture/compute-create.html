@@ -1,0 +1,46 @@
+<!--
+  Fixture fragment: interactive (all-purpose) compute create form (route /compute/clusters/create).
+  Synthetic data only. The native summary shows a DBU/h range; the extension multiplies it by one
+  unambiguous all-purpose DBU price ("≈ $A–$B/h · DBU only") and never adds a driver itself.
+  Worker-type options that expose DBU/h get a preview; the option without DBU info does not.
+  Photon is detectable from the checkbox. Nothing is clicked or saved; inputs keep their values.
+-->
+<style data-fixture="compute-create">
+  .fx-cc { font: 13px/1.4 system-ui, sans-serif; color: #11171c; padding: 0 16px; display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 24px; }
+  .fx-cc .fx-field { display: grid; gap: 4px; margin: 10px 0; }
+  .fx-cc [role="listbox"] { border: 1px solid #c4ccd4; border-radius: 4px; padding: 4px 0; }
+  .fx-cc [role="option"] { padding: 4px 10px; }
+  .fx-cc aside { border: 1px solid #e0e4e8; border-radius: 6px; padding: 8px 12px; align-self: start; }
+  .fx-cc .fx-dbu { font-weight: 600; }
+</style>
+<section class="fx-cc" data-testid="compute-create-page">
+  <form onsubmit="return false">
+    <h1>New compute</h1>
+    <div class="fx-field"><label for="fx-cl-name">Compute name</label><input id="fx-cl-name" value="analytics-dev"></div>
+    <div class="fx-field">
+      <label for="fx-cl-runtime">Databricks runtime version</label>
+      <select id="fx-cl-runtime"><option selected>15.4 LTS (Scala 2.12, Spark 3.5.0)</option><option>16.4 LTS (Scala 2.12, Spark 3.5.2)</option></select>
+    </div>
+    <label><input type="checkbox" id="fx-cl-photon" checked> Use Photon Acceleration</label>
+    <div class="fx-field">
+      <span id="fx-worker-label">Worker type</span>
+      <button type="button" role="combobox" aria-haspopup="listbox" aria-expanded="true" aria-labelledby="fx-worker-label" aria-controls="fx-worker-list">i3.xlarge</button>
+      <div role="listbox" id="fx-worker-list" aria-labelledby="fx-worker-label">
+        <div role="option" aria-selected="true">i3.xlarge · 30.5 GB Memory, 4 Cores · 1 DBU/h</div>
+        <div role="option" aria-selected="false">i3.2xlarge · 61 GB Memory, 8 Cores · 2 DBU/h</div>
+        <div role="option" aria-selected="false">m5d.large · 8 GB Memory, 2 Cores</div>
+      </div>
+    </div>
+    <div class="fx-field">
+      <label for="fx-cl-min">Min workers</label><input id="fx-cl-min" type="number" value="2" min="0">
+      <label for="fx-cl-max">Max workers</label><input id="fx-cl-max" type="number" value="8" min="0">
+    </div>
+    <button type="submit" id="fx-cl-create">Create compute</button>
+  </form>
+  <aside aria-label="Compute summary">
+    <h2>Summary</h2>
+    <div>1 Driver · 2–8 Workers</div>
+    <div class="fx-dbu" data-fx="dbu">3–9 DBU/h</div>
+    <div>i3.xlarge · Photon</div>
+  </aside>
+</section>

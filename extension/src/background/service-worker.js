@@ -11,6 +11,7 @@ importScripts(
   '../core/labels.js',
   '../core/demo-data.js',
   '../core/import-data.js',
+  '../core/allocation.js',
   '../errors.js',
   '../databricks/pricing.js',
   '../databricks/config.js',
@@ -19,6 +20,9 @@ importScripts(
   '../databricks/warehouses.js',
   '../databricks/queries/summary.js',
   '../databricks/queries/row-data.js',
+  '../databricks/queries/query-history.js',
+  '../databricks/queries/compute-rates.js',
+  '../databricks/queries/explore.js',
   '../databricks/queries/index.js',
   './sender.js',
   './secrets.js',
@@ -29,6 +33,8 @@ importScripts(
   './appearance-handlers.js',
   './data-service.js',
   './ui-handlers.js',
+  '../databricks/monitor-api.js',
+  './monitor.js',
   './router.js'
 );
 

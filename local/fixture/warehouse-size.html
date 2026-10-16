@@ -1,0 +1,52 @@
+<!--
+  Fixture fragment: SQL warehouse edit form with an open cluster-size dropdown (route
+  /sql/warehouses/a1b2c3d4e5f60001/edit, or /sql/warehouses/create for a new warehouse).
+  Synthetic data only. Most size options show an explicit DBU/h hint; 5X-Large does not, so it
+  shows "Rate unavailable" unless the Azure serverless mapping applies (it never applies to
+  5X-Large). Each option gets "≈ $X/h per cluster · DBU only"; the trigger gets the preview for
+  the selected size. Nothing is clicked, saved or resized; native inputs keep their values.
+-->
+<style data-fixture="warehouse-size">
+  .fx-whf { font: 13px/1.4 system-ui, sans-serif; color: #11171c; padding: 0 16px; max-width: 640px; }
+  .fx-whf fieldset { border: 0; padding: 0; margin: 8px 0; display: flex; gap: 12px; }
+  .fx-whf .fx-field { display: grid; gap: 4px; margin: 10px 0; }
+  .fx-whf [role="listbox"] { border: 1px solid #c4ccd4; border-radius: 4px; padding: 4px 0; max-width: 360px; }
+  .fx-whf [role="option"] { padding: 4px 10px; display: flex; gap: 8px; align-items: center; }
+  .fx-whf [role="option"][aria-selected="true"] { background: #e8f1fa; }
+  .fx-whf .fx-hint { color: #5f7281; font-size: 12px; }
+  .fx-whf button[role="combobox"] { text-align: left; min-width: 160px; }
+</style>
+<section class="fx-whf" data-testid="warehouse-edit-page">
+  <h1>Edit SQL warehouse</h1>
+  <form onsubmit="return false">
+    <div class="fx-field"><label for="fx-wh-name">Name</label><input id="fx-wh-name" value="Shared BI warehouse"></div>
+    <fieldset>
+      <legend>Type</legend>
+      <label><input type="radio" name="fx-wh-type" value="serverless" checked> Serverless</label>
+      <label><input type="radio" name="fx-wh-type" value="pro"> Pro</label>
+      <label><input type="radio" name="fx-wh-type" value="classic"> Classic</label>
+    </fieldset>
+    <div class="fx-field">
+      <span id="fx-size-label">Cluster size</span>
+      <button type="button" role="combobox" aria-haspopup="listbox" aria-expanded="true" aria-labelledby="fx-size-label" aria-controls="fx-size-list">Small</button>
+      <div role="listbox" id="fx-size-list" aria-labelledby="fx-size-label">
+        <div role="option" aria-selected="false"><span>2X-Small</span><span class="fx-hint">4 DBU/h</span></div>
+        <div role="option" aria-selected="false"><span>X-Small</span><span class="fx-hint">6 DBU/h</span></div>
+        <div role="option" aria-selected="true"><span>Small</span><span class="fx-hint">12 DBU/h</span></div>
+        <div role="option" aria-selected="false"><span>Medium</span><span class="fx-hint">24 DBU/h</span></div>
+        <div role="option" aria-selected="false"><span>Large</span><span class="fx-hint">40 DBU/h</span></div>
+        <div role="option" aria-selected="false"><span>X-Large</span><span class="fx-hint">80 DBU/h</span></div>
+        <div role="option" aria-selected="false"><span>2X-Large</span><span class="fx-hint">144 DBU/h</span></div>
+        <div role="option" aria-selected="false"><span>3X-Large</span><span class="fx-hint">272 DBU/h</span></div>
+        <div role="option" aria-selected="false"><span>4X-Large</span><span class="fx-hint">528 DBU/h</span></div>
+        <div role="option" aria-selected="false"><span>5X-Large</span></div>
+      </div>
+    </div>
+    <div class="fx-field">
+      <span>Scaling (clusters)</span>
+      <label>Min <input id="fx-wh-min" type="number" value="1" min="1"></label>
+      <label>Max <input id="fx-wh-max" type="number" value="3" min="1"></label>
+    </div>
+    <button type="submit" id="fx-wh-save">Save</button>
+  </form>
+</section>

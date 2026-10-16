@@ -8,7 +8,8 @@ test('allowlist never includes tests, notes, node_modules or private files', () 
   assert.ok(files.includes('extension/manifest.json'));
   for (const f of files) {
     assert.doesNotMatch(f, /^(notes|node_modules|dist|\.git)\//, f);
-    assert.doesNotMatch(f, /(^|\/)test-[^/]*\.mjs$|\/support\//, f);
+    assert.doesNotMatch(f, /(^|\/)test-[^/]*\.mjs$/, f);
+    if (f.includes('/support/')) assert.equal(f, 'local/support/sqlengine.mjs', 'only the fixture SQL engine ships from support/');
     assert.doesNotMatch(f, /costs\.json$|\.pem$|\.databrickscfg/, f);
   }
 });
