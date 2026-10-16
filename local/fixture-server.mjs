@@ -20,6 +20,14 @@
  *     GET  /api/2.0/sql/statements/:id            (poll path; PENDING → SUCCEEDED)
  *     POST /api/2.0/sql/statements/:id/cancel
  *     GET  /api/2.2/jobs/runs/list | /api/2.0/pipelines | /api/2.1/clusters/list  (monitor data)
+ *     Genie Conversation API (synthetic, shapes per notes/GENIE.md):
+ *     GET  /api/2.0/genie/spaces                                       (3 agents; one always fails)
+ *     POST /api/2.0/genie/spaces/:space/start-conversation             ({content} only)
+ *     POST /api/2.0/genie/spaces/:space/conversations/:conv/messages   (follow-up)
+ *     GET  .../conversations/:conv/messages/:msg                       (each GET advances one status:
+ *                                                                       SUBMITTED → … → COMPLETED)
+ *     GET  .../messages/:msg/attachments/:att/query-result             (small synthetic table)
+ *     POST .../messages/:msg/attachments/:att/execute-query
  *   SQL runs through local/support/sqlengine.mjs (DuckDB dialect shim). This is a SIMULATION
  *   that checks query logic; it is not proof of Databricks compatibility.
  * - Binds 127.0.0.1 only and rejects any Host header other than 127.0.0.1:<port>.
@@ -31,7 +39,7 @@ import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createEngine, SENTINEL_SQL_TEXT } from './support/sqlengine.mjs';
-import { buildDataset, toInsertSql, monitorSnapshot, fixtureTemplateValues, renderFixtureTemplate, WAREHOUSES } from './fixture-data.mjs';
+import { buildDataset, toInsertSql, monitorSnapshot, fixtureTemplateValues, renderFixtureTemplate, WAREHOUSES, GENIE_SPACES, GENIE_FAILING_SPACE, GENIE_STEPS, GENIE_FAIL_STEPS, genieAnswer } from './fixture-data.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const FIXTURE_PORT = 8765;
@@ -121,6 +129,7 @@ function containsSentinel(response) {
  * @param {Function} [o.log]
  * @param {Function} [o.onApiRequest]  test hook: ({method, path, body}) for every authorized /api/
  *                                     request (body = raw request text, '' for GET)
+ * @param {number} [o.genieStepPolls=1] message GETs per Genie status before it advances
  */
 export async function startFixtureServer(o = {}) {
   const log = o.log || ((line) => process.stderr.write('[dcc-fixture] ' + line + '\n'));
@@ -143,6 +152,7 @@ export async function startFixtureServer(o = {}) {
     warehouseStarts: 0,
     sentinelReads: 0,
     pendingPolls: Number.isInteger(o.pendingPolls) ? o.pendingPolls : 0,
+    genie: { conversations: new Map(), messages: new Map(), stepPolls: Number.isInteger(o.genieStepPolls) && o.genieStepPolls > 0 ? o.genieStepPolls : 1, started: 0, followUps: 0, resultReads: 0 },
   };
   let port = o.port === undefined ? FIXTURE_PORT : o.port;
   let expectedHost = null;
@@ -209,7 +219,9 @@ export async function startFixtureServer(o = {}) {
     if (req.headers.authorization !== 'Bearer ' + FIXTURE_TOKEN) return apiError(res, 401, 'UNAUTHENTICATED', 'Invalid access token. (fixture accepts only the documented fake token)');
     const p = url.pathname;
     const q = url.searchParams;
-    if (onApiRequest && !(req.method === 'POST' && p === '/api/2.0/sql/statements')) onApiRequest({ method: req.method, path: p, body: '' });
+    const bodyLater = req.method === 'POST' && (p === '/api/2.0/sql/statements' || p.startsWith('/api/2.0/genie/'));
+    if (onApiRequest && !bodyLater) onApiRequest({ method: req.method, path: p, body: '' });
+    if (p.startsWith('/api/2.0/genie/')) return handleGenie(req, res, p, q);
     if (req.method === 'GET' && p === '/api/2.0/sql/warehouses') {
       const { items, next } = pageOf(state.warehouses, q, 'page_size', 2, 2);
       return json(res, 200, Object.assign({ warehouses: items.map((w) => Object.assign({ creator_name: 'fixture.user@example.com', num_clusters: w.state === 'RUNNING' ? 1 : 0 }, w)) }, next ? { next_page_token: next } : {}));
@@ -266,6 +278,113 @@ export async function startFixtureServer(o = {}) {
     if (req.method === 'GET' && p === '/api/2.1/clusters/list') {
       const { items, next } = pageOf(monitorSnapshot(now(), origin).clusters, q, 'page_size', 100, 100);
       return json(res, 200, Object.assign({ clusters: items }, next ? { next_page_token: next } : {}));
+    }
+    return apiError(res, 404, 'ENDPOINT_NOT_FOUND', 'No API found for ' + req.method + ' ' + p.slice(0, 100));
+  }
+
+  /* ---------------------------------------------------------------- Genie mock */
+
+  const hex32 = () => crypto.randomBytes(16).toString('hex');
+  const G = '([0-9a-f]{32})';
+
+  function genieMessageJson(msg) {
+    const steps = msg.space === GENIE_FAILING_SPACE ? GENIE_FAIL_STEPS : GENIE_STEPS;
+    const status = steps[Math.min(Math.floor(msg.polls / state.genie.stepPolls), steps.length - 1)];
+    msg.status = status;
+    const a = genieAnswer(msg.space);
+    const out = { message_id: msg.id, id: msg.id, conversation_id: msg.conv, space_id: msg.space, user_id: 1001, created_timestamp: msg.created, last_updated_timestamp: now(), status, content: msg.content, attachments: [] };
+    if (status === 'FAILED') out.error = { error: 'Fixture: this agent always fails, to exercise the error path.', type: 'GENERIC_SQL_EXEC_EXCEPTION' };
+    if (status === 'EXECUTING_QUERY' || status === 'COMPLETED') {
+      out.attachments.push({ attachment_id: msg.queryAttachment, query: { title: a.title, description: a.description, query: a.sql, statement_id: msg.statementId, query_result_metadata: { row_count: a.rows.length, is_truncated: false }, last_updated_timestamp: now() } });
+    }
+    if (status === 'COMPLETED') {
+      out.attachments.unshift({ attachment_id: msg.textAttachment, text: { content: a.text, purpose: 'TEXT_ATTACHMENT_PURPOSE_ANSWER' } });
+      out.attachments.push({ attachment_id: msg.suggestAttachment, suggested_questions: { questions: a.suggested } });
+    }
+    return out;
+  }
+
+  function genieResultJson(msg) {
+    const a = genieAnswer(msg.space);
+    return {
+      statement_response: {
+        statement_id: msg.statementId,
+        status: { state: 'SUCCEEDED' },
+        manifest: { format: 'JSON_ARRAY', schema: { column_count: a.columns.length, columns: a.columns.map(([name, type], position) => ({ name, type_text: type, type_name: type, position })) }, total_row_count: a.rows.length, total_chunk_count: 1, truncated: false },
+        result: { chunk_index: 0, row_offset: 0, row_count: a.rows.length, data_array: a.rows.map((r) => r.slice()) },
+      },
+    };
+  }
+
+  function genieNewMessage(conv, content) {
+    const msg = { id: hex32(), conv: conv.id, space: conv.space, content, polls: 0, created: now(), status: 'SUBMITTED', queryAttachment: hex32(), textAttachment: hex32(), suggestAttachment: hex32(), statementId: crypto.randomUUID() };
+    state.genie.messages.set(msg.id, msg);
+    while (state.genie.messages.size > MAX_STORED) state.genie.messages.delete(state.genie.messages.keys().next().value);
+    return msg;
+  }
+
+  async function handleGenie(req, res, p, q) {
+    const g = state.genie;
+    if (req.method === 'GET' && p === '/api/2.0/genie/spaces') {
+      const { items, next } = pageOf(GENIE_SPACES, q, 'page_size', 100, 20);
+      return json(res, 200, Object.assign({ spaces: items.map((x) => Object.assign({}, x)) }, next ? { next_page_token: next } : {}));
+    }
+    let m;
+    if (req.method === 'POST') {
+      let raw;
+      try {
+        raw = await readBody(req, 64 * 1024);
+      } catch (e) {
+        return apiError(res, 413, 'INVALID_PARAMETER_VALUE', 'Request too large.');
+      }
+      if (onApiRequest) onApiRequest({ method: 'POST', path: p, body: raw });
+      let body;
+      try {
+        body = JSON.parse(raw || '{}');
+      } catch (_) {
+        return apiError(res, 400, 'MALFORMED_REQUEST', 'Request body is not JSON.');
+      }
+      const contentOk = body && typeof body.content === 'string' && body.content.trim().length > 0 && body.content.length <= 4000;
+      m = new RegExp('^/api/2\\.0/genie/spaces/' + G + '/start-conversation$').exec(p);
+      if (m) {
+        if (!GENIE_SPACES.some((x) => x.space_id === m[1])) return apiError(res, 404, 'RESOURCE_DOES_NOT_EXIST', 'Genie space not found.');
+        if (!contentOk) return apiError(res, 400, 'INVALID_PARAMETER_VALUE', 'content is required.');
+        const conv = { id: hex32(), space: m[1], created: now() };
+        g.conversations.set(conv.id, conv);
+        g.started += 1;
+        const msg = genieNewMessage(conv, body.content);
+        return json(res, 200, { conversation_id: conv.id, conversation: { id: conv.id, conversation_id: conv.id, space_id: conv.space, user_id: 1001, title: 'Fixture conversation', created_timestamp: conv.created, last_updated_timestamp: conv.created }, message_id: msg.id, message: genieMessageJson(msg) });
+      }
+      m = new RegExp('^/api/2\\.0/genie/spaces/' + G + '/conversations/' + G + '/messages$').exec(p);
+      if (m) {
+        const conv = g.conversations.get(m[2]);
+        if (!conv || conv.space !== m[1]) return apiError(res, 404, 'RESOURCE_DOES_NOT_EXIST', 'Conversation not found.');
+        if (!contentOk) return apiError(res, 400, 'INVALID_PARAMETER_VALUE', 'content is required.');
+        g.followUps += 1;
+        return json(res, 200, genieMessageJson(genieNewMessage(conv, body.content)));
+      }
+      m = new RegExp('^/api/2\\.0/genie/spaces/' + G + '/conversations/' + G + '/messages/' + G + '/attachments/' + G + '/execute-query$').exec(p);
+      if (m) {
+        const msg = g.messages.get(m[3]);
+        if (!msg || msg.conv !== m[2] || msg.queryAttachment !== m[4]) return apiError(res, 404, 'RESOURCE_DOES_NOT_EXIST', 'Attachment not found.');
+        return json(res, 200, genieResultJson(msg));
+      }
+      return apiError(res, 404, 'ENDPOINT_NOT_FOUND', 'No API found for POST ' + p.slice(0, 100));
+    }
+    if (req.method === 'GET') {
+      m = new RegExp('^/api/2\\.0/genie/spaces/' + G + '/conversations/' + G + '/messages/' + G + '(?:/attachments/' + G + '/query-result)?$').exec(p);
+      if (m) {
+        const msg = g.messages.get(m[3]);
+        if (!msg || msg.conv !== m[2] || msg.space !== m[1]) return apiError(res, 404, 'RESOURCE_DOES_NOT_EXIST', 'Message not found.');
+        if (m[4]) {
+          if (msg.queryAttachment !== m[4]) return apiError(res, 404, 'RESOURCE_DOES_NOT_EXIST', 'Attachment not found.');
+          if (msg.status !== 'EXECUTING_QUERY' && msg.status !== 'COMPLETED') return apiError(res, 400, 'INVALID_STATE', 'The query result is not available yet.');
+          g.resultReads += 1;
+          return json(res, 200, genieResultJson(msg));
+        }
+        msg.polls += 1;
+        return json(res, 200, genieMessageJson(msg));
+      }
     }
     return apiError(res, 404, 'ENDPOINT_NOT_FOUND', 'No API found for ' + req.method + ' ' + p.slice(0, 100));
   }
