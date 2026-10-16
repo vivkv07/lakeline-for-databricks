@@ -1,0 +1,14 @@
+<!--
+  Launch-video fragment (SYNTHETIC): job run detail (/jobs/<job>/runs/<run>). The extension takes
+  the run's identity from the URL and puts "Run cost: … · est." next to the title; a
+  customer_360_refresh run includes the cust360_dlt update its task triggered.
+-->
+<section class="np-run" data-testid="job-run-page">
+  <nav class="np-crumbs" aria-label="Breadcrumb"><a href="/jobs?o={{WS_ID}}">Jobs &amp; Pipelines</a><span>/</span><span>Run</span></nav>
+  <div class="np-titlerow"><h1 data-testid="page-title">Run details</h1></div>
+  <p class="np-sub">Scheduled · Job compute</p>
+  <table class="np-table" aria-label="Task runs">
+    <thead><tr><th scope="col">Task</th><th scope="col">Status</th></tr></thead>
+    <tbody><tr><td>prepare_inputs</td><td><span class="np-dot"></span>Succeeded</td></tr><tr><td>refresh_cust360</td><td><span class="np-dot"></span>Succeeded</td></tr></tbody>
+  </table>
+</section>

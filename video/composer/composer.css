@@ -1,0 +1,149 @@
+/*
+ * Launch video composer stage. 1920×1080 CSS px, rendered at deviceScaleFactor 2 (3840×2160).
+ * Every property that moves is written by scene code from the virtual clock (t = frame / 30), so
+ * nothing here may animate on real time: transitions and keyframe animations are disabled.
+ * Tokens mirror notes/STYLE.md exactly.
+ */
+
+@font-face { font-family: 'Inter'; font-weight: 400; font-style: normal; src: url('/fonts/inter-latin-400-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Inter'; font-weight: 500; font-style: normal; src: url('/fonts/inter-latin-500-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Inter'; font-weight: 600; font-style: normal; src: url('/fonts/inter-latin-600-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Inter'; font-weight: 700; font-style: normal; src: url('/fonts/inter-latin-700-normal.woff2') format('woff2'); }
+@font-face { font-family: 'IBM Plex Mono'; font-weight: 400; font-style: normal; src: url('/fonts/ibm-plex-mono-latin-400-normal.woff2') format('woff2'); }
+@font-face { font-family: 'IBM Plex Mono'; font-weight: 500; font-style: normal; src: url('/fonts/ibm-plex-mono-latin-500-normal.woff2') format('woff2'); }
+@font-face { font-family: 'IBM Plex Mono'; font-weight: 600; font-style: normal; src: url('/fonts/ibm-plex-mono-latin-600-normal.woff2') format('woff2'); }
+
+:root {
+  --sans: 'Inter', -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --panel: #0B1A3A;
+  --panel-text: #F5F5F4;
+  --panel-sub: #C7D5FF;
+  --panel-eyebrow: #8FB0FF;
+}
+
+/* Light and dark token sets, applied per subtree with .t-light / .t-dark. */
+.t-light {
+  --bg: #FFFFFF; --surface: #F6F6F7; --surface2: #EFEFF1; --line: #E4E4E7; --line2: #D4D4D8;
+  --text: #0A0A0A; --body: #52525B; --muted: #6B6B74; --faint: #A1A1AA;
+  --accent: #2F5BEA; --accent-soft: #EEF2FF; --accent-line: #B9C8FA; --accent-fill: #DCE5FF; --accent-text: #1E3A8A;
+  --warm: #B45309; --warm-soft: #FFF7E8; --warm-line: #F2CF8E;
+  --pill-bg: #0A0A0A; --pill-text: #FFFFFF; --danger: #B42318; --success: #067647;
+  --win-shadow: 0 40px 90px rgba(10, 10, 10, 0.13), 0 6px 18px rgba(10, 10, 10, 0.06);
+  --pop-shadow: 0 18px 50px rgba(10, 10, 10, 0.16), 0 2px 6px rgba(10, 10, 10, 0.06);
+}
+.t-dark {
+  --bg: #000000; --surface: #0F0F10; --surface2: #141416; --line: #232326; --line2: #2A2A2E;
+  --text: #F5F5F4; --body: #A1A1AA; --muted: #8A8A93; --faint: #52525B;
+  --accent: #5B8CFF; --accent-soft: #0B1A3A; --accent-line: #2E4A85; --accent-fill: #132447; --accent-text: #C7D5FF;
+  --warm: #F5B83D; --warm-soft: #1A1406; --warm-line: #5A4515;
+  --pill-bg: #F5F5F4; --pill-text: #0A0A0A; --danger: #F97066; --success: #47CD89;
+  --win-shadow: 0 40px 100px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.02);
+  --pop-shadow: 0 18px 60px rgba(0, 0, 0, 0.7);
+}
+
+*, *::before, *::after { box-sizing: border-box; transition: none !important; animation: none !important; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 1920px;
+  height: 1080px;
+  overflow: hidden;
+  background: #000;
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+  font-feature-settings: 'cv11' 1, 'ss01' 0;
+}
+
+#stage { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; overflow: hidden; }
+#bg { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; }
+.layer { position: absolute; inset: 0; overflow: hidden; }
+.abs { position: absolute; left: 0; top: 0; }
+
+/* ------------------------------------------------------------ kinetic type */
+
+.kt { color: var(--panel-text); font-weight: 600; letter-spacing: -0.035em; line-height: 1.04; white-space: nowrap; }
+.kt .w { display: inline-block; overflow: hidden; vertical-align: top; padding: 0.04em 0.02em 0.12em; margin: -0.04em -0.02em -0.12em; }
+.kt .w > span { display: inline-block; }
+.eyebrow { font-family: var(--mono); font-weight: 500; text-transform: uppercase; letter-spacing: 0.14em; }
+
+/* ---------------------------------------------------------------- captions */
+
+.cap { position: absolute; left: 120px; width: 1500px; }
+.cap .eyebrow { font-size: 17px; color: var(--accent); margin-bottom: 14px; }
+.cap .head { font-size: 54px; font-weight: 600; letter-spacing: -0.03em; line-height: 1.1; color: var(--text); white-space: nowrap; }
+.cap .detail { margin-top: 16px; font-size: 25px; font-weight: 500; color: var(--body); letter-spacing: -0.005em; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.cap .detail .num { font-family: var(--mono); font-weight: 500; font-size: 24px; color: var(--warm); letter-spacing: 0; }
+.cap .detail .sep { color: var(--faint); padding: 0 10px; }
+.cap.left { width: 520px; }
+.cap.left .head { white-space: normal; font-size: 52px; }
+.cap.left .detail { white-space: normal; line-height: 1.45; }
+
+/* --------------------------------------------------------- product zone */
+
+.zone { position: absolute; overflow: hidden; }
+.world { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+
+/* ---------------------------------------------------------- browser window */
+
+.win { position: absolute; left: 0; top: 0; border-radius: 14px; background: var(--bg); box-shadow: var(--win-shadow); }
+.win .frame { position: absolute; inset: 0; border-radius: 14px; overflow: hidden; border: 1px solid var(--line2); }
+.win .tabs { position: absolute; left: 0; right: 0; top: 0; height: 42px; background: var(--surface); }
+.win .dots { position: absolute; left: 18px; top: 16px; display: flex; gap: 8px; }
+.win .dots i { width: 12px; height: 12px; border-radius: 50%; background: var(--line2); display: block; }
+.win .tab { position: absolute; left: 92px; top: 8px; height: 34px; width: 260px; border-radius: 10px 10px 0 0; background: var(--bg); border: 1px solid var(--line); border-bottom: none; display: flex; align-items: center; gap: 10px; padding: 0 14px; font-size: 13px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; }
+.win .tab .fav { width: 14px; height: 14px; border-radius: 4px; flex: none; }
+.win .tab .x { margin-left: auto; color: var(--faint); font-size: 14px; }
+.win .tab2 { left: 360px; background: transparent; border-color: transparent; color: var(--muted); }
+.win .toolbar { position: absolute; left: 0; right: 0; top: 42px; height: 46px; background: var(--bg); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.win .nav { position: absolute; left: 18px; top: 13px; display: flex; gap: 18px; color: var(--muted); }
+.win .nav svg { width: 18px; height: 18px; display: block; }
+.win .addr { position: absolute; left: 132px; top: 7px; height: 32px; border-radius: 16px; background: var(--surface); display: flex; align-items: center; gap: 10px; padding: 0 16px; font-size: 14px; color: var(--body); white-space: nowrap; overflow: hidden; }
+.win .addr svg { width: 13px; height: 13px; color: var(--muted); flex: none; }
+.win .addr .path { color: var(--faint); }
+.win .ext { position: absolute; top: 9px; width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+.win .ext.on { background: var(--surface2); }
+.win .avatar { position: absolute; top: 11px; width: 24px; height: 24px; border-radius: 50%; background: var(--line2); }
+.win .content { position: absolute; left: 0; overflow: hidden; background: var(--bg); }
+.win .panelwrap { position: absolute; overflow: hidden; background: var(--bg); border-left: 1px solid var(--line2); }
+.shot { position: absolute; left: 0; top: 0; display: block; max-width: none; image-rendering: auto; }
+
+/* --------------------------------------------- popups and floating windows */
+
+.popup { position: absolute; border-radius: 12px; overflow: hidden; background: var(--bg); box-shadow: var(--pop-shadow), 0 0 0 1px var(--line2); transform-origin: 100% 0; }
+.floatwin { position: absolute; border-radius: 12px; overflow: hidden; background: var(--bg); box-shadow: var(--pop-shadow), 0 0 0 1px var(--line2); }
+.floatwin .bar { position: absolute; left: 0; right: 0; top: 0; height: 30px; background: var(--surface); border-bottom: 1px solid var(--line); }
+.floatwin .bar .dots { position: absolute; left: 12px; top: 10px; display: flex; gap: 7px; }
+.floatwin .bar .dots i { width: 10px; height: 10px; border-radius: 50%; background: var(--line2); display: block; }
+
+/* -------------------------------------------------------- rings and cursor */
+
+.ring { position: absolute; border-radius: 12px; border: 3px solid var(--accent); pointer-events: none; }
+.ring.warm { border-color: var(--warm); }
+.cursor { position: absolute; left: 0; top: 0; width: 26px; height: 32px; transform-origin: 3px 3px; }
+.cursor svg { display: block; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.28)); }
+.ripple { position: absolute; border-radius: 50%; border: 3px solid var(--accent); pointer-events: none; }
+
+/* -------------------------------------------------------- notification */
+
+.notif { position: absolute; width: 440px; border-radius: 18px; padding: 16px 18px 18px; background: rgba(28, 28, 31, 0.94); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.08); color: #F5F5F4; }
+.notif .row { display: flex; align-items: center; gap: 10px; font-size: 14px; color: #A1A1AA; }
+.notif .row b { color: #F5F5F4; font-weight: 600; }
+.notif .row .when { margin-left: auto; }
+.notif .title { margin-top: 10px; font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }
+.notif .msg { margin-top: 4px; font-size: 16px; color: #D4D4D8; line-height: 1.35; }
+.notif .ctx { margin-top: 6px; font-size: 13px; color: #8A8A93; font-family: var(--mono); }
+
+/* ------------------------------------------------------------- watermark */
+
+#wm { position: absolute; inset: 0; pointer-events: none; display: none; z-index: 1000; overflow: hidden; }
+#wm .grid { position: absolute; left: -400px; top: -300px; width: 2800px; height: 1800px; transform: rotate(-18deg); display: flex; flex-wrap: wrap; align-content: flex-start; gap: 40px 90px; }
+#wm .grid span { font: 700 120px/1 var(--sans); letter-spacing: 0.04em; color: rgba(249, 112, 102, 0.22); -webkit-text-stroke: 2px rgba(180, 35, 24, 0.5); }
+#wm .tag { position: absolute; left: 24px; top: 24px; padding: 10px 16px; background: #B42318; color: #fff; font: 600 18px/1.2 var(--mono); letter-spacing: 0.06em; border-radius: 8px; max-width: 1500px; }
+
+/* ---------------------------------------------------------------- dev bar */
+
+#dev { position: fixed; left: 0; right: 0; bottom: 0; height: 40px; display: none; align-items: center; gap: 12px; padding: 0 16px; background: rgba(0, 0, 0, 0.8); color: #fff; font: 13px var(--mono); z-index: 2000; }
+#dev input[type=range] { flex: 1; }

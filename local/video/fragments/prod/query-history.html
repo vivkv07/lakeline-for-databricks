@@ -1,0 +1,33 @@
+<!--
+  Launch-video fragment (SYNTHETIC): SQL Query History for northpeak-prod (one recent weekday).
+  Same native structure as local/fixture/query-history.html: each row's query cell links its
+  statement (queryId), so the extension adds one per-execution estimate in the Duration cell and
+  one explanatory note under the heading. The SQL snippets are page text only; the dataset's
+  statement_text is the never-read sentinel, and the extension never reads these cells.
+-->
+<section class="np-qh" data-testid="query-history-page">
+  <div class="np-titlerow">
+    <h1>Query History</h1>
+  </div>
+  <div class="np-filters" role="toolbar" aria-label="Filters">
+    <span class="np-chip">Date: <strong>{{QH_DATE}}</strong></span>
+    <span class="np-chip">Compute: <strong>All</strong></span>
+    <span class="np-chip">User: <strong>All</strong></span>
+    <span class="np-chip">Status: <strong>All</strong></span>
+  </div>
+  <table class="np-table" role="grid" aria-label="Query history" style="table-layout: fixed">
+    <colgroup><col style="width: 36%"><col style="width: 15%"><col style="width: 17%"><col style="width: 9%"><col style="width: 11%"><col style="width: 12%"></colgroup>
+    <thead>
+      <tr><th scope="col">Query</th><th scope="col">Started at</th><th scope="col">Duration</th><th scope="col">Status</th><th scope="col">Compute</th><th scope="col">User</th></tr>
+    </thead>
+    <tbody>
+      <tr data-fx-row="1"><td class="np-sql"><a href="/sql/history?o={{WS_ID}}&amp;queryId={{QH_1}}"><code>{{QH_1_SQL}}</code></a></td><td>{{QH_1_START}}</td><td>{{QH_1_DURATION}}</td><td><span class="np-dot"></span>Finished</td><td><a href="/sql/warehouses/{{QH_1_WH}}?o={{WS_ID}}">{{QH_1_WH_NAME}}</a></td><td class="np-muted" style="overflow: hidden; text-overflow: ellipsis">{{QH_1_USER}}</td></tr>
+      <tr data-fx-row="2"><td class="np-sql"><a href="/sql/history?o={{WS_ID}}&amp;queryId={{QH_2}}"><code>{{QH_2_SQL}}</code></a></td><td>{{QH_2_START}}</td><td>{{QH_2_DURATION}}</td><td><span class="np-dot"></span>Finished</td><td><a href="/sql/warehouses/{{QH_2_WH}}?o={{WS_ID}}">{{QH_2_WH_NAME}}</a></td><td class="np-muted" style="overflow: hidden; text-overflow: ellipsis">{{QH_2_USER}}</td></tr>
+      <tr data-fx-row="3"><td class="np-sql"><a href="/sql/history?o={{WS_ID}}&amp;queryId={{QH_3}}"><code>{{QH_3_SQL}}</code></a></td><td>{{QH_3_START}}</td><td>{{QH_3_DURATION}}</td><td><span class="np-dot"></span>Finished</td><td><a href="/sql/warehouses/{{QH_3_WH}}?o={{WS_ID}}">{{QH_3_WH_NAME}}</a></td><td class="np-muted" style="overflow: hidden; text-overflow: ellipsis">{{QH_3_USER}}</td></tr>
+      <tr data-fx-row="4"><td class="np-sql"><a href="/sql/history?o={{WS_ID}}&amp;queryId={{QH_4}}"><code>{{QH_4_SQL}}</code></a></td><td>{{QH_4_START}}</td><td>{{QH_4_DURATION}}</td><td><span class="np-dot"></span>Finished</td><td><a href="/sql/warehouses/{{QH_4_WH}}?o={{WS_ID}}">{{QH_4_WH_NAME}}</a></td><td class="np-muted" style="overflow: hidden; text-overflow: ellipsis">{{QH_4_USER}}</td></tr>
+      <tr data-fx-row="5"><td class="np-sql"><a href="/sql/history?o={{WS_ID}}&amp;queryId={{QH_5}}"><code>{{QH_5_SQL}}</code></a></td><td>{{QH_5_START}}</td><td>{{QH_5_DURATION}}</td><td><span class="np-dot"></span>Finished</td><td><a href="/sql/warehouses/{{QH_5_WH}}?o={{WS_ID}}">{{QH_5_WH_NAME}}</a></td><td class="np-muted" style="overflow: hidden; text-overflow: ellipsis">{{QH_5_USER}}</td></tr>
+      <tr data-fx-row="6" data-np-heavy=""><td class="np-sql"><a href="/sql/history?o={{WS_ID}}&amp;queryId={{QH_6}}"><code>{{QH_6_SQL}}</code></a></td><td>{{QH_6_START}}</td><td>{{QH_6_DURATION}}</td><td><span class="np-dot"></span>Finished</td><td><a href="/sql/warehouses/{{QH_6_WH}}?o={{WS_ID}}">{{QH_6_WH_NAME}}</a></td><td class="np-muted" style="overflow: hidden; text-overflow: ellipsis">{{QH_6_USER}}</td></tr>
+      <tr data-fx-row="7"><td class="np-sql"><a href="/sql/history?o={{WS_ID}}&amp;queryId={{QH_7}}"><code>{{QH_7_SQL}}</code></a></td><td>{{QH_7_START}}</td><td>{{QH_7_DURATION}}</td><td><span class="np-dot"></span>Finished</td><td><a href="/sql/warehouses/{{QH_7_WH}}?o={{WS_ID}}">{{QH_7_WH_NAME}}</a></td><td class="np-muted" style="overflow: hidden; text-overflow: ellipsis">{{QH_7_USER}}</td></tr>
+    </tbody>
+  </table>
+</section>

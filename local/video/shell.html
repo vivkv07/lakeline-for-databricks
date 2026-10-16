@@ -1,0 +1,90 @@
+<!doctype html>
+<!--
+  SYNTHETIC launch-video workspace shell (served by local/video/video-server.mjs for
+  {{WS_HOST}}). A neutral imitation of a data-platform workspace for "{{COMPANY}}": no vendor
+  logos, marks or assets, made-up data only. Same structure the real extension expects (top
+  navigation, main content region), routed by /workspace.js with /fixture/<name>.html fragments.
+  Theme: localStorage "np-video-theme" = light | dark (set by the capture script), like a user
+  preference in a real workspace; the in-page extension surfaces pick their tokens from it.
+-->
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="fixture-workspace-id" content="{{WS_ID}}">
+  <title>{{WS_NAME}}</title>
+  <script>
+    (function () {
+      var t = 'light';
+      try {
+        var q = new URLSearchParams(location.search).get('np_theme');
+        if (q === 'dark' || q === 'light') localStorage.setItem('np-video-theme', q);
+        t = localStorage.getItem('np-video-theme') === 'dark' ? 'dark' : 'light';
+      } catch (_) {}
+      document.documentElement.setAttribute('data-theme', t);
+      document.documentElement.style.colorScheme = t;
+    })();
+  </script>
+  <link rel="stylesheet" href="/workspace.css">
+  <link rel="stylesheet" href="/workspace-video.css">
+  <script src="/workspace.js" defer></script>
+  <script src="/workspace-video.js" defer></script>
+</head>
+<body>
+  <div class="ws-app np-app">
+    <nav aria-label="Top Navigation" class="np-topnav">
+      <button type="button" class="np-iconbtn" aria-label="Toggle sidebar">
+        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M2 3.5h12V5H2zm0 3.75h12v1.5H2zM2 11h12v1.5H2z"/></svg>
+      </button>
+      <a href="/?o={{WS_ID}}" class="np-home" aria-label="{{COMPANY}} workspace home">
+        <svg class="np-logo" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><rect width="24" height="24" rx="6" fill="currentColor" opacity="0.12"/><path d="M4.5 17.5 10 9l3 4.5 2-2.5 4.5 6.5z" fill="currentColor"/></svg>
+        <span class="np-company">{{COMPANY}}</span>
+      </a>
+      <div role="search" class="np-search">
+        <span class="np-field">
+          <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M7 2a5 5 0 0 1 3.9 8.1l3 3-1 1-3-3A5 5 0 1 1 7 2zm0 1.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z"/></svg>
+          <input type="search" placeholder="Search data, notebooks, recents, and more" aria-label="Search">
+          <span class="np-kbd">⌘ P</span>
+        </span>
+      </div>
+      <button type="button" class="np-switcher" aria-haspopup="menu" aria-label="Switch workspace">
+        <span class="np-switcher-name">{{WS_NAME}}</span>
+        <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><path fill="currentColor" d="M4 6l4 4 4-4z"/></svg>
+      </button>
+      <button type="button" class="np-iconbtn" aria-label="Help">
+        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M8 1a7 7 0 1 1 0 14A7 7 0 0 1 8 1zm0 10a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm0-7a3 3 0 0 0-3 3h1.5A1.5 1.5 0 1 1 8 8.5h-.75V10h1.5v-.08A3 3 0 0 0 8 4z"/></svg>
+      </button>
+      <button type="button" class="np-avatar" aria-label="Account: {{USER_NAME}}">{{USER_INITIALS}}</button>
+    </nav>
+
+    <div class="ws-body np-body">
+      <nav aria-label="Workspace navigation" class="np-sidenav">
+        <a href="/?o={{WS_ID}}" class="np-new"><span class="np-plus" aria-hidden="true">+</span>New</a>
+        <div class="np-navgroup">
+          <a href="/?o={{WS_ID}}" data-np-nav="home"><span class="np-ico" aria-hidden="true">⌂</span>Workspace</a>
+          <a href="/?o={{WS_ID}}" data-np-nav="recents"><span class="np-ico" aria-hidden="true">◷</span>Recents</a>
+          <a href="/?o={{WS_ID}}" data-np-nav="catalog"><span class="np-ico" aria-hidden="true">▤</span>Catalog</a>
+          <a href="/jobs?o={{WS_ID}}" data-np-nav="jobs"><span class="np-ico" aria-hidden="true">⟳</span>Jobs &amp; Pipelines</a>
+          <a href="/sql/warehouses?o={{WS_ID}}" data-np-nav="compute"><span class="np-ico" aria-hidden="true">▣</span>Compute</a>
+        </div>
+        <div class="np-navgroup">
+          <h2>SQL</h2>
+          <a href="/sql/warehouses?o={{WS_ID}}" data-np-nav="warehouses"><span class="np-ico" aria-hidden="true">◫</span>SQL Warehouses</a>
+          <a href="/sql/history?o={{WS_ID}}" data-np-nav="history"><span class="np-ico" aria-hidden="true">≡</span>Query History</a>
+          <a href="/?o={{WS_ID}}" data-np-nav="dashboards"><span class="np-ico" aria-hidden="true">▦</span>Dashboards</a>
+          <a href="/?o={{WS_ID}}" data-np-nav="genie"><span class="np-ico" aria-hidden="true">✦</span>Genie</a>
+        </div>
+        <div class="np-navgroup">
+          <h2>AI and ML</h2>
+          <a href="/?o={{WS_ID}}" data-np-nav="experiments"><span class="np-ico" aria-hidden="true">⚗</span>Experiments</a>
+          <a href="/?o={{WS_ID}}" data-np-nav="serving"><span class="np-ico" aria-hidden="true">⇢</span>Serving</a>
+        </div>
+      </nav>
+
+      <main class="ws-main np-main" data-testid="main-content">
+        <div class="ws-page np-page" data-fx-page="boot" aria-busy="true"></div>
+      </main>
+    </div>
+  </div>
+</body>
+</html>

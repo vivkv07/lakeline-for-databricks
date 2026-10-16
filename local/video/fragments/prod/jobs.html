@@ -1,0 +1,82 @@
+<!--
+  Launch-video fragment (SYNTHETIC): Jobs & Pipelines list for northpeak-prod. Same native
+  structure as local/fixture/jobs.html (role="grid" rows, name links that identify the job or
+  pipeline); IDs and names come from local/video/story-data.mjs. Badges go after each name link.
+-->
+<section class="np-jobs" data-testid="jobs-list-page">
+  <div class="np-titlerow">
+    <h1>Jobs &amp; Pipelines</h1>
+    <div class="np-actions"><span class="np-btn">Ingest data</span><span class="np-btn np-btn--primary">Create</span></div>
+  </div>
+  <div class="np-tabs" role="tablist" aria-label="Jobs sections">
+    <a role="tab" aria-selected="true" href="/jobs?o={{WS_ID}}">Jobs &amp; pipelines</a>
+    <a role="tab" aria-selected="false" href="/jobs?o={{WS_ID}}">Runs</a>
+  </div>
+  <div class="np-filters">
+    <span class="np-chip">Filter jobs and pipelines</span>
+    <span class="np-chip">Type: <strong>All</strong></span>
+    <span class="np-chip">Owned by: <strong>Anyone</strong></span>
+  </div>
+  <div role="grid" class="np-grid" aria-label="Jobs and pipelines" aria-rowcount="8">
+    <div role="rowgroup">
+      <div role="row" aria-rowindex="1">
+        <div role="columnheader">Name</div>
+        <div role="columnheader">Type</div>
+        <div role="columnheader">Trigger</div>
+        <div role="columnheader">Recent runs</div>
+        <div role="columnheader">Owner</div>
+      </div>
+    </div>
+    <div role="rowgroup">
+      <div role="row" aria-rowindex="2" data-fx-row="job-{{JOB_1}}">
+        <div role="gridcell"><a href="/jobs/{{JOB_1}}?o={{WS_ID}}">{{JOB_1_NAME}}</a></div>
+        <div role="gridcell"><span class="np-tag">Job</span></div>
+        <div role="gridcell" class="np-muted">{{JOB_1_SCHEDULE}}</div>
+        <div role="gridcell"><span class="np-dots"><a href="/jobs/{{JOB_1}}/runs/{{J1_RUN_3}}?o={{WS_ID}}" aria-label="Run succeeded"></a><a href="/jobs/{{JOB_1}}/runs/{{J1_RUN_2}}?o={{WS_ID}}" aria-label="Run succeeded"></a><a href="/jobs/{{JOB_1}}/runs/{{J1_RUN_1}}?o={{WS_ID}}" aria-label="Run succeeded"></a></span></div>
+        <div role="gridcell" class="np-muted">{{JOB_1_OWNER}}</div>
+      </div>
+      <div role="row" aria-rowindex="3" data-fx-row="job-{{JOB_2}}">
+        <div role="gridcell"><a href="/jobs/{{JOB_2}}?o={{WS_ID}}">{{JOB_2_NAME}}</a></div>
+        <div role="gridcell"><span class="np-tag">Job</span></div>
+        <div role="gridcell" class="np-muted">{{JOB_2_SCHEDULE}}</div>
+        <div role="gridcell"><span class="np-dots"><a href="/jobs/{{JOB_2}}/runs/{{J2_RUN_3}}?o={{WS_ID}}" aria-label="Run succeeded"></a><a href="/jobs/{{JOB_2}}/runs/{{J2_RUN_2}}?o={{WS_ID}}" aria-label="Run succeeded"></a><a href="/jobs/{{JOB_2}}/runs/{{J2_RUN_1}}?o={{WS_ID}}" aria-label="Run succeeded"></a></span></div>
+        <div role="gridcell" class="np-muted">{{JOB_2_OWNER}}</div>
+      </div>
+      <div role="row" aria-rowindex="4" data-fx-row="pipeline-{{PIPELINE_1}}">
+        <div role="gridcell"><a href="/pipelines/{{PIPELINE_1}}?o={{WS_ID}}">{{PIPELINE_1_NAME}}</a></div>
+        <div role="gridcell"><span class="np-tag">Pipeline</span></div>
+        <div role="gridcell" class="np-muted">Triggered by {{JOB_2_NAME}}</div>
+        <div role="gridcell"><span class="np-dots"><a href="/pipelines/{{PIPELINE_1}}?o={{WS_ID}}" aria-label="Update completed"></a></span></div>
+        <div role="gridcell" class="np-muted">{{JOB_2_OWNER}}</div>
+      </div>
+      <div role="row" aria-rowindex="5" data-fx-row="job-{{JOB_3}}">
+        <div role="gridcell"><a href="/jobs/{{JOB_3}}?o={{WS_ID}}">{{JOB_3_NAME}}</a></div>
+        <div role="gridcell"><span class="np-tag">Job</span></div>
+        <div role="gridcell" class="np-muted">{{JOB_3_SCHEDULE}}</div>
+        <div role="gridcell"><span class="np-dots"><span class="np-dot" style="width:10px;height:10px;margin:0" aria-label="Run succeeded"></span><span class="np-dot" style="width:10px;height:10px;margin:0" aria-label="Run succeeded"></span></span></div>
+        <div role="gridcell" class="np-muted">{{JOB_3_OWNER}}</div>
+      </div>
+      <div role="row" aria-rowindex="6" data-fx-row="job-{{JOB_4}}">
+        <div role="gridcell"><a href="/jobs/{{JOB_4}}?o={{WS_ID}}">{{JOB_4_NAME}}</a></div>
+        <div role="gridcell"><span class="np-tag">Job</span></div>
+        <div role="gridcell" class="np-muted">{{JOB_4_SCHEDULE}}</div>
+        <div role="gridcell"><span class="np-dots"><span class="np-dot" style="width:10px;height:10px;margin:0" aria-label="Run succeeded"></span><span class="np-dot" style="width:10px;height:10px;margin:0" aria-label="Run succeeded"></span></span></div>
+        <div role="gridcell" class="np-muted">{{JOB_4_OWNER}}</div>
+      </div>
+      <div role="row" aria-rowindex="7" data-fx-row="job-{{JOB_5}}">
+        <div role="gridcell"><a href="/jobs/{{JOB_5}}?o={{WS_ID}}">{{JOB_5_NAME}}</a></div>
+        <div role="gridcell"><span class="np-tag">Job</span></div>
+        <div role="gridcell" class="np-muted">{{JOB_5_SCHEDULE}}</div>
+        <div role="gridcell"><span class="np-dots"><span class="np-dot" style="width:10px;height:10px;margin:0" aria-label="Run succeeded"></span></span></div>
+        <div role="gridcell" class="np-muted">{{JOB_5_OWNER}}</div>
+      </div>
+      <div role="row" aria-rowindex="8" data-fx-row="pipeline-{{PIPELINE_2}}">
+        <div role="gridcell"><a href="/pipelines/{{PIPELINE_2}}?o={{WS_ID}}">{{PIPELINE_2_NAME}}</a></div>
+        <div role="gridcell"><span class="np-tag">Pipeline</span></div>
+        <div role="gridcell" class="np-muted">Continuous</div>
+        <div role="gridcell"><span class="np-dots"><a href="/pipelines/{{PIPELINE_2}}?o={{WS_ID}}" aria-label="Update running"></a></span></div>
+        <div role="gridcell" class="np-muted">{{JOB_1_OWNER}}</div>
+      </div>
+    </div>
+  </div>
+</section>
