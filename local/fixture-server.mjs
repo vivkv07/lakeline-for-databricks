@@ -26,7 +26,9 @@
  *     POST /api/2.0/genie/spaces/:space/conversations/:conv/messages   (follow-up)
  *     GET  .../conversations/:conv/messages/:msg                       (each GET advances one status:
  *                                                                       SUBMITTED → … → COMPLETED)
- *     GET  .../messages/:msg/attachments/:att/query-result             (small synthetic table)
+ *     GET  .../messages/:msg/attachments/:att/query-result             (small synthetic table; the
+ *                                                                       answer is picked by agent and
+ *                                                                       question words, see genieAnswer)
  *     POST .../messages/:msg/attachments/:att/execute-query
  *   SQL runs through local/support/sqlengine.mjs (DuckDB dialect shim). This is a SIMULATION
  *   that checks query logic; it is not proof of Databricks compatibility.
@@ -291,7 +293,7 @@ export async function startFixtureServer(o = {}) {
     const steps = msg.space === GENIE_FAILING_SPACE ? GENIE_FAIL_STEPS : GENIE_STEPS;
     const status = steps[Math.min(Math.floor(msg.polls / state.genie.stepPolls), steps.length - 1)];
     msg.status = status;
-    const a = genieAnswer(msg.space);
+    const a = genieAnswer(msg.space, msg.content);
     const out = { message_id: msg.id, id: msg.id, conversation_id: msg.conv, space_id: msg.space, user_id: 1001, created_timestamp: msg.created, last_updated_timestamp: now(), status, content: msg.content, attachments: [] };
     if (status === 'FAILED') out.error = { error: 'Fixture: this agent always fails, to exercise the error path.', type: 'GENERIC_SQL_EXEC_EXCEPTION' };
     if (status === 'EXECUTING_QUERY' || status === 'COMPLETED') {
@@ -305,7 +307,7 @@ export async function startFixtureServer(o = {}) {
   }
 
   function genieResultJson(msg) {
-    const a = genieAnswer(msg.space);
+    const a = genieAnswer(msg.space, msg.content);
     return {
       statement_response: {
         statement_id: msg.statementId,

@@ -14,28 +14,25 @@
     <header class="gp-head">
       <div class="gp-bar">
         <svg class="dcc-mark gp-mark" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect width="16" height="16" rx="4" fill="#000000"/><rect x="3.5" y="8.5" width="2" height="4" fill="#FFFFFF"/><rect x="7" y="5.5" width="2" height="7" fill="#FFFFFF"/><rect x="10.5" y="3.5" width="2" height="9" fill="#5B8CFF"/></svg>
-        <div class="gp-titles">
-          <p class="dcc-eyebrow gp-eyebrow">Lakeline</p>
-          <h1 class="gp-h1">Ask Genie</h1>
-        </div>
-        <span class="dcc-pill dcc-pill--warn gp-demo" id="demo-chip" title="Synthetic agents and answers. No Databricks requests." hidden>DEMO</span>
+        <h1 class="gp-h1">Ask Genie</h1>
+        <span class="gp-demo" id="demo-chip" title="Synthetic agents and answers. No Databricks requests." hidden>Demo</span>
         <span class="gp-spacer"></span>
-        <button type="button" class="dcc-btn dcc-btn--small gp-new" id="new-conv" title="Start a new conversation with this agent" disabled>
+        <button type="button" class="dcc-btn dcc-btn--small dcc-btn--quiet gp-new" id="new-conv" title="Start a new conversation with this agent" disabled>
           <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg>
           <span>New</span><span class="dcc-visually-hidden"> conversation</span>
         </button>
       </div>
       <div class="gp-pickers">
         <div class="gp-field">
-          <label for="ws" class="gp-label">Workspace</label>
-          <select id="ws" class="dcc-select gp-select" disabled><option value="">Loading…</option></select>
+          <label for="space" class="gp-label"><span class="dcc-visually-hidden">Genie </span>Agent</label>
+          <span class="gp-quiet"><select id="space" class="gp-select" disabled aria-describedby="space-desc"><option value="">Loading…</option></select></span>
         </div>
         <div class="gp-field">
-          <label for="space" class="gp-label">Genie Agent</label>
-          <select id="space" class="dcc-select gp-select" disabled aria-describedby="space-desc"><option value="">Loading…</option></select>
+          <label for="ws" class="gp-label">Workspace</label>
+          <span class="gp-quiet"><select id="ws" class="gp-select" disabled><option value="">Loading…</option></select></span>
         </div>
       </div>
-      <p class="gp-desc" id="space-desc"></p>
+      <p class="gp-desc" id="space-desc" hidden></p>
     </header>
 
     <div class="gp-notice" id="notice" hidden></div>
@@ -59,6 +56,11 @@
   <script src="../src/core/validate.js"></script>
   <script src="../src/core/ids.js"></script>
   <script src="../src/errors.js"></script>
+  <script src="../src/explorer/csv.js"></script>
+  <script src="../src/explorer/charts.js"></script>
+  <script src="../src/core/mini-markdown.js"></script>
+  <script src="../src/core/genie-viz.js"></script>
+  <script src="genie-chart.js"></script>
   <script src="sidepanel.js"></script>
 </body>
 </html>
