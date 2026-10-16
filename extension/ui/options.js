@@ -1,7 +1,9 @@
 /*
- * Options page ("Connection preferences"): workspace discovery and explicit choice, site access,
- * helper or PAT sign-in, warehouse listing (Automatic or explicit), billing source, save and
- * disconnect, local import, diagnostics.
+ * Options page ("Connection preferences"): a three-step flow (1 Workspace with its site access,
+ * 2 Sign in, 3 Warehouse & prices) and Save, then collapsed Advanced, Local import, Diagnostics,
+ * Stored data and Disconnect. Completed steps condense to a one-line summary with an Edit link;
+ * they condense only at load, after a hand-off from the popup, and after a successful save, never
+ * while the user is typing or moving through radios.
  *
  * Rules kept here:
  * - Never switch workspace silently: with several candidate workspaces or workspace IDs, the
@@ -62,6 +64,8 @@
     wh: null, // last accepted listing {origin, authMode, list, automatic}
     whRequest: null, // in-flight listing {id, origin, authMode}
     whSeq: 0,
+    fold: { workspace: false, auth: false, warehouse: false }, // condense when also complete
+    foldOrigin: null, // origin the auth/warehouse fold state was set for
   };
 
   /* ---------------------------------------------------------------- DOM helpers */
@@ -345,7 +349,7 @@
     $('history-source').value = (conn && conn.historySource) || config.DEFAULT_HISTORY_SOURCE;
     $('advanced').open = Boolean(conn && (conn.usageSource !== config.DEFAULT_USAGE_SOURCE || conn.historySource !== config.DEFAULT_HISTORY_SOURCE));
     for (const id of ['ws-id', 'currency', 'usage-source', 'history-source']) setFieldError(id, null);
-    for (const id of ['access-result', 'oauth-result', 'session-result', 'helper-result', 'helper-monitor-result', 'pat-result', 'save-result']) show($(id), null);
+    for (const id of ['access-result', 'oauth-result', 'session-result', 'helper-result', 'helper-monitor-result', 'pat-result', 'save-result']) if ($(id)) show($(id), null);
   }
 
   /**
@@ -358,6 +362,11 @@
     if (!cls.ok) return false;
     const gen = ++S.selGen;
     const conn = savedConnection(cls.origin);
+    if (S.foldOrigin !== cls.origin) {
+      // A different workspace: its saved sign-in and warehouse start condensed. Step 1 stays open.
+      S.fold.auth = S.fold.warehouse = Boolean(conn);
+      S.foldOrigin = cls.origin;
+    }
     S.sel = { origin: cls.origin, host: cls.host, cloud: cls.cloud, kind: cls.kind, conn, idCandidates: [], conflict: false, prepError: null, ready: false };
     S.hasPat = Boolean(conn && conn.secrets && conn.secrets.hasPat);
     S.access = null;
@@ -467,6 +476,7 @@
     const grant = $('access-grant');
     const remove = $('access-remove');
     status.textContent = '';
+    $('site-access').hidden = !S.sel;
     if (!S.sel) {
       status.appendChild(h('span', {}, 'Choose a workspace first.'));
       grant.hidden = false;
@@ -474,7 +484,8 @@
       remove.hidden = true;
       return;
     }
-    grant.textContent = 'Allow access to ' + S.sel.host;
+    grant.textContent = 'Allow access';
+    grant.setAttribute('aria-label', 'Allow access to ' + S.sel.host);
     if (S.access === true) {
       status.append(h('span', { class: 'op-dot op-dot--ok', 'aria-hidden': 'true' }), 'Access allowed for ' + S.sel.host + '.');
       grant.hidden = true;
@@ -546,8 +557,8 @@
   function renderAuth() {
     const mode = currentAuthMode();
     $('auth-oauth').hidden = mode !== 'oauth';
-    $('auth-session').hidden = mode !== 'session';
-    $('session-connect').disabled = !(S.sel && S.sel.kind === 'workspace');
+    if ($('auth-session')) $('auth-session').hidden = mode !== 'session';
+    if ($('session-connect')) $('session-connect').disabled = !(S.sel && S.sel.kind === 'workspace');
     $('auth-helper').hidden = mode !== 'helper';
     $('auth-pat').hidden = mode !== 'pat';
     const workspaceOk = Boolean(S.sel && S.sel.kind === 'workspace');
@@ -723,7 +734,7 @@
     if (!r.ok) return show(out, errorBox(r.error));
     const d = r.data || {};
     if (d.signedIn !== true) return show(out, messageBox('warn', 'Sign-in did not complete', ['Select the sign-in button to try again.']));
-    const next = purpose === 'monitor' ? 'The monitor can now read run and compute status.' : 'Next: list warehouses in step 4.';
+    const next = purpose === 'monitor' ? 'The monitor can now read run and compute status.' : 'Next: list warehouses in step 3.';
     show(out, messageBox('ok', d.reused ? 'Already signed in, reusing the existing session' : 'Signed in', [next, d.profile ? 'CLI profile: ' + clean(d.profile, 80) : null]));
     if (purpose === 'cost') {
       invalidateWarehouses();
@@ -780,7 +791,7 @@
     invalidateWarehouses();
     renderAuth();
     renderWarehouse();
-    show(out, messageBox('ok', remember ? 'Token saved and remembered on this computer.' : 'Token saved for this browser session (cleared when the browser closes).', ['Next: list warehouses in step 4 to check that it works.']));
+    show(out, messageBox('ok', remember ? 'Token saved and remembered on this computer.' : 'Token saved for this browser session (cleared when the browser closes).', ['Next: list warehouses in step 3 to check that it works.']));
     return undefined;
   }
 
@@ -956,11 +967,100 @@
     return res;
   }
 
+  /* ---------------------------------------------------------------- steps (progressive disclosure) */
+
+  const STEPS = Object.freeze([
+    { step: 'workspace', id: 'connect' },
+    { step: 'auth', id: 'auth' },
+    { step: 'warehouse', id: 'warehouse' },
+  ]);
+  const AUTH_LABELS = Object.freeze({ oauth: 'Sign in with Databricks', pat: 'Personal access token', session: 'Your Databricks login', helper: 'Local helper' });
+  const PRICE_SHORT = Object.freeze({ 'system.billing.list_prices': 'List prices', 'system.billing.account_prices': 'Account prices' });
+
+  function stepDone(step) {
+    if (!S.sel) return false;
+    if (step === 'workspace') return S.sel.ready && V.isWorkspaceId($('ws-id').value.trim());
+    if (step === 'warehouse') return Boolean(S.sel.conn);
+    const mode = currentAuthMode();
+    if (!mode) return false;
+    if (S.sel.conn && S.sel.conn.authMode === mode) return true;
+    if (mode === 'pat') return S.hasPat;
+    if (mode === 'helper') return Boolean(S.page && S.page.bridge && S.page.bridge.bridgePaired);
+    return false;
+  }
+
+  function authStatusText(mode) {
+    const conn = S.sel && S.sel.conn;
+    const saved = Boolean(conn && conn.authMode === mode);
+    if (mode === 'oauth') return saved ? 'signed in' : 'not signed in yet';
+    if (mode === 'pat') return S.hasPat ? (conn && conn.secrets && conn.secrets.patRemembered ? 'token remembered on this computer' : 'token saved for this session') : 'no token saved';
+    if (mode === 'session') return saved ? 'connected' : 'not connected yet';
+    return S.page && S.page.bridge && S.page.bridge.bridgePaired ? 'paired' : 'not paired yet';
+  }
+
+  function stepSummary(step) {
+    if (step === 'workspace') {
+      if (!S.sel) return 'Not chosen yet';
+      const id = $('ws-id').value.trim();
+      return S.sel.host + (V.isWorkspaceId(id) ? ' · workspace ' + id : '');
+    }
+    if (!S.sel) return 'Choose a workspace first';
+    if (step === 'auth') {
+      const mode = currentAuthMode();
+      return mode && AUTH_LABELS[mode] ? AUTH_LABELS[mode] + ' · ' + authStatusText(mode) : 'Not chosen yet';
+    }
+    const conn = S.sel.conn;
+    if (!conn) return 'Not saved yet';
+    const w = conn.warehouse || {};
+    const wh = w.mode === 'manual' ? (w.name || 'Warehouse') + ' ' + w.id : 'Automatic' + (w.resolvedName || w.resolvedId ? ' → ' + (w.resolvedName || w.resolvedId) : '');
+    return [wh, PRICE_SHORT[conn.priceTable] || null, V.isCurrency(conn.currency) ? conn.currency : null].filter(Boolean).join(' · ');
+  }
+
+  /**
+   * A step shows its one-line summary (and an Edit link) when it is complete and marked folded;
+   * steps 2 and 3 also stay condensed until a workspace is chosen. Save shows while anything is
+   * open for editing or nothing is saved yet; its result area is always visible.
+   */
+  function renderSteps() {
+    let current = null;
+    let allFolded = true;
+    for (const { step, id } of STEPS) {
+      const section = $(id);
+      const done = stepDone(step);
+      const locked = step !== 'workspace' && !S.sel;
+      const folded = locked || (S.fold[step] && done);
+      if (!folded) allFolded = false;
+      if (!done && !locked && !current) current = step;
+      section.setAttribute('data-state', done ? 'done' : locked ? 'locked' : 'todo');
+      if (current === step) section.setAttribute('data-current', '');
+      else section.removeAttribute('data-current');
+      $(id + '-body').hidden = folded;
+      section.querySelector('.op-step-summary').textContent = folded ? stepSummary(step) : '';
+      section.querySelector('[data-step-toggle]').hidden = !folded || locked;
+    }
+    $('save-controls').hidden = !S.sel || Boolean(S.sel.conn && allFolded);
+  }
+
+  function onEditStep(step) {
+    S.fold[step] = false;
+    renderSteps();
+    const entry = STEPS.find((s) => s.step === step);
+    const heading = entry && $(entry.id).querySelector('h2');
+    if (heading) heading.focus();
+  }
+
+  /** After a preselection (load or popup hand-off), a uniquely identified workspace condenses. */
+  function foldPreselected() {
+    if (S.sel && S.sel.ready && S.sel.idCandidates.length === 1 && !S.sel.conflict && !S.sel.prepError) S.fold.workspace = true;
+    renderSteps();
+  }
+
   /* ---------------------------------------------------------------- 6. save / disconnect */
 
   function renderSave() {
     const summary = $('save-summary');
     $('save-btn').disabled = !S.sel;
+    renderSteps();
     if (!S.sel) {
       summary.textContent = 'Choose a workspace in step 1 first.';
       return;
@@ -982,27 +1082,27 @@
       problems.push('Enter the numeric workspace ID in step 1.');
     }
     const authMode = currentAuthMode();
-    if (!config.AUTH_MODES.includes(authMode)) problems.push('Choose a sign-in method in step 3.');
+    if (!config.AUTH_MODES.includes(authMode)) problems.push('Choose a sign-in method in step 2.');
     const priceTable = $('price-table').value;
     if (!hasOwn(pricing.PRICE_TABLES, priceTable)) problems.push('Choose one of the two supported price tables.');
     const currency = $('currency').value.trim().toUpperCase();
     if (!V.isCurrency(currency)) {
       fields.currency = 'Use a three-letter code such as USD.';
-      problems.push('Enter a three-letter currency code in step 5.');
+      problems.push('Enter a three-letter currency code under Advanced.');
     }
     const usage = config.validateSource($('usage-source').value.trim(), config.DEFAULT_USAGE_SOURCE);
     if (!usage.ok) {
       fields['usage-source'] = 'Use ' + config.DEFAULT_USAGE_SOURCE + ' or catalog.schema.view outside the system catalog.';
-      problems.push('Fix the usage source under Advanced in step 5.');
+      problems.push('Fix the usage source under Advanced.');
     }
     const history = config.validateSource($('history-source').value.trim(), config.DEFAULT_HISTORY_SOURCE);
     if (!history.ok) {
       fields['history-source'] = 'Use ' + config.DEFAULT_HISTORY_SOURCE + ' or catalog.schema.view outside the system catalog.';
-      problems.push('Fix the query history source under Advanced in step 5.');
+      problems.push('Fix the query history source under Advanced.');
     }
     const choice = S.whChoice;
-    if (!choice || (choice.mode === 'manual' && !V.isWarehouseId(choice.id))) problems.push('Choose Automatic or a SQL warehouse in step 4.');
-    if (S.sel && !S.sel.conn && !(S.wh && S.wh.origin === S.sel.origin)) problems.push('List warehouses in step 4 first, so you can see which warehouse will run cost queries.');
+    if (!choice || (choice.mode === 'manual' && !V.isWarehouseId(choice.id))) problems.push('Choose Automatic or a SQL warehouse in step 3.');
+    if (S.sel && !S.sel.conn && !(S.wh && S.wh.origin === S.sel.origin)) problems.push('List warehouses in step 3 first, so you can see which warehouse will run cost queries.');
     const warehouse = choice && choice.mode === 'manual' ? { mode: 'manual', id: choice.id, name: choice.name || null } : { mode: 'auto' };
     return {
       problems,
@@ -1018,7 +1118,7 @@
     const btn = $('save-btn');
     const { problems, fields, connection } = collect();
     for (const id of ['ws-id', 'currency', 'usage-source', 'history-source']) setFieldError(id, fields[id] || null);
-    if (fields['usage-source'] || fields['history-source']) $('advanced').open = true;
+    if (fields.currency || fields['usage-source'] || fields['history-source']) $('advanced').open = true;
     if (problems.length) return show(out, messageBox('error', 'Check these settings before saving', problems));
     const gen = S.selGen;
     const host = S.sel.host;
@@ -1037,8 +1137,10 @@
     const lines = [
       'Workspace ' + saved.workspaceId + ' · ' + ({ oauth: 'Sign in with Databricks', session: 'your Databricks login', pat: 'personal access token', helper: 'local helper' }[saved.authMode] || saved.authMode) + ' · ' + whText + '.',
       'Listing a warehouse doesn\'t prove CAN USE or billing-table access. If the first cost query fails, its error names the missing permission.',
-      S.access === false ? 'Next: allow site access in step 2 so costs appear inside the workspace.' : null,
+      S.access === false ? 'Next: allow site access under step 1 so costs appear inside the workspace.' : null,
     ];
+    // Saved: every complete step condenses to its summary; the result stays visible below.
+    S.fold = { workspace: true, auth: true, warehouse: true };
     renderAll();
     show(out, messageBox('ok', 'Connection saved for ' + host, lines));
     return undefined;
@@ -1180,6 +1282,7 @@
     const items = Array.isArray(S.page && S.page.diagnostics) ? S.page.diagnostics : [];
     list.textContent = '';
     $('diag-clear').disabled = !items.length;
+    $('diag-meta').textContent = items.length ? items.length + (items.length === 1 ? ' recent error' : ' recent errors') : 'No recent errors';
     if (!items.length) {
       list.appendChild(h('li', { class: 'op-diag-empty' }, 'No recent errors.'));
       return;
@@ -1232,7 +1335,7 @@
     show(
       $('page-alert'),
       b.bridgePaired
-        ? messageBox('ok', 'Paired with the local helper' + v, ['Next: choose your workspace, then select Sign in under step 3.'])
+        ? messageBox('ok', 'Paired with the local helper' + v, ['Next: choose your workspace, then select Sign in under step 2.'])
         : messageBox('warn', 'No active helper pairing found', ['Run start-helper.command again; its setup page pairs automatically.'])
     );
     try {
@@ -1248,10 +1351,19 @@
     S.pending = pending;
     renderPendingNote();
     await selectWorkspace(pending.origin);
+    foldPreselected();
     return true;
   }
 
+  /** The store build turns off "Use my Databricks login": its elements are removed, not hidden. */
+  function applyFlags() {
+    const flags = DCC.flags;
+    if (!flags || flags.sessionLogin !== false) return;
+    for (const el of doc.querySelectorAll('[data-feature="session-login"]')) el.remove();
+  }
+
   function wire() {
+    for (const btn of doc.querySelectorAll('[data-step-toggle]')) btn.addEventListener('click', () => onEditStep(btn.getAttribute('data-step-toggle')));
     $('ws-url-use').addEventListener('click', onUseUrl);
     onEnter('ws-url', onUseUrl);
     $('ws-url').addEventListener('input', () => setFieldError('ws-url', null));
@@ -1265,7 +1377,7 @@
     $('access-remove').addEventListener('click', onRemoveAccess);
     $('helper-check').addEventListener('click', onHelperCheck);
     $('oauth-signin').addEventListener('click', onOauthSignIn);
-    $('session-connect').addEventListener('click', onSessionConnect);
+    if ($('session-connect')) $('session-connect').addEventListener('click', onSessionConnect);
     $('helper-login').addEventListener('click', () => onHelperLogin('cost'));
     $('helper-login-monitor').addEventListener('click', () => onHelperLogin('monitor'));
     $('pair-submit').addEventListener('click', onPairManual);
@@ -1314,6 +1426,7 @@
   }
 
   async function init() {
+    applyFlags();
     buildPriceTableOptions();
     for (const r of doc.querySelectorAll('input[name="auth"]')) r.checked = r.value === 'helper';
     wire();
@@ -1333,6 +1446,7 @@
     const list = candidateList();
     if (pending) await selectWorkspace(pending.origin);
     else if (list.length === 1) await selectWorkspace(list[0].origin);
+    foldPreselected();
   }
 
   const ready = init().catch((e) => show($('page-alert'), errorBox(backgroundError(e && e.message))));

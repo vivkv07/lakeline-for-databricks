@@ -1,17 +1,18 @@
 /*
  * Popup → Workspace colors panel (workspace-appearance.js). Builds on brand.css tokens and its
  * .dcc-btn / .dcc-input / .dcc-select controls; everything here is scoped to the panel.
+ * Minimal: a quiet title, hairline-free fields, 10px radius, status as a soft tint with a dot.
  */
 
 .dcc-ap .dcc-ap-title {
-  margin: 0 0 10px;
-  font-family: var(--dcc-mono);
+  margin: 0 0 8px;
+  font-family: var(--dcc-font);
   font-size: var(--dcc-text-xs);
-  font-weight: 500;
+  font-weight: 600;
   line-height: 1.4;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--dcc-accent);
+  color: var(--dcc-muted);
 }
 
 .dcc-ap-body {
@@ -79,10 +80,7 @@
 }
 
 .dcc-ap-hex-label {
-  font-family: var(--dcc-mono);
-  font-size: var(--dcc-text-xs);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: var(--dcc-text-sm);
   color: var(--dcc-muted);
 }
 
@@ -129,7 +127,7 @@
 /* Sample top bar: background and text color are set from the validated color in JS. */
 .dcc-ap-preview {
   border: 1px solid var(--dcc-line);
-  border-radius: 12px;
+  border-radius: var(--dcc-radius);
   overflow: hidden;
 }
 
@@ -204,29 +202,50 @@
 }
 
 .dcc-ap-status {
-  padding: 8px 12px;
+  position: relative;
+  padding: 8px 12px 8px 27px;
   color: var(--dcc-text);
   background: var(--dcc-surface);
-  border: 1px solid var(--dcc-line);
-  border-radius: 12px;
+  border-radius: var(--dcc-radius);
+}
+
+/* Status dot: the sentence always says what happened; the dot only repeats it. */
+.dcc-ap-status::before {
+  content: "";
+  position: absolute;
+  left: 12px;
+  top: 14px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--dcc-dot-idle);
 }
 
 .dcc-ap-status.dcc-ap-ok {
   color: var(--dcc-success);
   background: var(--dcc-success-soft);
-  border-color: var(--dcc-success-line);
+}
+
+.dcc-ap-status.dcc-ap-ok::before {
+  background: var(--dcc-dot-ok);
 }
 
 .dcc-ap-status.dcc-ap-warn {
   color: var(--dcc-warm);
   background: var(--dcc-warm-soft);
-  border-color: var(--dcc-warm-line);
+}
+
+.dcc-ap-status.dcc-ap-warn::before {
+  background: var(--dcc-dot-warn);
 }
 
 .dcc-ap-status.dcc-ap-error {
   color: var(--dcc-danger);
   background: var(--dcc-danger-soft);
-  border-color: var(--dcc-danger-line);
+}
+
+.dcc-ap-status.dcc-ap-error::before {
+  background: var(--dcc-dot-error);
 }
 
 @media (prefers-reduced-motion: no-preference) {

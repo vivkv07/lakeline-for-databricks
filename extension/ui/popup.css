@@ -1,22 +1,14 @@
-/* Toolbar popup. Builds on brand.css tokens; stays within 380px. */
+/*
+ * Toolbar popup, minimal: compact header, the active tab's workspace with one primary action,
+ * three essential controls, and everything else under "More". Builds on brand.css tokens and
+ * stays within 380px. Hairline separators and whitespace, no cards, no shadows.
+ */
 
 body {
   width: 360px;
   max-width: 380px;
   font-size: var(--dcc-text-md);
   line-height: 1.45;
-  counter-reset: pp-section;
-}
-
-/* Numbered section eyebrows (01 · Workspace …). The number is decorative for assistive tech. */
-.pp-h {
-  margin: 0 0 10px;
-}
-
-.pp-h::before,
-#appearance-panel .dcc-ap-title::before {
-  counter-increment: pp-section;
-  content: counter(pp-section, decimal-leading-zero) " · " / "";
 }
 
 /* ------------------------------------------------------------------ header */
@@ -25,71 +17,83 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 14px 12px 12px 16px;
+  padding: 12px 8px 12px 16px;
 }
 
 .pp-mark {
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
 }
 
 .pp-title {
+  flex: 1 1 auto;
   min-width: 0;
 }
 
 .pp-header h1 {
-  font-size: var(--dcc-text-lg);
-  line-height: 1.2;
+  font-size: var(--dcc-text-base);
+  line-height: 1.25;
 }
 
+/* Status line: a dot (set from data-state) and the mode summary text; it wraps rather than clip. */
 .pp-sub {
-  margin-top: 2px;
-  font-family: var(--dcc-mono);
-  font-size: var(--dcc-text-xs);
-  letter-spacing: 0.02em;
+  margin-top: 1px;
+  font-size: var(--dcc-text-sm);
   color: var(--dcc-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+}
+
+.pp-sub::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin: 0 6px 1px 0;
+  vertical-align: middle;
+  border-radius: 50%;
+  background: var(--dcc-dot-idle);
+}
+
+.pp-sub[data-state="ok"]::before {
+  background: var(--dcc-dot-ok);
+}
+
+.pp-sub[data-state="warn"]::before {
+  background: var(--dcc-dot-warn);
+}
+
+.pp-sub[data-state="error"]::before {
+  background: var(--dcc-dot-error);
+}
+
+.pp-sub[data-state="info"]::before {
+  background: var(--dcc-dot-info);
 }
 
 .pp-icon-btn {
-  margin-left: auto;
-  width: 34px;
-  min-height: 34px;
+  flex: none;
+  width: 32px;
+  min-height: 32px;
   padding: 0;
   color: var(--dcc-body);
-}
-
-.pp-notice {
-  margin: 0 16px 12px;
 }
 
 .pp-alert-slot:empty {
   display: none;
 }
 
-#page-alert {
+.pp-page-alert {
   margin: 0 16px 12px;
+}
+
+.pp-alert-slot .dcc-alert {
+  font-size: var(--dcc-text-sm);
 }
 
 /* ------------------------------------------------------------------ sections */
 
 .pp-section {
-  padding: 14px 16px;
+  padding: 16px;
   border-top: 1px solid var(--dcc-line);
-}
-
-.pp-section-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
-.pp-section-head .pp-h {
-  margin-bottom: 0;
 }
 
 .pp-hint {
@@ -102,25 +106,12 @@ body {
   display: none;
 }
 
-.pp-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 12px;
-}
+/* ------------------------------------------------------------------ workspace */
 
-.pp-actions .dcc-btn--primary {
-  flex: 1 1 auto;
-  min-height: 36px;
-}
-
-/* Active tab: a hairline card with the host and its connection state. */
 .pp-tab-status {
   display: grid;
-  gap: 4px;
-  padding: 10px 12px;
-  border: 1px solid var(--dcc-line);
-  border-radius: 12px;
+  gap: 2px;
+  min-width: 0;
 }
 
 .pp-tab-status:empty {
@@ -130,8 +121,9 @@ body {
 .pp-host {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   min-width: 0;
+  font-size: var(--dcc-text-base);
   font-weight: 600;
 }
 
@@ -146,44 +138,251 @@ body {
   color: var(--dcc-body);
 }
 
+/* State lines carry a dot; the text always says the state. */
+.pp-line--ok,
+.pp-line--warn,
+.pp-line--idle {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.pp-line--ok::before,
+.pp-line--warn::before,
+.pp-line--idle::before {
+  content: "";
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  transform: translateY(-1px);
+  background: var(--dcc-dot-idle);
+}
+
+.pp-line--ok {
+  color: var(--dcc-text);
+}
+
+.pp-line--ok::before {
+  background: var(--dcc-dot-ok);
+}
+
 .pp-line--warn {
   color: var(--dcc-warm);
 }
 
-.pp-line--ok {
-  color: var(--dcc-success);
+.pp-line--warn::before {
+  background: var(--dcc-dot-warn);
 }
 
-/* Segmented controls fill the popup width for the mode selector. */
-.pp-segmented-full {
+/* Transient sign-in progress or outcome; a success line replaces the plain state line. */
+.pp-tab-status [data-connect-line] {
+  color: var(--dcc-body);
+}
+
+.pp-tab-status:has(> [data-connect-line].pp-line--ok) > .pp-line--ok:not([data-connect-line]) {
+  display: none;
+}
+
+.pp-actions {
   display: flex;
-  width: 100%;
+  gap: 8px;
+  margin-top: 12px;
 }
 
-.pp-segmented-full label {
-  flex: 1 1 0;
-  text-align: center;
-  padding-left: 6px;
-  padding-right: 6px;
+.pp-actions .dcc-btn {
+  min-height: 36px;
 }
 
-.pp-period {
-  margin-top: 14px;
+.pp-actions .dcc-btn--primary {
+  flex: 1 1 auto;
 }
 
-.pp-legend {
-  padding: 0;
-  margin-bottom: 6px;
+.pp-actions .dcc-link {
+  display: none;
+}
+
+.pp-alt {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin-top: 10px;
+  font-size: var(--dcc-text-sm);
+}
+
+.pp-alt:not(:has(> :not([hidden]))) {
+  display: none;
+}
+
+.pp-alt .dcc-link,
+.pp-small-link {
+  font-size: var(--dcc-text-sm);
+}
+
+#genie-status {
+  margin-top: 10px;
+}
+
+/* ------------------------------------------------------------------ sign-in chooser */
+
+/* While the chooser is open its own button is the primary action; Connect steps back. */
+.pp-workspace:has(#oauth-setup:not([hidden])) #connect-btn.dcc-btn--primary {
+  color: var(--dcc-text);
+  background: transparent;
+  border-color: var(--dcc-line2);
+}
+
+.pp-workspace:has(#oauth-setup:not([hidden])) #connect-btn.dcc-btn--primary:hover {
+  background: var(--dcc-hover);
+  border-color: var(--dcc-control);
+}
+
+.pp-chooser .dcc-input::placeholder {
+  font-family: var(--dcc-font);
+}
+
+.pp-chooser {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--dcc-line);
+}
+
+.pp-choice {
+  padding: 12px 0;
+}
+
+.pp-choice + .pp-choice {
+  border-top: 1px solid var(--dcc-line);
+}
+
+.pp-choice:last-child {
+  padding-bottom: 0;
+}
+
+.pp-choice-title,
+.pp-choice-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: var(--dcc-text-md);
-  font-weight: 500;
+  font-weight: 600;
+  color: var(--dcc-text);
 }
+
+/* A choice that acts right away reads as a row link with a trailing arrow. */
+.pp-choice-btn {
+  width: 100%;
+  padding: 0;
+  font-family: inherit;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.pp-choice-btn::after {
+  content: "→" / "";
+  margin-left: auto;
+  font-weight: 400;
+  color: var(--dcc-muted);
+  transition: transform 120ms var(--dcc-ease), color 120ms var(--dcc-ease);
+}
+
+.pp-choice-btn:hover {
+  color: var(--dcc-accent);
+}
+
+.pp-choice-btn:hover::after {
+  color: var(--dcc-accent);
+  transform: translateX(2px);
+}
+
+.pp-choice-btn:disabled {
+  color: var(--dcc-muted);
+  cursor: not-allowed;
+}
+
+.pp-choice-desc {
+  margin-top: 2px;
+  font-size: var(--dcc-text-sm);
+  color: var(--dcc-muted);
+}
+
+.pp-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 6px;
+  font-size: var(--dcc-text-xs);
+  font-weight: 500;
+  line-height: 18px;
+  color: var(--dcc-on-selected);
+  background: var(--dcc-selected);
+  border-radius: 6px;
+}
+
+.pp-tag--warn {
+  color: var(--dcc-warm);
+  background: var(--dcc-warm-soft);
+}
+
+.pp-label {
+  display: block;
+  margin: 10px 0 4px;
+  font-size: var(--dcc-text-sm);
+  font-weight: 500;
+  color: var(--dcc-text);
+}
+
+.pp-choice-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.pp-choice-actions .dcc-btn {
+  flex: 1 1 auto;
+  min-height: 36px;
+}
+
+.pp-setup {
+  margin-top: 8px;
+}
+
+.pp-setup > summary {
+  display: inline-block;
+  font-size: var(--dcc-text-sm);
+}
+
+.pp-steps {
+  display: grid;
+  gap: 4px;
+  margin: 8px 0;
+  padding-left: 18px;
+  font-size: var(--dcc-text-sm);
+  color: var(--dcc-body);
+}
+
+.pp-code {
+  font-size: var(--dcc-text-xs);
+  word-break: break-all;
+}
+
+.pp-copy {
+  min-height: 22px;
+  margin-left: 4px;
+  padding: 0 8px;
+  font-size: var(--dcc-text-xs);
+}
+
+/* ------------------------------------------------------------------ essentials */
 
 .pp-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  min-height: 28px;
+  min-height: 32px;
 }
 
 .pp-row label {
@@ -193,47 +392,120 @@ body {
 
 .pp-row + .pp-row,
 .pp-hint + .pp-row {
-  margin-top: 6px;
+  margin-top: 4px;
 }
 
 .pp-row--sub {
-  padding-left: 14px;
+  padding-left: 12px;
+}
+
+/* The pause note shows only while costs are off. */
+.pp-paused-hint {
+  display: none;
+  margin-top: 0;
+}
+
+.pp-essentials:has(#show-costs:not(:checked)) .pp-paused-hint {
+  display: block;
+}
+
+.pp-grid {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: center;
+  gap: 8px 16px;
+  margin-top: 10px;
+}
+
+.pp-grid-label {
+  color: var(--dcc-text);
+}
+
+.pp-seg {
+  display: flex;
+  width: 100%;
+}
+
+.pp-seg label {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+  text-align: center;
+}
+
+#mode-hint {
+  margin-top: 8px;
+}
+
+/* ------------------------------------------------------------------ more */
+
+.pp-more {
+  border-top: 1px solid var(--dcc-line);
+}
+
+.pp-more > summary {
+  padding: 8px 16px;
+}
+
+.pp-more-meta {
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--dcc-text-sm);
+  font-weight: 400;
+  color: var(--dcc-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pp-more[open] .pp-more-meta {
+  visibility: hidden;
+}
+
+.pp-more-body {
+  padding: 0 16px 8px;
+}
+
+.pp-group {
+  padding: 12px 0;
+  border-top: 1px solid var(--dcc-line);
+}
+
+.pp-group:first-child {
+  border-top: 0;
+  padding-top: 4px;
+}
+
+.pp-group .dcc-section-title {
+  margin-bottom: 4px;
+}
+
+.pp-group-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.pp-group-head .dcc-section-title {
+  margin-bottom: 0;
 }
 
 #monitor-status {
-  margin-bottom: 10px;
+  margin: 4px 0 8px;
 }
 
-/* ------------------------------------------------------------------ diagnostics */
-
-.pp-diag > summary {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  list-style: none;
+.pp-nested {
+  border-top: 1px solid var(--dcc-line);
 }
 
-.pp-diag > summary::-webkit-details-marker {
-  display: none;
+.pp-nested[open] {
+  padding-bottom: 12px;
 }
 
-.pp-diag > summary::after {
-  content: "+" / "";
-  margin-left: auto;
-  font-family: var(--dcc-mono);
-  color: var(--dcc-muted);
-}
-
-.pp-diag[open] > summary::after {
-  content: "−" / "";
-}
-
-.pp-diag > summary:hover {
-  text-decoration: none;
-}
-
-.pp-diag > summary .pp-h {
-  margin: 0;
+.pp-sub-actions {
+  margin-top: 8px;
 }
 
 .pp-count {
@@ -257,6 +529,7 @@ body {
 
 .pp-diag-list li:first-child {
   border-top: 0;
+  padding-top: 0;
 }
 
 .pp-diag-title {
@@ -274,40 +547,46 @@ body {
   color: var(--dcc-muted);
 }
 
-/* ------------------------------------------------------------------ footer */
-
-.pp-footer {
+.pp-links {
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
   gap: 8px 16px;
+  padding-top: 12px;
+  font-size: var(--dcc-text-sm);
+  border-top: 1px solid var(--dcc-line);
+}
+
+.pp-links .dcc-link {
+  font-size: var(--dcc-text-sm);
+}
+
+/* Workspace colors panel (workspace-appearance.js) inside its disclosure: the summary names it. */
+#appearance-panel .dcc-ap-title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------------ footer */
+
+.pp-footer {
   padding: 12px 16px 14px;
-  font-size: var(--dcc-text-sm);
   border-top: 1px solid var(--dcc-line);
 }
 
-.pp-footer .dcc-link {
-  font-size: var(--dcc-text-sm);
+.pp-disclaimer {
+  font-size: var(--dcc-text-xs);
+  line-height: 1.45;
+  color: var(--dcc-muted);
 }
 
-/* Container owned by workspace-appearance.js: only separate it from its neighbours. */
-#appearance-panel:not(:empty) {
-  padding: 14px 16px;
-  border-top: 1px solid var(--dcc-line);
+/* Full-bleed rows keep their focus ring inside the popup edge. */
+.pp-more > summary:focus-visible {
+  outline-offset: -2px;
+  border-radius: var(--dcc-radius);
 }
-
-.pp-alert-slot .dcc-alert,
-#page-alert .dcc-alert {
-  font-size: var(--dcc-text-sm);
-  padding: 8px 12px;
-}
-
-/* One-click connect: one-time OAuth client setup */
-.pp-oauth-setup { margin-top: 10px; padding: 12px; display: grid; gap: 8px; }
-.pp-steps { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 12px; color: var(--body); }
-.pp-code { font-family: var(--mono, "IBM Plex Mono", ui-monospace, monospace); font-size: 11px; word-break: break-all; color: var(--text); }
-.pp-copy { padding: 1px 8px; min-height: 22px; font-size: 11px; margin-left: 4px; }
-.pp-label { font-family: var(--mono, "IBM Plex Mono", ui-monospace, monospace); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-.pp-link-btn { border-color: transparent; background: none; color: var(--accent); text-decoration: underline; }
-.pp-choice { flex-wrap: wrap; }
-.pp-muted { color: var(--muted); font-size: 12px; }

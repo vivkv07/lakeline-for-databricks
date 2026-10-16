@@ -25,9 +25,10 @@ const unknown = (message) => ({ ok: false, error: { code: 'UNKNOWN', title: 'Som
 /**
  * Load extension/ui/<name>.html and its <script src> files into jsdom.
  * @param {string} name 'popup' | 'options'
- * @param {object} o {onMessage(msg) → response, tabs, granted, permissionAnswer, hash}
+ * @param {object} o {onMessage(msg) → response, tabs, granted, permissionAnswer, hash, flags}
+ *   flags: replaces DCC.flags right after src/core/flags.js runs (the store build's rewrite).
  */
-function openPage(name, { onMessage, tabs = [], granted = [], permissionAnswer = true, hash = '' } = {}) {
+function openPage(name, { onMessage, tabs = [], granted = [], permissionAnswer = true, hash = '', flags = null } = {}) {
   const html = readFileSync(path.join(EXT, 'ui', name + '.html'), 'utf8');
   const dom = new JSDOM(html, { url: 'chrome-extension://testextensionid/ui/' + name + '.html' + hash, runScripts: 'outside-only', pretendToBeVisual: true });
   const w = dom.window;
@@ -82,6 +83,7 @@ function openPage(name, { onMessage, tabs = [], granted = [], permissionAnswer =
       continue;
     }
     w.eval(readFileSync(file, 'utf8') + '\n//# sourceURL=' + src);
+    if (flags && src.endsWith('core/flags.js')) w.DCC.flags = Object.freeze(Object.assign({}, w.DCC.flags, flags));
     loaded.push(src);
   }
   const $ = (id) => w.document.getElementById(id);
@@ -684,7 +686,7 @@ test('options: Automatic is saved as {mode:"auto"} and invalid sources are block
   env.$('save-btn').click();
   await settle();
   assert.equal(env.sent('admin:saveConnection').length, 0, 'must list warehouses first for a new connection');
-  assert.match(env.text('save-result'), /List warehouses in step 4 first/);
+  assert.match(env.text('save-result'), /List warehouses in step 3 first/);
 
   env.$('wh-list').click();
   await settle();
@@ -910,5 +912,176 @@ test('options: Sign in with Databricks is the default; it requests access in the
   const last = env.sent('connect:oneClick').at(-1);
   assert.equal(last.clientId, 'lakeline-client-0001');
   assert.match(env.text('oauth-result'), /Connected/);
+  env.close();
+});
+
+/* ================================================================== minimal layout */
+
+test('popup: one primary action: Connect until this tab is connected, then Ask Genie with the connection as a link', async () => {
+  const sw = popupWorker();
+  const env = openPage('popup', { onMessage: sw.fn, tabs: [{ id: 7, windowId: 3, url: A + '/jobs?o=42' }] });
+  await env.window.DCC.popupPage.ready;
+  const primaries = () => [...env.document.querySelectorAll('#ws-actions .dcc-btn--primary, #ws-alt .dcc-btn--primary')].map((b) => b.id);
+  assert.deepEqual(primaries(), ['connect-btn']);
+  assert.equal(env.$('ws-actions').firstElementChild.id, 'connect-btn', 'primary comes first in DOM and focus order');
+  assert.equal(env.$('genie-open').closest('#ws-actions') !== null, true, 'Ask Genie stays visible as a secondary button');
+  assert.equal(env.$('signin-alt').hidden, false, 'alternatives are offered on a workspace tab');
+  assert.equal(env.$('mode-summary').getAttribute('data-state'), 'warn', 'connected mode with no workspace needs attention');
+  env.close();
+
+  const sw2 = popupWorker({ connections: { [A]: savedConn(A, { authMode: 'oauth' }) } });
+  const env2 = openPage('popup', { onMessage: sw2.fn, tabs: [{ id: 7, windowId: 3, url: A + '/jobs?o=42' }], granted: [A + '/*'] });
+  await env2.window.DCC.popupPage.ready;
+  assert.deepEqual([...env2.document.querySelectorAll('#ws-actions .dcc-btn--primary, #ws-alt .dcc-btn--primary')].map((b) => b.id), ['genie-open']);
+  assert.equal(env2.$('connect-btn').textContent, 'Reconnect');
+  assert.equal(env2.$('connect-btn').closest('#ws-alt') !== null, true, 'the connection button is demoted to the link row');
+  assert.match(env2.$('connect-btn').className, /dcc-link/);
+  assert.equal(env2.$('signin-alt').hidden, true);
+  assert.equal(env2.$('mode-summary').getAttribute('data-state'), 'ok');
+  assert.match(env2.text('mode-summary'), /Connected · 1 workspace · 30 days/);
+  env2.close();
+});
+
+test('popup: "Other ways to sign in" toggles the chooser without moving focus; secondary items sit under a closed More', async () => {
+  const sw = popupWorker({ hooks: { 'connect:redirectUrl': async () => ok({ redirectUrl: 'https://testextensionid.chromiumapp.org/' }) } });
+  const env = openPage('popup', { onMessage: sw.fn, tabs: [{ id: 7, url: A + '/?o=42' }] });
+  await env.window.DCC.popupPage.ready;
+  const more = env.$('more');
+  assert.equal(more.tagName, 'DETAILS');
+  assert.equal(more.open, false, 'More is collapsed by default');
+  for (const id of ['genie-notify', 'monitor-enabled', 'monitor-open', 'appearance-panel', 'diag-details', 'guide-link', 'fixture-link']) {
+    assert.ok(more.contains(env.$(id)), id + ' is under More');
+  }
+  for (const id of ['show-costs', 'period-30', 'mode-connected', 'disclaimer', 'connect-btn', 'genie-open']) {
+    assert.ok(!more.contains(env.$(id)), id + ' stays visible');
+  }
+  const toggle = env.$('signin-alt');
+  toggle.focus();
+  toggle.click();
+  await settle();
+  assert.equal(env.$('oauth-setup').hidden, false);
+  assert.equal(toggle.getAttribute('aria-expanded'), 'true');
+  assert.equal(env.document.activeElement, toggle, 'focus stays on the toggle');
+  assert.equal(env.$('oauth-redirect').textContent, 'https://testextensionid.chromiumapp.org/');
+  assert.equal(env.sent('connect:oneClick').length, 0, 'opening the chooser signs nothing in');
+  toggle.click();
+  assert.equal(env.$('oauth-setup').hidden, true);
+  assert.equal(toggle.getAttribute('aria-expanded'), 'false');
+  env.close();
+});
+
+test('popup: the store build (flags.sessionLogin false) removes "Use my Databricks login" and still connects', async () => {
+  const sw = popupWorker({
+    hooks: {
+      'connect:oneClick': async (msg) => (msg.clientId ? ok({ connected: true, origin: A, workspaceId: '42', warehouseName: null }) : ok({ needsChoice: true, needsClientId: true, redirectUrl: 'https://testextensionid.chromiumapp.org/' })),
+      'connect:status': async () => ok(null),
+    },
+  });
+  const env = openPage('popup', { onMessage: sw.fn, tabs: [{ id: 7, url: A + '/jobs?o=42' }], granted: [A + '/*'], flags: { sessionLogin: false } });
+  await env.window.DCC.popupPage.ready;
+  assert.equal(env.window.DCC.flags.sessionLogin, false);
+  assert.equal(env.$('use-session'), null);
+  assert.equal(env.document.querySelectorAll('[data-feature="session-login"]').length, 0);
+  assert.ok(!/Use my Databricks login/.test(env.text()), 'no trace of the method in the page');
+  env.$('connect-btn').click();
+  await settle();
+  assert.equal(env.$('oauth-setup').hidden, false, 'the chooser still opens');
+  assert.ok(env.$('use-token'), 'token and client ID choices remain');
+  env.$('oauth-client-id').value = 'lakeline-client-0001';
+  env.$('oauth-save-connect').click();
+  await settle();
+  assert.deepEqual(env.sent('connect:oneClick').at(-1), { type: 'connect:oneClick', url: A + '/jobs?o=42', clientId: 'lakeline-client-0001' });
+  assert.ok(!env.sent('connect:oneClick').some((m) => m.method === 'session'));
+  assert.match(env.text('tab-status'), /Connected · workspace 42/);
+  env.close();
+
+  // The development build keeps it.
+  const dev = openPage('popup', { onMessage: popupWorker().fn, tabs: [{ id: 7, url: A + '/jobs?o=42' }] });
+  await dev.window.DCC.popupPage.ready;
+  assert.ok(dev.$('use-session'));
+  dev.close();
+});
+
+test('options: a saved connection opens condensed: three one-line summaries with Edit links, Save hidden until editing', async () => {
+  const { env } = await openOptions({ connections: { [A]: savedConn(A) } }, { granted: [A + '/*'] });
+  for (const [id, body] of [['connect', 'connect-body'], ['auth', 'auth-body'], ['warehouse', 'warehouse-body']]) {
+    assert.equal(env.$(id).getAttribute('data-state'), 'done', id);
+    assert.equal(env.$(body).hidden, true, id + ' is condensed');
+    assert.equal(env.$(id).querySelector('[data-step-toggle]').hidden, false, id + ' offers Edit');
+  }
+  assert.equal(env.text('ws-summary'), 'dbc-aaa.cloud.databricks.com · workspace 42');
+  assert.equal(env.text('auth-summary'), 'Personal access token · token saved for this session');
+  assert.equal(env.text('warehouse-summary'), 'Automatic → BI Serverless · List prices · USD');
+  assert.equal(env.$('site-access').hidden, false, 'site access stays visible under a condensed workspace');
+  assert.match(env.text('access-status'), /Access allowed/);
+  assert.equal(env.$('save-controls').hidden, true, 'nothing to save while everything is condensed');
+
+  env.document.querySelector('[data-step-toggle="warehouse"]').click();
+  await settle();
+  assert.equal(env.$('warehouse-body').hidden, false);
+  assert.equal(env.text('warehouse-summary'), '');
+  assert.equal(env.document.activeElement, env.$('h-warehouse'), 'focus moves to the step heading');
+  assert.equal(env.$('save-controls').hidden, false, 'Save appears while editing');
+  env.$('save-btn').click();
+  await settle();
+  assert.equal(env.sent('admin:saveConnection').length, 1);
+  assert.equal(env.$('warehouse-body').hidden, true, 'a successful save condenses the steps again');
+  assert.match(env.text('save-result'), /Connection saved for dbc-aaa\.cloud\.databricks\.com/, 'the result stays visible');
+  env.close();
+});
+
+test('options: with no workspace chosen, Sign in and Warehouse wait; typing or arrowing through choices never condenses a step', async () => {
+  const { env } = await openOptions({ observed: { [A]: { workspaceId: '42', seenAt: 1 }, [B]: { workspaceId: '7', seenAt: 1 } } });
+  assert.equal(env.$('auth-body').hidden, true);
+  assert.equal(env.$('warehouse-body').hidden, true);
+  assert.equal(env.text('auth-summary'), 'Choose a workspace first');
+  assert.equal(env.document.querySelector('[data-step-toggle="auth"]').hidden, true, 'no Edit while locked');
+  assert.equal(env.$('site-access').hidden, true);
+  env.document.querySelector(`input[name="ws"][value="${A}"]`).click();
+  await settle();
+  assert.equal(env.$('ws-id').value, '42');
+  assert.equal(env.$('connect-body').hidden, false, 'a manual pick keeps step 1 open (focus stays in the group)');
+  assert.equal(env.$('auth-body').hidden, false);
+  assert.equal(env.$('connect').getAttribute('data-state'), 'done');
+  assert.ok(env.$('auth').hasAttribute('data-current'), 'Sign in is the current step');
+  env.close();
+});
+
+test('options: a hand-off from the popup condenses step 1; the four sign-in methods are listed in order', async () => {
+  const { env } = await openOptions({ pending: { origin: A, workspaceId: '42', conflict: false } });
+  assert.equal(env.$('connect-body').hidden, true);
+  assert.equal(env.text('ws-summary'), 'dbc-aaa.cloud.databricks.com · workspace 42');
+  assert.deepEqual([...env.document.querySelectorAll('input[name="auth"]')].map((r) => r.value), ['oauth', 'pat', 'session', 'helper']);
+  assert.match(env.text('auth'), /Databricks currently rejects browser-login API calls on tested workspaces/);
+  const visible = ['auth-oauth', 'auth-pat', 'auth-session', 'auth-helper'].filter((id) => !env.$(id).hidden);
+  assert.deepEqual(visible, ['auth-oauth'], 'only the chosen method shows its panel');
+  for (const id of ['advanced', 'import', 'diagnostics', 'storage', 'disconnect']) {
+    assert.equal(env.$(id).tagName, 'DETAILS', id);
+    assert.equal(env.$(id).open, false, id + ' is collapsed');
+  }
+  env.document.querySelector('[data-step-toggle="workspace"]').click();
+  await settle();
+  assert.equal(env.$('connect-body').hidden, false, 'Edit reopens it');
+  env.close();
+});
+
+test('options: the store build (flags.sessionLogin false) removes "Use my Databricks login" and the page still works', async () => {
+  const { env } = await openOptions({ pending: { origin: A, workspaceId: '42', conflict: false } }, { flags: { sessionLogin: false } });
+  assert.equal(env.$('auth-session'), null);
+  assert.equal(env.$('auth-session-radio'), null);
+  assert.equal(env.$('session-connect'), null);
+  assert.equal(env.document.querySelectorAll('[data-feature="session-login"]').length, 0);
+  assert.ok(!/Use my Databricks login/.test(env.text()));
+  assert.deepEqual([...env.document.querySelectorAll('input[name="auth"]')].map((r) => r.value), ['oauth', 'pat', 'helper']);
+  env.$('auth-pat-radio').click();
+  await settle();
+  assert.equal(env.$('auth-pat').hidden, false);
+  env.$('wh-list').click();
+  await settle();
+  env.$('save-btn').click();
+  await settle();
+  const saves = env.sent('admin:saveConnection');
+  assert.equal(saves.length, 1);
+  assert.equal(saves[0].connection.authMode, 'pat');
   env.close();
 });

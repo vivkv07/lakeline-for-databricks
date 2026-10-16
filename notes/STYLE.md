@@ -40,6 +40,31 @@ has its own name: "Lakeline for Databricks" ("Lakeline" where space is short).
   - Respect `prefers-reduced-motion`.
   - No animation is required.
 
+## Minimal
+
+The connection screens (popup, options) and the Genie side panel follow this stricter layer. It
+wins over the "Look" rules above where they differ; the monitor and the guide may keep their
+navy panel and numbered eyebrows.
+
+- **Fewer things on screen.** One primary action per view. Secondary items sit behind a
+  disclosure ("More", collapsed `<details>` rows, an Edit link on a completed step).
+- **Hairlines and whitespace, not cards.** Separate sections with a 1px `line` rule. No shadows.
+  Radius 10px (`--dcc-radius`) for buttons, inputs, segmented controls, alerts and selected rows.
+  Spacing scale 4 / 8 / 12 / 16 / 24.
+- **Type.** Inter 13–14px for body. IBM Plex Mono only for code, IDs, URLs or tokens to copy, and
+  numbers. Section names, when needed, use `.dcc-section-title` (tiny uppercase Inter, `muted`),
+  not numbered mono eyebrows.
+- **Color.** Pure white or pure black page. The accent blue marks the primary action
+  (`--dcc-primary`, white text, `.dcc-btn--primary`), selection (`--dcc-selected` fill,
+  `--dcc-on-selected` text, a 1px accent edge on segmented controls) and links. Amber only for
+  warnings. Status is a small dot (`.dcc-dot`, `--dcc-dot-*`) next to text that says the state.
+- **Alerts are quiet.** `.dcc-alert`: a soft tint, no border, a dot before a title that names
+  what happened. Never a colored side stripe.
+- **Disclosure rows.** `.dcc-disclosure` on a `<details>`: full-width summary row, chevron on
+  the right, an optional muted one-line hint.
+- **Checked, not guessed.** Text meets WCAG AA in both schemes, measured from computed colors.
+  Focus is a visible 2px accent ring.
+
 ## Tokens (exact values)
 
 | token | light | dark |
