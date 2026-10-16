@@ -33,6 +33,10 @@ const ALLOW = [
   ['local/workspace.js'],
   ['local/workspace.css'],
   ['local/fixture', { recursive: false, ext: ['.html', '.svg'] }],
+  ['local/fixture-server.mjs'],
+  ['local/fixture-data.mjs'],
+  ['local/support/sqlengine.mjs'],
+  ['package-lock.json'],
   ['start-helper.command'],
   ['start-helper.sh'],
   ['costs.example.json'],
@@ -118,7 +122,7 @@ function zip(entries) {
     lh.writeUInt32LE(comp.length, 18); lh.writeUInt32LE(data.length, 22); lh.writeUInt16LE(nameBuf.length, 26); lh.writeUInt16LE(0, 28);
     local.push(lh, nameBuf, comp);
     const ch = Buffer.alloc(46);
-    ch.writeUInt32LE(0x02014b50, 0); ch.writeUInt16LE(20, 4); ch.writeUInt16LE(20, 6); ch.writeUInt16LE(0x0800, 8); ch.writeUInt16LE(8, 10);
+    ch.writeUInt32LE(0x02014b50, 0); ch.writeUInt16LE((3 << 8) | 20, 4); // made by Unix → modes honored ch.writeUInt16LE(20, 6); ch.writeUInt16LE(0x0800, 8); ch.writeUInt16LE(8, 10);
     ch.writeUInt16LE(dosTime, 12); ch.writeUInt16LE(dosDate, 14); ch.writeUInt32LE(crc, 16); ch.writeUInt32LE(comp.length, 20);
     ch.writeUInt32LE(data.length, 24); ch.writeUInt16LE(nameBuf.length, 28); ch.writeUInt32LE(0, 30); ch.writeUInt32LE(0, 34);
     ch.writeUInt32LE(name.endsWith('.command') || name.endsWith('.sh') ? (0o100755 << 16) >>> 0 : (0o100644 << 16) >>> 0, 38);

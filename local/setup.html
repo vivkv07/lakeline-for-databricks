@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Cost Companion setup</title>
+  <link rel="stylesheet" href="/setup.css">
+  <!-- setup.js reads the one-time pairing key from the URL fragment and removes it immediately. -->
+  <script src="/setup.js"></script>
+</head>
+<body>
+  <main class="page">
+    <header class="head">
+      <p class="eyebrow">Databricks Cost Companion</p>
+      <h1>Connect the browser extension to the local helper</h1>
+      <p class="lede">The helper runs only on this computer (127.0.0.1). It signs in to Databricks with the Databricks CLI and runs read-only cost queries for the extension. Sign-in tokens stay with the CLI and the helper; they are never sent to the browser extension.</p>
+    </header>
+
+    <section class="card" id="state-ready" hidden aria-labelledby="ready-title">
+      <h2 id="ready-title">Pair this helper</h2>
+      <ol class="steps">
+        <li>Make sure the extension is loaded in <strong>this</strong> browser (Microsoft Edge or Google Chrome). See <a href="#install">Install the extension</a> below if it is not.</li>
+        <li>Select <strong>Connect workspace</strong>. The extension checks the helper and opens <em>Connection preferences</em>.</li>
+        <li>In Connection preferences, choose your workspace, select <strong>Sign in with browser</strong>, then pick a SQL warehouse and price table.</li>
+      </ol>
+      <div class="actions">
+        <button type="button" class="primary" id="connect">Connect workspace</button>
+      </div>
+      <div class="status" id="status" role="status" aria-live="polite"></div>
+    </section>
+
+    <section class="card notice" id="state-missing" hidden aria-labelledby="missing-title">
+      <h2 id="missing-title">Open setup again from the start script</h2>
+      <p>This page was opened without its one-time pairing link, or it was reloaded. For safety the pairing key is removed from the address bar as soon as the page opens and is never stored.</p>
+      <p>Run <code>start-helper.command</code> (macOS) or <code>start-helper.sh</code> again. If the helper is already running, the script reopens this page with a fresh link without restarting the helper.</p>
+    </section>
+
+    <section class="card notice" id="state-no-extension" hidden aria-labelledby="noext-title">
+      <h2 id="noext-title">The extension is not available on this page</h2>
+      <p id="noext-reason">This browser did not expose the extension to the setup page. The extension is probably not loaded in this browser yet.</p>
+      <ol class="steps">
+        <li>Load the extension (see <a href="#install">Install the extension</a>).</li>
+        <li>Run the start script again. It reopens this page with a fresh link; the running helper is reused.</li>
+      </ol>
+      <p>Using a different browser for the extension? Enter the pairing key manually instead: open the extension's <em>Connection preferences</em>, find <em>Local helper</em>, and paste the key there.</p>
+      <div class="actions">
+        <button type="button" id="reveal" aria-expanded="false" aria-controls="manual">Show key for manual entry</button>
+      </div>
+      <div class="manual" id="manual" hidden>
+        <p>Pairing key (valid until the helper stops):</p>
+        <p class="keyline"><code id="manual-key"></code> <button type="button" id="copy">Copy</button></p>
+        <p class="hint">Treat it like a password: anyone on this computer with the key can ask the helper to run cost queries as you.</p>
+      </div>
+    </section>
+
+    <section class="card" id="install" aria-labelledby="install-title">
+      <h2 id="install-title">Install the extension</h2>
+      <ol class="steps">
+        <li>Open <code>edge://extensions</code> in Microsoft Edge or <code>chrome://extensions</code> in Google Chrome.</li>
+        <li>Turn on <strong>Developer mode</strong>.</li>
+        <li>Select <strong>Load unpacked</strong> and choose the <code>extension</code> folder inside this project.</li>
+        <li>Run the start script again so this page opens with a fresh pairing link.</li>
+      </ol>
+      <p class="hint">Prerequisites for browser sign-in: Databricks CLI v1.12 or newer on this computer. Prefer not to install it? Use a personal access token under Connection preferences instead; the helper is then not needed.</p>
+    </section>
+
+    <footer class="foot">
+      <p>Estimated costs. Billing can be delayed; final invoices may differ.</p>
+      <p>Independent project; not affiliated with Databricks, Inc. To stop the helper, press Ctrl+C in its terminal window.</p>
+    </footer>
+  </main>
+</body>
+</html>
