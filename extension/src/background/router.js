@@ -370,7 +370,7 @@
       } catch (e) {
         const error = errors.toPayload(e);
         if (deps.store && error.code !== 'NOT_CONNECTED') {
-          deps.store.recordDiagnostic({ type: msg && msg.type, code: error.code, details: error.details }).catch(() => {});
+          await deps.store.recordDiagnostic({ type: msg && V.safeText(msg.type, 40), code: error.code, details: error.details }).catch(() => {});
         }
         return { ok: false, error };
       }
