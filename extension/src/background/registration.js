@@ -18,6 +18,8 @@
     'src/content/native-adapter.js',
     'src/content/workspace-data.js',
     'src/content/workspace-ui.js',
+    'src/content/workspace-color.js',
+    'src/content/workspace-theme.js',
     'src/content/content-main.js',
   ]);
   const EXCLUDE = Object.freeze([

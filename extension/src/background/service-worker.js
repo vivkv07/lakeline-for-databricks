@@ -25,6 +25,7 @@ importScripts(
   './cache.js',
   './helper-client.js',
   './registration.js',
+  './appearance-handlers.js',
   './data-service.js',
   './router.js'
 );
