@@ -59,6 +59,7 @@ html, body {
 
 #stage { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; overflow: hidden; }
 #bg { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; }
+#fg { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; z-index: 500; pointer-events: none; }
 .layer { position: absolute; inset: 0; overflow: hidden; }
 .abs { position: absolute; left: 0; top: 0; }
 
@@ -71,15 +72,18 @@ html, body {
 
 /* ---------------------------------------------------------------- captions */
 
-.cap { position: absolute; left: 120px; width: 1500px; }
-.cap .eyebrow { font-size: 17px; color: var(--accent); margin-bottom: 14px; }
-.cap .head { font-size: 54px; font-weight: 600; letter-spacing: -0.03em; line-height: 1.1; color: var(--text); white-space: nowrap; }
-.cap .detail { margin-top: 16px; font-size: 25px; font-weight: 500; color: var(--body); letter-spacing: -0.005em; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.cap .detail .num { font-family: var(--mono); font-weight: 500; font-size: 24px; color: var(--warm); letter-spacing: 0; }
-.cap .detail .sep { color: var(--faint); padding: 0 10px; }
-.cap.left { width: 520px; }
-.cap.left .head { white-space: normal; font-size: 52px; }
-.cap.left .detail { white-space: normal; line-height: 1.45; }
+/* Lower-third pill captions with a subtle scrim; placed left or right, away from the focus. */
+.scrim { position: absolute; left: 0; right: 0; bottom: 0; height: 340px; pointer-events: none; }
+.t-light .scrim { background: linear-gradient(to top, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0)); }
+.t-dark .scrim { background: linear-gradient(to top, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0)); }
+.cap { position: absolute; max-width: 1260px; padding: 18px 26px 20px; border-radius: 22px; }
+.t-light .cap { background: rgba(255, 255, 255, 0.95); box-shadow: 0 0 0 1px var(--line), 0 18px 50px rgba(10, 10, 10, 0.16), 0 2px 8px rgba(10, 10, 10, 0.06); }
+.t-dark .cap { background: rgba(15, 15, 16, 0.94); box-shadow: 0 0 0 1px var(--line2), 0 18px 60px rgba(0, 0, 0, 0.65); }
+.cap .eyebrow { font-size: 14px; color: var(--accent); margin-bottom: 8px; }
+.cap .head { font-size: 40px; font-weight: 600; letter-spacing: -0.025em; line-height: 1.14; color: var(--text); }
+.cap .detail { margin-top: 10px; font-size: 22px; font-weight: 500; color: var(--body); letter-spacing: -0.005em; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.cap .detail .num { font-family: var(--mono); font-weight: 500; font-size: 20px; color: var(--warm); letter-spacing: 0; }
+.cap .detail .sep { color: var(--faint); padding: 0 8px; }
 
 /* --------------------------------------------------------- product zone */
 
@@ -88,32 +92,30 @@ html, body {
 
 /* ---------------------------------------------------------- browser window */
 
-.win { position: absolute; left: 0; top: 0; border-radius: 14px; background: var(--bg); box-shadow: var(--win-shadow); }
+.win { position: absolute; left: 0; top: 0; isolation: isolate; border-radius: 14px; background: var(--bg); box-shadow: var(--win-shadow); }
 .win .frame { position: absolute; inset: 0; border-radius: 14px; overflow: hidden; border: 1px solid var(--line2); }
-.win .tabs { position: absolute; left: 0; right: 0; top: 0; height: 42px; background: var(--surface); }
-.win .dots { position: absolute; left: 18px; top: 16px; display: flex; gap: 8px; }
-.win .dots i { width: 12px; height: 12px; border-radius: 50%; background: var(--line2); display: block; }
-.win .tab { position: absolute; left: 92px; top: 8px; height: 34px; width: 260px; border-radius: 10px 10px 0 0; background: var(--bg); border: 1px solid var(--line); border-bottom: none; display: flex; align-items: center; gap: 10px; padding: 0 14px; font-size: 13px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; }
-.win .tab .fav { width: 14px; height: 14px; border-radius: 4px; flex: none; }
-.win .tab .x { margin-left: auto; color: var(--faint); font-size: 14px; }
-.win .tab2 { left: 360px; background: transparent; border-color: transparent; color: var(--muted); }
-.win .toolbar { position: absolute; left: 0; right: 0; top: 42px; height: 46px; background: var(--bg); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-.win .nav { position: absolute; left: 18px; top: 13px; display: flex; gap: 18px; color: var(--muted); }
-.win .nav svg { width: 18px; height: 18px; display: block; }
-.win .addr { position: absolute; left: 132px; top: 7px; height: 32px; border-radius: 16px; background: var(--surface); display: flex; align-items: center; gap: 10px; padding: 0 16px; font-size: 14px; color: var(--body); white-space: nowrap; overflow: hidden; }
-.win .addr svg { width: 13px; height: 13px; color: var(--muted); flex: none; }
+.win .chrome { position: absolute; left: 0; right: 0; top: 0; height: 50px; background: var(--surface); border-bottom: 1px solid var(--line); }
+.win .dots { position: absolute; left: 16px; top: 20px; display: flex; gap: 7px; }
+.win .dots i { width: 10px; height: 10px; border-radius: 50%; background: var(--line2); display: block; }
+.win .tab { position: absolute; top: 8px; height: 34px; border-radius: 9px; display: flex; align-items: center; gap: 9px; padding: 0 12px; font-size: 13px; font-weight: 500; color: var(--muted); white-space: nowrap; overflow: hidden; border: 1px solid transparent; }
+.win .tab.on { background: var(--bg); border-color: var(--line); color: var(--text); }
+.win .tab .fav { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+.win .tab .tt { overflow: hidden; text-overflow: ellipsis; }
+.win .nav { position: absolute; top: 16px; display: flex; gap: 14px; color: var(--muted); }
+.win .nav svg { width: 17px; height: 17px; display: block; }
+.win .addr { position: absolute; top: 9px; height: 32px; border-radius: 16px; background: var(--bg); border: 1px solid var(--line); display: flex; align-items: center; gap: 9px; padding: 0 14px; font-size: 13.5px; color: var(--body); white-space: nowrap; overflow: hidden; }
+.win .addr svg { width: 12px; height: 12px; color: var(--muted); flex: none; }
 .win .addr .path { color: var(--faint); }
-.win .ext { position: absolute; top: 9px; width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
-.win .ext.on { background: var(--surface2); }
-.win .avatar { position: absolute; top: 11px; width: 24px; height: 24px; border-radius: 50%; background: var(--line2); }
-.win .content { position: absolute; left: 0; overflow: hidden; background: var(--bg); }
-.win .panelwrap { position: absolute; overflow: hidden; background: var(--bg); border-left: 1px solid var(--line2); }
+.win .ext { position: absolute; top: 10px; width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+.win .avatar { position: absolute; top: 13px; width: 24px; height: 24px; border-radius: 50%; background: var(--line2); }
+.win .content { position: absolute; left: 0; overflow: hidden; background: var(--bg); isolation: isolate; }
+.win .panelwrap { position: absolute; overflow: hidden; background: var(--bg); border-left: 1px solid var(--line2); isolation: isolate; }
 .shot { position: absolute; left: 0; top: 0; display: block; max-width: none; image-rendering: auto; }
 
 /* --------------------------------------------- popups and floating windows */
 
-.popup { position: absolute; border-radius: 12px; overflow: hidden; background: var(--bg); box-shadow: var(--pop-shadow), 0 0 0 1px var(--line2); transform-origin: 100% 0; }
-.floatwin { position: absolute; border-radius: 12px; overflow: hidden; background: var(--bg); box-shadow: var(--pop-shadow), 0 0 0 1px var(--line2); }
+.popup { position: absolute; isolation: isolate; border-radius: 12px; overflow: hidden; background: var(--bg); box-shadow: var(--pop-shadow), 0 0 0 1px var(--line2); transform-origin: 100% 0; }
+.floatwin { position: absolute; isolation: isolate; border-radius: 12px; overflow: hidden; background: var(--bg); box-shadow: var(--pop-shadow), 0 0 0 1px var(--line2); }
 .floatwin .bar { position: absolute; left: 0; right: 0; top: 0; height: 30px; background: var(--surface); border-bottom: 1px solid var(--line); }
 .floatwin .bar .dots { position: absolute; left: 12px; top: 10px; display: flex; gap: 7px; }
 .floatwin .bar .dots i { width: 10px; height: 10px; border-radius: 50%; background: var(--line2); display: block; }

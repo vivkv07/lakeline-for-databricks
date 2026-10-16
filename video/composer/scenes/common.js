@@ -11,7 +11,7 @@ export const HOSTS = {
 };
 
 export function hostFor(sc, state, which) {
-  const h = sc.m && state ? sc.T(state, ['host', 'workspace-host', 'origin', 'address', 'url'], ['path']) : null;
+  const h = sc.m && state ? sc.Tq(state, ['host', 'workspace-host', 'origin', 'address', 'url'], ['path']) : null;
   if (h && /[a-z0-9-]+\.[a-z]/i.test(h) && !/127\.0\.0\.1|localhost/.test(h)) return h.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
   return HOSTS[which] || HOSTS.prod;
 }
@@ -31,6 +31,7 @@ export function pageWindow(sc, { theme, states, sched, tabs, active = 0, panelW 
   });
   // Keep the window behind popups, rings and the cursor.
   sc.world.insertBefore(win.el, sc.world.firstChild);
+  sc.setWindow(win);
   const stack = crossStack(win.content, states, sched);
   sc.add((t) => stack.update(t));
   return { win, stack };

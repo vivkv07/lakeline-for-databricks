@@ -31,7 +31,7 @@ export function createWaves(canvas, dpr) {
 
   /**
    * p: { base, sheet?: {color, y}, circle?: {color, cx, cy, r}, level, linesIn, lineAlpha, drift }
-   *  - base: page color under everything
+   *  - base: page color under everything (null: transparent, for the foreground curtain)
    *  - sheet: a second color covering y >= sheet.y (a rising sheet wipe)
    *  - circle: a radial wipe in another color
    *  - level: 0 = no navy, 1 = full frame
@@ -40,17 +40,29 @@ export function createWaves(canvas, dpr) {
   function draw(t, p) {
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     g.globalAlpha = 1;
-    g.fillStyle = p.base;
-    g.fillRect(0, 0, Wd, Ht);
+    if (p.base) {
+      g.fillStyle = p.base;
+      g.fillRect(0, 0, Wd, Ht);
+    } else g.clearRect(0, 0, Wd, Ht);
     if (p.sheet && p.sheet.y < Ht) {
       g.fillStyle = p.sheet.color;
       g.fillRect(0, Math.max(0, p.sheet.y), Wd, Ht);
     }
     if (p.circle && p.circle.r > 0) {
-      g.fillStyle = p.circle.color;
-      g.beginPath();
-      g.arc(p.circle.cx, p.circle.cy, p.circle.r, 0, Math.PI * 2);
-      g.fill();
+      const c = p.circle;
+      if (c.feather) {
+        // Soft radial sweep: solid inside r - feather, fading to transparent at r.
+        const grad = g.createRadialGradient(c.cx, c.cy, Math.max(0, c.r - c.feather), c.cx, c.cy, c.r);
+        grad.addColorStop(0, c.color);
+        grad.addColorStop(1, c.color + '00');
+        g.fillStyle = grad;
+        g.fillRect(0, 0, Wd, Ht);
+      } else {
+        g.fillStyle = c.color;
+        g.beginPath();
+        g.arc(c.cx, c.cy, c.r, 0, Math.PI * 2);
+        g.fill();
+      }
     }
     const level = clamp(p.level || 0);
     if (level <= 0) return;

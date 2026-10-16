@@ -44,25 +44,27 @@ export function tokens(s) {
     .filter(Boolean);
 }
 
-/** Score how well a key (or several haystack strings) matches a hint like "connect-button" or "7d". */
-function hintScore(hay, hint) {
+/**
+ * Score how well a key (tokenized) matches a hint like "connect-button" or "7d". A full match
+ * (every hint token present) scores high; partial overlap scores 1 per token and only counts when
+ * partial matching is allowed (non-strict lookups).
+ */
+function hintScore(hay, hint, partial) {
   const ht = tokens(hint);
   if (!ht.length) return 0;
-  const joined = hay.join(' ');
-  const raw = String(hint).toLowerCase().replace(/[^a-z0-9]+/g, '');
-  const flat = hay.join('');
+  const hit = ht.filter((x) => hay.includes(x)).length;
   let s = 0;
-  if (ht.every((x) => hay.includes(x))) s += 4 * ht.length;
-  else if (ht.some((x) => hay.includes(x))) s += ht.filter((x) => hay.includes(x)).length;
-  if (raw && flat.includes(raw)) s += 1;
-  if (hay.length && ht.join(' ') === joined) s += 6;
+  if (hit === ht.length) {
+    s += 4 * ht.length;
+    if (ht.join(' ') === hay.join(' ')) s += 6;
+  } else if (partial && hit) s += hit;
   return s;
 }
 
-function scoreHints(hay, hints, not) {
+function scoreHints(hay, hints, not, partial = true) {
   let s = 0;
   for (let i = 0; i < hints.length; i++) {
-    const v = hintScore(hay, hints[i]);
+    const v = hintScore(hay, hints[i], partial);
     if (v) s += v * (1 + (hints.length - i) * 0.08); // earlier hints weigh a little more
   }
   for (const n of not || []) {
@@ -125,30 +127,30 @@ function textOf(v) {
   return null;
 }
 
+/**
+ * Flatten texts to { key: string }. Nested objects and arrays become dotted keys, e.g.
+ * spikeRun.badge, options.4.preview, badges.nightly_sales_etl, notes.0.
+ */
 function normTexts(src) {
   const out = {};
-  if (!src) return out;
-  if (Array.isArray(src)) {
-    src.forEach((x, i) => {
-      if (typeof x === 'string') out['text' + i] = x;
-      else if (x) {
-        const t = textOf(x);
-        if (t != null) out[x.key || x.name || x.id || 'text' + i] = t;
-      }
-    });
-  } else if (typeof src === 'object') {
-    for (const [k, v] of Object.entries(src)) {
-      if (v && typeof v === 'object' && !Array.isArray(v) && v.text == null && v.value == null && v.label == null) {
-        for (const [k2, v2] of Object.entries(v)) {
-          const t = textOf(v2);
-          if (t != null) out[k + '.' + k2] = t;
-        }
-      } else {
-        const t = textOf(v);
-        if (t != null) out[k] = t;
-      }
+  const walk = (v, key, depth) => {
+    if (v == null) return;
+    if (typeof v === 'string' || typeof v === 'number') { if (key) out[key] = String(v); return; }
+    if (depth > 4) return;
+    if (Array.isArray(v)) {
+      v.forEach((x, i) => {
+        if (x && typeof x === 'object' && !Array.isArray(x) && (x.key || x.name || x.id) && (x.text != null || x.value != null)) {
+          walk(x.text != null ? x.text : x.value, (key ? key + '.' : '') + (x.key || x.name || x.id), depth + 1);
+        } else walk(x, (key ? key + '.' : '') + i, depth + 1);
+      });
+      return;
     }
-  }
+    if (typeof v === 'object') {
+      if (key && (v.text != null || v.value != null) && Object.keys(v).length <= 3) { walk(v.text != null ? v.text : v.value, key, depth + 1); return; }
+      for (const [k, x] of Object.entries(v)) walk(x, key ? key + '.' + k : k, depth + 1);
+    }
+  };
+  walk(src, '', 0);
   return out;
 }
 
@@ -195,7 +197,7 @@ export function normalize(raw, { dirUrl, rootUrl, scene, placeholder = false }) 
     raw,
   };
   const mBoxesRaw = raw.boxes || raw.bboxes || raw.regions || raw.elements || raw.rects;
-  const dsf0 = num(raw.deviceScaleFactor || raw.dsf || raw.scale) || 2;
+  const dsf0 = num(raw.deviceScaleFactor || raw.dpr || raw.dsf || raw.scale) || 2;
   const vp0 = raw.viewport;
   let list = raw.states || raw.shots || raw.captures || raw.images || [];
   if (!Array.isArray(list)) list = Object.entries(list).map(([k, v]) => Object.assign({ id: k }, typeof v === 'string' ? { file: v } : v));
@@ -214,7 +216,7 @@ export function normalize(raw, { dirUrl, rootUrl, scene, placeholder = false }) 
       url: null,
       theme: (r.theme || raw.theme || '').toLowerCase() || null,
       vw, vh,
-      dsf: num(r.deviceScaleFactor || r.dsf || r.scale) || dsf0,
+      dsf: num(r.deviceScaleFactor || r.dpr || r.dsf || r.scale) || dsf0,
       description: r.description || r.desc || r.caption || '',
       scrollY: num(r.scrollY) || 0,
       boxes: normBoxes(r.boxes || r.bboxes || r.regions || r.elements || r.rects),
@@ -227,8 +229,11 @@ export function normalize(raw, { dirUrl, rootUrl, scene, placeholder = false }) 
       const t = tokens(s.file + ' ' + s.id);
       s.theme = t.includes('dark') ? 'dark' : t.includes('light') ? 'light' : null;
     }
-    s.hay = tokens([s.id, s.file, s.kind, s.description].join(' '));
-    s.idHay = tokens(s.id + ' ' + (s.file || '').split('/').slice(-2).join(' '));
+    // Match on the state id (weighted) plus kind, description and, for real captures, the file
+    // name. Placeholder file names are arbitrary, so they are left out.
+    const base = m.placeholder ? '' : (s.file || '').split('/').pop().replace(/\.\w+$/, '');
+    s.idHay = tokens(s.id);
+    s.hay = tokens([s.id, base, s.kind, s.description].join(' '));
     m.states.push(s);
   });
   // Manifest-level boxes: keyed by state id ({stateId: {name: box}}), flat with a state field, or shared.
@@ -250,7 +255,7 @@ export function normalize(raw, { dirUrl, rootUrl, scene, placeholder = false }) 
       if (k.startsWith(s.id + '.')) s.texts[k.slice(s.id.length + 1)] = v;
     }
   }
-  const n = raw.notification || raw.notify;
+  const n = raw.notification || raw.notify || (raw.extra && raw.extra.notification);
   if (n && typeof n === 'object') m.notification = { title: textOf(n.title), message: textOf(n.message || n.body), context: textOf(n.context || n.contextMessage) };
   return m;
 }
@@ -271,12 +276,13 @@ export function findState(m, spec, warn) {
   }
   let best = null, bestScore = 0;
   for (const s of pool) {
-    const v = scoreHints(s.idHay, hints, not) * 2 + scoreHints(s.hay, hints, not);
+    // Negative hints apply to the id only; descriptions are free text and may mention anything.
+    const v = scoreHints(s.idHay, hints, not, !strict) * 2 + scoreHints(s.hay, hints, [], !strict);
     if (v > bestScore) { best = s; bestScore = v; }
   }
   if (best) return best;
   if (strict) return null;
-  const fb = pool[Math.min(index, pool.length - 1)] || m.states[0] || null;
+  const fb = pool[Math.min(index, pool.length - 1)] || null;
   if (warn && hints.length) warn(`scene ${m.scene}: no state matched [${hints.join(', ')}] (kind ${kind || 'any'}); using ${fb ? fb.id : 'none'}`);
   return fb;
 }
@@ -284,11 +290,16 @@ export function findState(m, spec, warn) {
 /** Find a bounding box on a state (then manifest-level shared boxes) by name hints. */
 export function findBox(m, state, hints, not, warn) {
   const cands = [];
-  if (state) for (const [k, b] of Object.entries(state.boxes)) cands.push([k, b]);
+  // Boxes must lie within the state's captured viewport (a few px of tolerance).
+  const inside = (b) => !state || !state.vw || !state.vh || (b.x >= -4 && b.y >= -4 && b.x + b.w <= state.vw + 4 && b.y + b.h <= state.vh + 4);
+  if (state) for (const [k, b] of Object.entries(state.boxes)) {
+    if (inside(b)) cands.push([k, b]);
+    else if (warn && !state.badBoxWarned) { state.badBoxWarned = true; warn(`scene ${m ? m.scene : '?'}: box ${k} on ${state.id} lies outside the ${state.vw}×${state.vh} viewport; ignored`); }
+  }
   if (m) for (const [k, b] of Object.entries(m.boxes)) cands.push([k, b]);
   let best = null, bestScore = 0;
   for (const [k, b] of cands) {
-    const v = scoreHints(tokens(k), hints, not);
+    const v = scoreHints(tokens(k), hints, not, false); // full hint matches only
     if (v > bestScore) { best = b; bestScore = v; }
   }
   if (!best && warn) warn(`scene ${m ? m.scene : '?'}: no box matched [${hints.join(', ')}] on ${state ? state.id : 'n/a'}`);
@@ -303,7 +314,7 @@ export function findText(m, state, hints, not, warn) {
   let best = null, bestScore = 0;
   for (const [k, v] of cands) {
     if (v == null || v === '') continue;
-    const sc = scoreHints(tokens(k), hints, not);
+    const sc = scoreHints(tokens(k), hints, not, false); // full hint matches only
     if (sc > bestScore) { best = v; bestScore = sc; }
   }
   if (best == null && warn) warn(`scene ${m ? m.scene : '?'}: no text matched [${hints.join(', ')}] on ${state ? state.id : 'n/a'}; caption detail omitted`);
@@ -322,25 +333,38 @@ async function fetchJson(url) {
   }
 }
 
+/**
+ * Index entries as [{ name, urls: [manifest urls] }]. Accepts scenes as an array or an object, each
+ * with a single manifest path or per-theme manifests ({ themes: { light: { manifest }, ... } }).
+ */
 function indexEntries(index) {
   const out = [];
-  const push = (name, rel) => name && out.push({ name: String(name), rel: rel || String(name).replace(/\/$/, '') + '/manifest.json' });
+  const clean = (rel) => '/captures/' + String(rel).replace(/^\.?\/*/, '').replace(/^dist\/video\/captures\//, '');
+  const add = (name, rels) => {
+    if (!name) return;
+    const urls = rels.filter(Boolean).map(clean);
+    if (!urls.length) urls.push(clean(String(name).replace(/\/$/, '') + '/manifest.json'));
+    out.push({ name: String(name), urls });
+  };
+  const fromObj = (name, v) => {
+    if (typeof v === 'string') return add(name, [v.endsWith('.json') ? v : null]);
+    if (!v || typeof v !== 'object') return add(name, []);
+    const rels = [];
+    if (v.manifest || v.path || v.file) rels.push(v.manifest || v.path || v.file);
+    if (v.themes && typeof v.themes === 'object') for (const t of Object.values(v.themes)) if (t && (t.manifest || t.path)) rels.push(t.manifest || t.path);
+    if (Array.isArray(v.manifests)) rels.push(...v.manifests);
+    add(name || v.id || v.scene || v.name || v.dir || (rels[0] ? String(rels[0]).split('/')[0] : null), rels);
+  };
   const sc = index.scenes || index.manifests || index.entries || index;
   if (Array.isArray(sc)) {
     for (const e of sc) {
-      if (typeof e === 'string') push(e.replace(/\/manifest\.json$/, ''), e.endsWith('.json') ? e : null);
-      else if (e && typeof e === 'object') {
-        const rel = e.manifest || e.path || e.file || null;
-        push(e.id || e.scene || e.name || e.dir || e.folder || (rel ? rel.split('/')[0] : null), rel);
-      }
+      if (typeof e === 'string') add(e.split('/')[0], [e.endsWith('.json') ? e : null]);
+      else fromObj(e && (e.id || e.scene || e.name || e.dir || e.folder), e);
     }
   } else if (sc && typeof sc === 'object') {
-    for (const [k, v] of Object.entries(sc)) {
-      if (typeof v === 'string') push(k, v.endsWith('.json') ? v : null);
-      else if (v && typeof v === 'object') push(k, v.manifest || v.path || null);
-    }
+    for (const [k, v] of Object.entries(sc)) fromObj(k, v);
   }
-  return out.map((e) => ({ name: e.name, url: '/captures/' + e.rel.replace(/^\.?\/*/, '').replace(/^dist\/video\/captures\//, '') }));
+  return out;
 }
 
 /** Pick the capture folder for storyboard scene n: leading number first, then keywords. */
@@ -370,24 +394,45 @@ export async function loadAll() {
   }
   if (!entries.length) {
     const scan = await fetchJson('/__scan');
-    if (Array.isArray(scan)) entries = scan.map((p) => ({ name: p.split('/')[0], url: '/captures/' + p }));
+    if (Array.isArray(scan)) {
+      const by = new Map();
+      for (const p of scan) {
+        const k = p.split('/')[0];
+        if (!by.has(k)) by.set(k, []);
+        by.get(k).push('/captures/' + p);
+      }
+      entries = [...by].map(([name, urls]) => ({ name, urls }));
+    }
   }
   const ph = (await fetchJson('placeholder/manifests.json')) || {};
   for (const n of Object.keys(SCENES).map(Number)) {
     const entry = matchEntry(entries, n);
     let m = null;
     if (entry) {
-      const raw = await fetchJson(entry.url);
-      if (raw) {
-        const dirUrl = entry.url.replace(/[^/]*$/, '');
-        m = normalize(raw, { dirUrl, rootUrl: '/captures/', scene: n, placeholder: !!(index && index.placeholder === true) });
-        if (!m.states.length) { warn(`scene ${n}: ${entry.url} has no states`); m = null; }
-        else result.sources[n] = entry.url;
-      } else warn(`scene ${n}: could not read ${entry.url}`);
+      const parts = [];
+      for (const url of entry.urls) {
+        const raw = await fetchJson(url);
+        if (!raw) { warn(`scene ${n}: could not read ${url}`); continue; }
+        const part = normalize(raw, { dirUrl: url.replace(/[^/]*$/, ''), rootUrl: '/captures/', scene: n, placeholder: !!(index && index.placeholder === true) });
+        if (part.states.length) parts.push(part);
+        else warn(`scene ${n}: ${url} has no states`);
+      }
+      if (parts.length) {
+        m = parts[0];
+        for (const p of parts.slice(1)) {
+          m.states.push(...p.states);
+          Object.assign(m.boxes, p.boxes);
+          for (const [k, v] of Object.entries(p.texts)) if (!(k in m.texts)) m.texts[k] = v;
+          m.notification = m.notification || p.notification;
+          m.placeholder = m.placeholder || p.placeholder;
+        }
+        m.states.forEach((st, i) => { st.index = i; });
+        result.sources[n] = entry.urls.join(' + ');
+      }
     }
     if (!m) {
       const raw = ph[String(n)];
-      m = raw ? normalize(raw, { dirUrl: '/placeholder/', rootUrl: '/placeholder/', scene: n, placeholder: true }) : { scene: n, placeholder: true, states: [], boxes: {}, texts: {} };
+      m = raw ? normalize(raw, { dirUrl: '/ph-img/', rootUrl: '/ph-img/', scene: n, placeholder: true }) : { scene: n, placeholder: true, states: [], boxes: {}, texts: {} };
       result.sources[n] = 'placeholder';
     }
     result.scenes[n] = m;
@@ -395,7 +440,7 @@ export async function loadAll() {
   /** Replace a scene with its placeholder (used when a real capture image fails to load). */
   result.fallback = (n) => {
     const raw = ph[String(n)];
-    const m = raw ? normalize(raw, { dirUrl: '/placeholder/', rootUrl: '/placeholder/', scene: n, placeholder: true }) : { scene: n, placeholder: true, states: [], boxes: {}, texts: {} };
+    const m = raw ? normalize(raw, { dirUrl: '/ph-img/', rootUrl: '/ph-img/', scene: n, placeholder: true }) : { scene: n, placeholder: true, states: [], boxes: {}, texts: {} };
     result.scenes[n] = m;
     result.sources[n] = 'placeholder (fallback)';
     return m;
