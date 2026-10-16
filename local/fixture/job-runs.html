@@ -1,0 +1,98 @@
+<!--
+  Fixture fragment: job detail page, Runs tab (route /jobs/1001/runs). Synthetic data only
+  (workspace 1234567890). The title gets "Job total: … · 30d est." Run rows are role="row" in a
+  role="grid" table. Some rows also link a DIFFERENT workflow (job 777, run 90001) in the
+  "Launched" column; badges must show the current job's run (1001) only and never the launching
+  workflow's cost. A row whose only run link is the launching workflow gets no badge. The duration
+  timeline bars and status dots stay native.
+-->
+<style data-fixture="job-runs">
+  .fx-detail { font: 13px/1.4 system-ui, sans-serif; color: #11171c; padding: 0 16px; }
+  .fx-crumbs { display: flex; gap: 6px; color: #5f7281; padding: 8px 0; }
+  .fx-crumbs a, .fx-runs a { color: #2272b4; text-decoration: none; }
+  .fx-title-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .fx-tabs { display: flex; gap: 16px; border-bottom: 1px solid #e0e4e8; margin: 8px 0; }
+  .fx-tabs a { padding: 6px 0; color: #11171c; text-decoration: none; }
+  .fx-tabs a[aria-selected="true"] { border-bottom: 2px solid #2272b4; }
+  .fx-timeline { display: flex; align-items: flex-end; gap: 4px; height: 60px; padding: 4px 0; border-bottom: 1px solid #e0e4e8; }
+  .fx-timeline a { display: block; width: 14px; background: #3ba65e; border-radius: 2px 2px 0 0; }
+  .fx-timeline a.fail { background: #e65b77; }
+  .fx-runs { width: 100%; border-collapse: collapse; }
+  .fx-runs th, .fx-runs td { padding: 6px 10px; border-bottom: 1px solid #e0e4e8; text-align: left; }
+  .fx-runs th { color: #5f7281; font-weight: 600; }
+  .fx-bar { display: inline-block; height: 6px; background: #8fb8de; border-radius: 3px; vertical-align: middle; margin-right: 6px; }
+  .fx-status { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #3ba65e; margin-right: 4px; }
+  .fx-status.fail { background: #e65b77; }
+</style>
+<section class="fx-detail" data-testid="job-detail-page">
+  <nav class="fx-crumbs" aria-label="Breadcrumb">
+    <a href="/jobs?o=1234567890">Jobs &amp; Pipelines</a><span>/</span><a href="/jobs/1001?o=1234567890">nightly_sales_etl</a>
+  </nav>
+  <div class="fx-title-row">
+    <h1 data-testid="page-title">nightly_sales_etl</h1>
+    <a href="/jobs/1001/edit?o=1234567890">Edit task</a>
+  </div>
+  <div class="fx-tabs" role="tablist" aria-label="Job sections">
+    <a role="tab" aria-selected="true" href="/jobs/1001/runs?o=1234567890">Runs</a>
+    <a role="tab" aria-selected="false" href="/jobs/1001/tasks?o=1234567890">Tasks</a>
+  </div>
+
+  <!-- Dense duration timeline: one bar per run. Left native, never badged. -->
+  <div class="fx-timeline" role="img" aria-label="Run duration timeline">
+    <a href="/jobs/1001/runs/50101?o=1234567890" style="height: 40px" aria-label="Run 50101, 12 minutes"></a>
+    <a href="/jobs/1001/runs/50102?o=1234567890" style="height: 52px" aria-label="Run 50102, 15 minutes"></a>
+    <a class="fail" href="/jobs/1001/runs/50103?o=1234567890" style="height: 8px" aria-label="Run 50103, 2 minutes"></a>
+    <a href="/jobs/1001/runs/50104?o=1234567890" style="height: 44px" aria-label="Run 50104, 13 minutes"></a>
+  </div>
+
+  <table class="fx-runs" role="grid" aria-label="Job runs">
+    <thead>
+      <tr role="row">
+        <th role="columnheader" scope="col">Start time</th>
+        <th role="columnheader" scope="col">Run ID</th>
+        <th role="columnheader" scope="col">Launched</th>
+        <th role="columnheader" scope="col">Duration</th>
+        <th role="columnheader" scope="col">Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr role="row" data-fx-run="50101">
+        <td role="gridcell"><a href="/jobs/1001/runs/50101?o=1234567890">Oct 14, 2026, 02:00:00 AM</a></td>
+        <td role="gridcell"><a href="/jobs/1001/runs/50101?o=1234567890">50101</a></td>
+        <td role="gridcell">By scheduler</td>
+        <td role="gridcell"><span class="fx-bar" style="width: 60px"></span>12m 4s</td>
+        <td role="gridcell"><span class="fx-status" aria-label="Succeeded"></span>Succeeded</td>
+      </tr>
+      <tr role="row" data-fx-run="50102">
+        <td role="gridcell"><a href="/jobs/1001/runs/50102?o=1234567890">Oct 13, 2026, 02:00:00 AM</a></td>
+        <td role="gridcell"><a href="/jobs/1001/runs/50102?o=1234567890">50102</a></td>
+        <td role="gridcell">Run job task of <a href="/jobs/777/runs/90001?o=1234567890">orchestrator_daily</a></td>
+        <td role="gridcell"><span class="fx-bar" style="width: 75px"></span>15m 10s</td>
+        <td role="gridcell"><span class="fx-status" aria-label="Succeeded"></span>Succeeded</td>
+      </tr>
+      <tr role="row" data-fx-run="50103">
+        <td role="gridcell"><a href="/jobs/1001/runs/50103?o=1234567890">Oct 12, 2026, 02:00:00 AM</a></td>
+        <td role="gridcell"><a href="/jobs/1001/runs/50103?o=1234567890">50103</a></td>
+        <td role="gridcell">Manually</td>
+        <td role="gridcell"><span class="fx-bar" style="width: 10px"></span>2m 1s</td>
+        <td role="gridcell"><span class="fx-status fail" aria-label="Failed"></span>Failed</td>
+      </tr>
+      <tr role="row" data-fx-run="50104">
+        <!-- Legacy hash route for the current job's run, plus the launching workflow's job link. -->
+        <td role="gridcell"><a href="/#job/1001/run/50104">Oct 11, 2026, 02:00:00 AM</a></td>
+        <td role="gridcell">50104</td>
+        <td role="gridcell">Run job task of <a href="/jobs/777?o=1234567890">orchestrator_daily</a></td>
+        <td role="gridcell"><span class="fx-bar" style="width: 65px"></span>13m 0s</td>
+        <td role="gridcell"><span class="fx-status" aria-label="Succeeded"></span>Succeeded</td>
+      </tr>
+      <tr role="row" data-fx-run="launcher-only">
+        <!-- Only the launching workflow is linked: no badge (never substitute its cost). -->
+        <td role="gridcell">Oct 10, 2026, 02:00:00 AM</td>
+        <td role="gridcell">50100</td>
+        <td role="gridcell">Run job task of <a href="/jobs/777/runs/89999?o=1234567890">orchestrator_daily</a></td>
+        <td role="gridcell"><span class="fx-bar" style="width: 60px"></span>12m 2s</td>
+        <td role="gridcell"><span class="fx-status" aria-label="Succeeded"></span>Succeeded</td>
+      </tr>
+    </tbody>
+  </table>
+</section>

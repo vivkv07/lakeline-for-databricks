@@ -1,0 +1,77 @@
+<!--
+  Fixture fragment: Jobs & Pipelines list (route /jobs). Synthetic data only (workspace 1234567890).
+  Rows are role="row" inside role="grid". Inline cost badges go next to each job or pipeline
+  name link. The "Recent runs" status dots link to runs but have no text and stay native.
+  "Create" and edit links are navigation-only and must be ignored.
+-->
+<style data-fixture="jobs">
+  .fx-list { font: 13px/1.4 system-ui, sans-serif; color: #11171c; }
+  .fx-list-head { display: flex; align-items: center; gap: 12px; padding: 12px 16px; }
+  .fx-grid { display: table; width: 100%; border-collapse: collapse; }
+  .fx-grid [role="rowgroup"] { display: table-row-group; }
+  .fx-grid [role="row"] { display: table-row; }
+  .fx-grid [role="columnheader"], .fx-grid [role="gridcell"] { display: table-cell; padding: 6px 12px; border-bottom: 1px solid #e0e4e8; text-align: left; vertical-align: middle; }
+  .fx-grid [role="columnheader"] { color: #5f7281; font-weight: 600; }
+  .fx-grid a { color: #2272b4; text-decoration: none; }
+  .fx-dots { display: inline-flex; gap: 3px; }
+  .fx-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #3ba65e; }
+  .fx-dot.fail { background: #e65b77; }
+</style>
+<section class="fx-list" data-testid="jobs-list-page">
+  <div class="fx-list-head">
+    <h1>Jobs &amp; Pipelines</h1>
+    <a href="/jobs/create?o=1234567890" class="fx-btn">Create job</a>
+  </div>
+  <div role="grid" class="fx-grid" aria-label="Jobs and pipelines" aria-rowcount="5">
+    <div role="rowgroup">
+      <div role="row" aria-rowindex="1">
+        <div role="columnheader">Name</div>
+        <div role="columnheader">Type</div>
+        <div role="columnheader">Recent runs</div>
+        <div role="columnheader">Owner</div>
+      </div>
+    </div>
+    <div role="rowgroup">
+      <div role="row" aria-rowindex="2" data-fx-row="job-1001">
+        <div role="gridcell"><a href="/jobs/1001?o=1234567890">nightly_sales_etl</a></div>
+        <div role="gridcell">Job</div>
+        <div role="gridcell">
+          <span class="fx-dots">
+            <a class="fx-dot" href="/jobs/1001/runs/50101?o=1234567890" aria-label="Run 50101 succeeded"></a>
+            <a class="fx-dot" href="/jobs/1001/runs/50102?o=1234567890" aria-label="Run 50102 succeeded"></a>
+            <a class="fx-dot fail" href="/jobs/1001/runs/50103?o=1234567890" aria-label="Run 50103 failed"></a>
+          </span>
+        </div>
+        <div role="gridcell">owner@example.com</div>
+      </div>
+      <div role="row" aria-rowindex="3" data-fx-row="job-1002">
+        <div role="gridcell"><a href="/jobs/1002">hourly_events</a></div>
+        <div role="gridcell">Job</div>
+        <div role="gridcell">
+          <span class="fx-dots">
+            <a class="fx-dot" href="/jobs/1002/runs/60001" aria-label="Run 60001 succeeded"></a>
+          </span>
+        </div>
+        <div role="gridcell">owner@example.com</div>
+      </div>
+      <div role="row" aria-rowindex="4" data-fx-row="job-777">
+        <div role="gridcell"><a href="/jobs/777?o=1234567890">orchestrator_daily</a></div>
+        <div role="gridcell">Job</div>
+        <div role="gridcell"><span class="fx-dots"><a class="fx-dot" href="/jobs/777/runs/90001?o=1234567890" aria-label="Run 90001 succeeded"></a></span></div>
+        <div role="gridcell">owner@example.com</div>
+      </div>
+      <div role="row" aria-rowindex="5" data-fx-row="pipeline-1">
+        <div role="gridcell"><a href="/pipelines/0a1b2c3d-1111-4a2b-8c3d-000000000001?o=1234567890">bronze_ingest</a></div>
+        <div role="gridcell">Pipeline</div>
+        <div role="gridcell"><span class="fx-dots"><a class="fx-dot" href="/pipelines/0a1b2c3d-1111-4a2b-8c3d-000000000001/updates/0a1b2c3d-2222-4a2b-8c3d-000000000011?o=1234567890" aria-label="Update completed"></a></span></div>
+        <div role="gridcell">owner@example.com</div>
+      </div>
+      <div role="row" aria-rowindex="6" data-fx-row="other-workspace">
+        <div role="gridcell"><a href="/jobs/4242?o=9999999999">job_in_another_workspace</a></div>
+        <div role="gridcell">Job</div>
+        <div role="gridcell"></div>
+        <div role="gridcell">owner@example.com</div>
+      </div>
+    </div>
+  </div>
+</section>

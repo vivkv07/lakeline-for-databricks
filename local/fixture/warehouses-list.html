@@ -1,0 +1,48 @@
+<!--
+  Fixture fragment: SQL warehouses list (route /sql/warehouses). Synthetic data only (workspace
+  1234567890). Each table row links a warehouse by its 16-hex ID; the badge goes next to the
+  name link. Create and monitoring links are navigation-only.
+-->
+<style data-fixture="warehouses-list">
+  .fx-wh { font: 13px/1.4 system-ui, sans-serif; color: #11171c; padding: 0 16px; }
+  .fx-wh table { width: 100%; border-collapse: collapse; }
+  .fx-wh th, .fx-wh td { padding: 6px 10px; border-bottom: 1px solid #e0e4e8; text-align: left; }
+  .fx-wh th { color: #5f7281; font-weight: 600; }
+  .fx-wh a { color: #2272b4; text-decoration: none; }
+  .fx-state { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #3ba65e; margin-right: 4px; }
+  .fx-state.off { background: #9aa5b1; }
+</style>
+<section class="fx-wh" data-testid="warehouses-list-page">
+  <div style="display: flex; align-items: center; gap: 12px;">
+    <h1>SQL warehouses</h1>
+    <a href="/sql/warehouses/create?o=1234567890">Create SQL warehouse</a>
+  </div>
+  <table role="table" aria-label="SQL warehouses">
+    <thead>
+      <tr><th scope="col">Name</th><th scope="col">State</th><th scope="col">Size</th><th scope="col">Type</th><th scope="col"></th></tr>
+    </thead>
+    <tbody>
+      <tr data-fx-warehouse="a1b2c3d4e5f60001">
+        <td><a href="/sql/warehouses/a1b2c3d4e5f60001?o=1234567890">Shared BI warehouse</a></td>
+        <td><span class="fx-state" aria-label="Running"></span>Running</td>
+        <td>Small</td>
+        <td>Serverless</td>
+        <td><a href="/sql/warehouses/a1b2c3d4e5f60001/monitoring?o=1234567890">Monitoring</a></td>
+      </tr>
+      <tr data-fx-warehouse="a1b2c3d4e5f60002">
+        <td><a href="/sql/warehouses/a1b2c3d4e5f60002?o=1234567890">ETL warehouse</a></td>
+        <td><span class="fx-state off" aria-label="Stopped"></span>Stopped</td>
+        <td>Medium</td>
+        <td>Pro</td>
+        <td><a href="/sql/warehouses/a1b2c3d4e5f60002/monitoring?o=1234567890">Monitoring</a></td>
+      </tr>
+      <tr data-fx-warehouse="a1b2c3d4e5f60003">
+        <td><a href="/sql/warehouses/a1b2c3d4e5f60003">Ad hoc analysis</a></td>
+        <td><span class="fx-state off" aria-label="Stopped"></span>Stopped</td>
+        <td>2X-Small</td>
+        <td>Serverless</td>
+        <td><a href="/sql/warehouses/a1b2c3d4e5f60003/monitoring">Monitoring</a></td>
+      </tr>
+    </tbody>
+  </table>
+</section>

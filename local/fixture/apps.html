@@ -1,0 +1,37 @@
+<!--
+  Fixture fragment: Databricks Apps list (route /apps). Synthetic data only (workspace
+  1234567890). Apps are identified by their route name (/apps/<name>), matching
+  usage_metadata.app_name. The external app URL, "Create app" and settings links are ignored.
+-->
+<style data-fixture="apps">
+  .fx-apps { font: 13px/1.4 system-ui, sans-serif; color: #11171c; padding: 0 16px; }
+  .fx-apps table { width: 100%; border-collapse: collapse; }
+  .fx-apps th, .fx-apps td { padding: 6px 10px; border-bottom: 1px solid #e0e4e8; text-align: left; }
+  .fx-apps th { color: #5f7281; font-weight: 600; }
+  .fx-apps a { color: #2272b4; text-decoration: none; }
+</style>
+<section class="fx-apps" data-testid="apps-list-page">
+  <div style="display: flex; align-items: center; gap: 12px;">
+    <h1>Apps</h1>
+    <a href="/apps/create?o=1234567890">Create app</a>
+  </div>
+  <table aria-label="Apps">
+    <thead>
+      <tr><th scope="col">Name</th><th scope="col">URL</th><th scope="col">Status</th><th scope="col"></th></tr>
+    </thead>
+    <tbody>
+      <tr data-fx-app="sales-dashboard">
+        <td><a href="/apps/sales-dashboard?o=1234567890">sales-dashboard</a></td>
+        <td><a href="https://sales-dashboard-1234567890.example-apps.invalid/">Open app</a></td>
+        <td>Running</td>
+        <td><a href="/apps/sales-dashboard/settings?o=1234567890">Settings</a></td>
+      </tr>
+      <tr data-fx-app="ops-assistant">
+        <td><a href="/apps/ops-assistant">ops-assistant</a></td>
+        <td><a href="https://ops-assistant-1234567890.example-apps.invalid/">Open app</a></td>
+        <td>Stopped</td>
+        <td><a href="/apps/ops-assistant/settings">Settings</a></td>
+      </tr>
+    </tbody>
+  </table>
+</section>

@@ -1,0 +1,39 @@
+<!--
+  Fixture fragment: workspace browser (route /browse/folders/2001). Synthetic data only
+  (workspace 1234567890). Notebook rows link /editor/notebooks/<id> (and one legacy
+  #notebook/<id> route); folders and files are not cost resources. Badges show serverless usage
+  billed with the notebook's ID only; shared all-purpose cluster usage is not allocated.
+-->
+<style data-fixture="notebooks">
+  .fx-browse { font: 13px/1.4 system-ui, sans-serif; color: #11171c; padding: 0 16px; }
+  .fx-browse [role="grid"] { display: table; width: 100%; border-collapse: collapse; }
+  .fx-browse [role="row"] { display: table-row; }
+  .fx-browse [role="columnheader"], .fx-browse [role="gridcell"] { display: table-cell; padding: 6px 10px; border-bottom: 1px solid #e0e4e8; }
+  .fx-browse [role="columnheader"] { color: #5f7281; font-weight: 600; }
+  .fx-browse a { color: #2272b4; text-decoration: none; }
+</style>
+<section class="fx-browse" data-testid="workspace-browser">
+  <nav aria-label="Breadcrumb"><a href="/browse?o=1234567890">Workspace</a> / <a href="/browse/folders/2001?o=1234567890">Shared</a></nav>
+  <h1>Shared</h1>
+  <div role="grid" aria-label="Workspace items">
+    <div role="row">
+      <div role="columnheader">Name</div><div role="columnheader">Type</div><div role="columnheader">Owner</div><div role="columnheader">Modified</div>
+    </div>
+    <div role="row" data-fx-item="folder">
+      <div role="gridcell"><a href="/browse/folders/2002?o=1234567890">reports</a></div>
+      <div role="gridcell">Folder</div><div role="gridcell">owner@example.com</div><div role="gridcell">Oct 1, 2026</div>
+    </div>
+    <div role="row" data-fx-item="notebook-3001">
+      <div role="gridcell"><a href="/editor/notebooks/3001?o=1234567890">daily_kpis</a></div>
+      <div role="gridcell">Notebook</div><div role="gridcell">owner@example.com</div><div role="gridcell">Oct 14, 2026</div>
+    </div>
+    <div role="row" data-fx-item="notebook-3002">
+      <div role="gridcell"><a href="/#notebook/3002">feature_backfill</a></div>
+      <div role="gridcell">Notebook</div><div role="gridcell">owner@example.com</div><div role="gridcell">Oct 12, 2026</div>
+    </div>
+    <div role="row" data-fx-item="file">
+      <div role="gridcell"><a href="/editor/files/3003?o=1234567890">requirements.txt</a></div>
+      <div role="gridcell">File</div><div role="gridcell">owner@example.com</div><div role="gridcell">Sep 30, 2026</div>
+    </div>
+  </div>
+</section>

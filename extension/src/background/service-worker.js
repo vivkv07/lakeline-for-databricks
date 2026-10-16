@@ -18,6 +18,7 @@ importScripts(
   '../databricks/http.js',
   '../databricks/warehouses.js',
   '../databricks/queries/summary.js',
+  '../databricks/queries/row-data.js',
   '../databricks/queries/index.js',
   './sender.js',
   './secrets.js',

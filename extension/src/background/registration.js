@@ -20,6 +20,9 @@
     'src/content/workspace-ui.js',
     'src/content/workspace-color.js',
     'src/content/workspace-theme.js',
+    'src/content/row-refs.js',
+    'src/content/row-data.js',
+    'src/content/inline.js',
     'src/content/content-main.js',
   ]);
   const EXCLUDE = Object.freeze([
