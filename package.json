@@ -8,8 +8,8 @@
     "node": ">=20"
   },
   "scripts": {
-    "test": "node --test local/",
-    "test:browser": "node --test local/browser/",
+    "test": "node --test local/test-*.mjs",
+    "test:browser": "node --test local/browser/test-*.mjs",
     "helper": "node local/server.mjs --open",
     "fixture": "node local/server.mjs --fixture-only",
     "package": "node scripts/package.mjs"

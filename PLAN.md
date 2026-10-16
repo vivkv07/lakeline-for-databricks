@@ -98,6 +98,35 @@ bill you.
   unverified from `chrome-extension://` pages, so stage 9 tests it, with the plain monitor window as
   the fallback. The side panel is Chrome 114+.
 
-## Open questions
+## Interaction reference: finopsway.com/features (ideas only; no code, assets or branding)
 
-See the chat. Resolved answers will be recorded here.
+- **Borrowed:**
+  - A cost banner on every page that expands into period controls, a chart and a per-SKU list.
+  - A visible "latest reported" freshness line.
+  - Badges beside each run's start time.
+  - Dollar estimates in the warehouse size picker.
+  - Like-for-like period comparisons.
+- **Differs on purpose:**
+  - No VM or infrastructure estimates: excluded by spec §4 and §17.
+  - Periods are 7, 30 and 90 days, per spec §3.
+  - Shared-cluster costs are not split, per spec §7.
+  - Serving endpoints, Genie and Lakebase show up through `billing_origin_product` in the
+    banner and Explorer. Resource badges for them are a later add-on.
+
+## Decisions (answered 2026-10-15)
+
+- **Widget.** A floating monitor window, opt-in auto-open on Chrome start, a "Float" button for an
+  always-on-top PiP window, and a toolbar badge.
+- **Monitor scope.** Job runs, pipeline updates, SQL warehouses and clusters, polled every 60 s
+  with read-only REST GETs. Desktop notifications for failed runs are opt-in, with `notifications`
+  as an optional permission. This intentionally adds one item from spec §17 to v1.
+- **Monitor auth.** The cost profile keeps `--scopes sql`. Enabling the monitor triggers a separate
+  one-time sign-in with `all-apis` on a dedicated `dcc-mon-*` profile. The helper forwards only an
+  allowlist of read-only GET paths. PAT mode works for both.
+- **Clouds.** AWS, Azure and GCP are all in scope. The Azure serverless DBU table applies only to
+  Azure serverless warehouses. `account_prices` can fail on Azure, and that failure gets a specific
+  error.
+- **Pairing.** The manifest carries a public `key`, so the extension ID is stable. The helper setup
+  page hands the fragment key to the extension through `externally_connectable` (exact
+  `127.0.0.1:<helper port>` origin only). The helper answers CORS preflights only for that
+  extension origin. Ports: helper on 8766, fixture on 8765.
