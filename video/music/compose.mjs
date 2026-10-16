@@ -305,13 +305,13 @@ function bassFor(bar) {
 
 function bassParams(sec) {
   switch (sec) {
-    case 'drop': return { cut: 160, env: 300, sawMix: 0.4, decay: 1.2, sustain: 0.8 };
-    case 'groove': return { cut: 180, env: 380, sawMix: 0.45 };
-    case 'breakdown': return { cut: 120, env: 0, sawMix: 0.12, attack: 0.25, release: 0.4, sustain: 0.9 };
-    case 'lift': return { cut: 220, env: 520, sawMix: 0.5, decay: 0.25, sustain: 0.6 };
-    case 'dark': return { cut: 150, env: 300, sawMix: 0.5 };
-    case 'bright': return { cut: 230, env: 560, sawMix: 0.5 };
-    case 'calm': return { cut: 120, env: 0, sawMix: 0.12, attack: 0.35, release: 0.6, sustain: 0.9, gain: 0.32 };
+    case 'drop': return { cut: 190, env: 340, sawMix: 0.55, decay: 1.2, sustain: 0.8 };
+    case 'groove': return { cut: 220, env: 420, sawMix: 0.6 };
+    case 'breakdown': return { cut: 140, env: 0, sawMix: 0.25, attack: 0.25, release: 0.4, sustain: 0.9, gain: 0.18 };
+    case 'lift': return { cut: 260, env: 560, sawMix: 0.65, decay: 0.25, sustain: 0.6 };
+    case 'dark': return { cut: 180, env: 320, sawMix: 0.6 };
+    case 'bright': return { cut: 270, env: 600, sawMix: 0.65 };
+    case 'calm': return { cut: 140, env: 0, sawMix: 0.25, attack: 0.35, release: 0.6, sustain: 0.9, gain: 0.13 };
     default: return { cut: 160, env: 200, sawMix: 0.3, attack: 0.2, release: 0.6, sustain: 0.9 };
   }
 }
@@ -324,7 +324,7 @@ function padParams(sec, i) {
     case 'intro': return { attack: i === 0 ? 1.4 : 0.6, decay: 3, sustain: 0.9, release: 0.6 };
     case 'breakdown': return { attack: 0.35, decay: 3, sustain: 0.9, release: 0.6 };
     case 'calm': return { attack: 0.9, decay: 3, sustain: 0.9, release: 1.0, level: 0.85 };
-    case 'resolve': return { attack: 1.6, decay: 6, sustain: 1, release: 0.75, level: 1.05 };
+    case 'resolve': return { attack: 1.6, decay: 6, sustain: 1, release: 0.75, level: 0.95 };
     default: return { attack: 0.12, decay: 2.2, sustain: 0.8, release: 0.35 };
   }
 }
@@ -358,22 +358,22 @@ export function render() {
       for (const s of d.kick) {
         const t = at(b, s);
         const vel = (d.kickVel ?? 1) * (s === 0 ? 1 : s % 4 === 0 ? 0.92 : 0.8);
-        S.kick(B.kick, t, { gain: 0.8, vel }, r);
+        S.kick(B.kick, t, { gain: 0.47, vel, decay: 0.18, f1: 49 }, r);
         kickTimes.push(t);
       }
       d.clap.forEach((s, k) => {
         const roll = k >= 2 && d.clap.length > 3;
         const vel = roll ? 0.3 + 0.12 * (k - 2) : k >= 2 ? 0.45 : 1;
-        S.clap(B.clap, at(b, s), { gain: 0.3, vel, tail: roll ? 0.07 : 0.12 }, r);
+        S.clap(B.clap, at(b, s), { gain: 0.54, vel, tail: roll ? 0.07 : 0.12 }, r);
       });
       for (const [s, vel, open] of hatHits(b, d.hats, d.until ?? 16)) {
         const t = at(b, s) + (s % 2 ? 0.006 : 0) + (r() - 0.5) * 0.002;
-        S.hat(B.hats, t, { gain: open ? 0.065 : 0.085, vel: vel * (0.92 + r() * 0.16), decay: open ? 0.15 : 0.028, pan: open ? -0.2 : 0.12 }, r);
+        S.hat(B.hats, t, { gain: open ? 0.16 : 0.21, vel: vel * (0.92 + r() * 0.16), decay: open ? 0.15 : 0.028, pan: open ? -0.2 : 0.12 }, r);
       }
       if (d.shaker) {
         for (let s = 0; s < (d.until ?? 16); s++) {
           const vel = [0.55, 0.3, 0.8, 0.35][s % 4] * (0.9 + r() * 0.2);
-          S.shaker(B.hats, at(b, s) + (s % 2 ? 0.012 : 0), { gain: 0.045, vel, pan: 0.35 }, r);
+          S.shaker(B.hats, at(b, s) + (s % 2 ? 0.012 : 0), { gain: 0.09, vel, pan: 0.35 }, r);
         }
       }
       for (const s of d.rim ?? []) {
@@ -392,12 +392,12 @@ export function render() {
         const t = at(b, s);
         const p = bassParams(sectionAt(t));
         const gate = len * STEP - (len >= 8 ? 0.02 : 0.035);
-        S.bassNote(B.bass, t, gate, chordAt(b, s).root + iv, { ...p, vel, gain: p.gain ?? 0.42 }, r);
+        S.bassNote(B.bass, t, gate, chordAt(b, s).root + iv, { sub: 0.8, ...p, vel, gain: p.gain ?? 0.26 }, r);
       }
     }
     // Resolve: the final root, held under the swell.
     S.bassNote(B.bass, st('resolve'), SEC.resolve.end - st('resolve'), nm('D2'),
-      { gain: 0.36, cut: 140, env: 0, sawMix: 0.15, attack: 0.6, release: 0.7, sustain: 1, decay: 5 }, r);
+      { gain: 0.2, cut: 140, env: 0, sawMix: 0.25, attack: 0.6, release: 0.7, sustain: 1, decay: 5 }, r);
   }
 
   // Pads and the airy upper layer
@@ -434,7 +434,7 @@ export function render() {
       for (const [s, idx, vel] of pat) {
         const tones = chordAt(b, s).arp;
         S.pluckNote(B.arp, at(b, s), tones[idx % 6] + 12 * Math.floor(idx / 6), {
-          gain: 0.15,
+          gain: 0.24,
           vel: vel * (0.94 + r() * 0.12),
           pan: idx % 2 ? 0.32 : -0.32,
           gate: sec === 'bright' ? 0.06 : 0.1,
@@ -458,7 +458,7 @@ export function render() {
       S.bellNote(B.bell, t, len, n, { gain: 0.2, vel, cut: 2600, bright: 0.7, release: 0.6, pan: 0.08 }, r);
     }
     const rl = rngFor('lead');
-    for (const [t, len, n, vel] of COUNTER) S.leadNote(B.lead, t, len, n, { gain: 0.11, vel, pan: -0.12 }, rl);
+    for (const [t, len, n, vel] of COUNTER) S.leadNote(B.lead, t, len, n, { gain: 0.125, vel, pan: -0.12 }, rl);
   }
 
   // Transition effects
@@ -470,7 +470,7 @@ export function render() {
     const drop = st('drop');
     S.noiseSweep(B.fx, 1.5, drop - 0.04, { gain: 0.2, f0: 220, f1: 6500, q: 1.3, shape: 2.6 }, r);
     S.toneRiser(B.fx, drop - 3, drop - 0.04, { gain: 0.045, m0: nm('A2'), m1: nm('A4'), cut0: 300, cut1: 4000 }, r);
-    S.boom(B.fx, drop, { gain: 0.42 }, r);
+    S.boom(B.fx, drop, { gain: 0.3 }, r);
     fall(drop, 3, 0.11);
     // Reverse swells into scene cuts and phrase changes.
     for (const t of [12, 20, 30, 40, 48, 100]) swell(t, 1, 0.055);
@@ -479,24 +479,24 @@ export function render() {
     // Breakdown: drums out with a downlifter, then a riser into the lift.
     const bd = st('breakdown');
     const lift = st('lift');
-    S.boom(B.fx, bd, { gain: 0.2, decay: 0.9 }, r);
-    S.noiseSweep(B.fx, bd, bd + 2.5, { gain: 0.14, f0: 10000, f1: 500, type: 'lp', mode: 'fall', shape: 1.4, q: 0.8 }, r);
+    S.boom(B.fx, bd, { gain: 0.1, decay: 0.9 }, r);
+    S.noiseSweep(B.fx, bd, bd + 2.5, { gain: 0.09, f0: 10000, f1: 500, type: 'lp', mode: 'fall', shape: 1.6, q: 0.8 }, r);
     S.noiseSweep(B.fx, lift - 3, lift - 0.04, { gain: 0.2, f0: 250, f1: 8000, q: 1.3, shape: 2.4 }, r);
     S.toneRiser(B.fx, lift - 2, lift - 0.04, { gain: 0.04, m0: nm('A2'), m1: nm('A4'), cut0: 300, cut1: 4500 }, r);
-    S.boom(B.fx, lift, { gain: 0.36 }, r);
+    S.boom(B.fx, lift, { gain: 0.26 }, r);
     fall(lift, 3, 0.1);
     // Into the darker run-monitor groove.
     swell(st('dark'), 1.5, 0.08, 800, 7000);
-    S.boom(B.fx, st('dark'), { gain: 0.22, f0: 55, f1: 30 }, r);
+    S.boom(B.fx, st('dark'), { gain: 0.16, f0: 55, f1: 30 }, r);
     fall(st('dark'), 2.5, 0.07, 6000);
     // Into the bright workspace-colors section.
     S.noiseSweep(B.fx, st('bright') - 2, st('bright') - 0.01, { gain: 0.12, f0: 400, f1: 9000, q: 1.2, shape: 2.8 }, r);
-    S.boom(B.fx, st('bright'), { gain: 0.22 }, r);
+    S.boom(B.fx, st('bright'), { gain: 0.16 }, r);
     // Into the calm security section, and into the resolve.
     swell(st('calm'), 1.4, 0.07, 600, 6000);
     fall(st('calm'), 3, 0.06, 6000);
     swell(st('resolve'), 1.6, 0.09, 500, 7000);
-    S.boom(B.fx, st('resolve'), { gain: 0.26, decay: 1.1, len: 3.5 }, r);
+    S.boom(B.fx, st('resolve'), { gain: 0.17, decay: 1.1, len: 3.5 }, r);
   }
 
   // ---- Bus processing
@@ -504,11 +504,11 @@ export function render() {
   const g0 = st('groove');
   const padCut = cut([
     [0, 280], [1.5, 420], [st('drop') - 0.3, 1700], [st('drop'), 2300],
-    [g0, 2200], [g0 + 16, 2400], [g0 + 16.01, 2600], [g0 + 32, 2800], [g0 + 32.01, 3100],
-    [st('breakdown') - 0.1, 3100], [st('breakdown'), 600], [st('lift') - 0.1, 4600], [st('lift'), 3300],
-    [LIFT_CUE, 3300], [LIFT_CUE + 0.5, 3700],
-    [st('dark') - 0.1, 3700], [st('dark'), 1600], [st('bright') - 0.1, 1500], [st('bright'), 3300],
-    [st('calm') - 0.1, 3300], [st('calm'), 1200], [st('resolve') - 0.1, 1000], [st('resolve'), 1100],
+    [g0, 2700], [g0 + 16, 2900], [g0 + 16.01, 3100], [g0 + 32, 3300], [g0 + 32.01, 3700],
+    [st('breakdown') - 0.1, 3700], [st('breakdown'), 600], [st('lift') - 0.1, 5200], [st('lift'), 3900],
+    [LIFT_CUE, 3900], [LIFT_CUE + 0.5, 4400],
+    [st('dark') - 0.1, 4400], [st('dark'), 1900], [st('bright') - 0.1, 1800], [st('bright'), 4000],
+    [st('calm') - 0.1, 4000], [st('calm'), 1200], [st('resolve') - 0.1, 1000], [st('resolve'), 1100],
     [st('resolve') + 2.5, 3200], [LENGTH, 2600],
   ]);
   const arpCut = cut([
@@ -557,6 +557,8 @@ export function render() {
   dly.mixInto(revIn, 0.2);
   const rev = S.freeverb(revIn, { room: 0.86, damp: 0.45, width: 1, predelay: 0.022, hp: 240, lp: 7500 });
 
+  if (process.env.MUSIC_DEBUG) debugLevels({ ...B, dly, rev });
+
   // ---- Mix
   const FADERS = { kick: 1, clap: 1, hats: 1, bass: 1, pad: 1, air: 1, arp: 1, bell: 1, hint: 1, lead: 1, fx: 1 };
   const mix = bus();
@@ -566,9 +568,26 @@ export function render() {
   return { mix, kickTimes };
 }
 
+/** MUSIC_DEBUG=1: per-bus RMS (dBFS, pre-master) for each section, to balance the mix. */
+function debugLevels(buses) {
+  const ids = SECTIONS.map((s) => s.id);
+  console.log('bus      ' + ids.map((i) => i.slice(0, 7).padStart(8)).join(''));
+  for (const [k, b] of Object.entries(buses)) {
+    const row = SECTIONS.map((s) => {
+      let ss = 0;
+      const a = Math.round(s.start * SR);
+      const e = Math.min(b.n, Math.round(s.end * SR));
+      for (let i = a; i < e; i++) ss += (b.L[i] * b.L[i] + b.R[i] * b.R[i]) / 2;
+      const d = 10 * Math.log10(ss / (e - a) + 1e-20);
+      return (d < -99 ? '   -' : d.toFixed(1)).padStart(8);
+    });
+    console.log(k.padEnd(9) + row.join(''));
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Master bus (in JS): EQ, glue compression, soft saturation, tail fade,
-// loudness pre-gain and a look-ahead peak limiter. ffmpeg loudnorm then does
+// loudness pre-gain and a look-ahead true-peak limiter. ffmpeg loudnorm then does
 // the final two-pass normalisation (master.mjs).
 
 export function masterBus(mix, { targetLufs = -14, ceilingDb = -2.0 } = {}) {
@@ -577,8 +596,8 @@ export function masterBus(mix, { targetLufs = -14, ceilingDb = -2.0 } = {}) {
   mix.scale(S.dbToGain(-6) / peak0); // known headroom before the dynamics
   S.eqBus(mix, 'highpass', 28, 0.7);
   S.eqBus(mix, 'highpass', 28, 0.7);
-  S.eqBus(mix, 'highshelf', 10000, 0.7, -1.0);
-  const comp = S.compressor(mix, { threshold: -14, ratio: 1.8, attack: 0.015, release: 0.2, knee: 6 });
+  S.eqBus(mix, 'lowshelf', 70, 0.7, -1.5);
+  const comp = S.compressor(mix, { threshold: -18, ratio: 1.8, attack: 0.015, release: 0.2, knee: 6 });
   S.saturate(mix, 1.15);
 
   // Fade the tail to digital silence.
@@ -592,6 +611,7 @@ export function masterBus(mix, { targetLufs = -14, ceilingDb = -2.0 } = {}) {
 
   // Loudness pre-gain + limiter, iterated so the limited result lands on target.
   let gainDb = targetLufs - S.loudness(mix.L, mix.R);
+  const peakEnv = S.truePeakEnvelope(mix);
   let out;
   let lim;
   let lufs;
@@ -600,7 +620,7 @@ export function masterBus(mix, { targetLufs = -14, ceilingDb = -2.0 } = {}) {
     out.L.set(mix.L);
     out.R.set(mix.R);
     out.scale(S.dbToGain(gainDb));
-    lim = S.limiter(out, { ceilingDb, lookahead: 0.004, release: 0.09 });
+    lim = S.limiter(out, { ceilingDb, lookahead: 0.004, release: 0.09, peakEnv, envScale: S.dbToGain(gainDb) });
     lufs = S.loudness(out.L, out.R);
     if (Math.abs(targetLufs - lufs) < 0.05) break;
     gainDb += targetLufs - lufs;

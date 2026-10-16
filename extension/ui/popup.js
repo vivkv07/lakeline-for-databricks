@@ -590,11 +590,15 @@
     closePopup();
   }
 
-  /** The store build turns off "Use my Databricks login": its elements are removed, not hidden. */
+  /**
+   * The store build turns off "Use my Databricks login" and developer-only links (the local test
+   * workspace): their elements are removed, not hidden.
+   */
   function applyFlags() {
     const flags = (root.DCC && root.DCC.flags) || DCC.flags;
-    if (!flags || flags.sessionLogin !== false) return;
-    for (const el of doc.querySelectorAll('[data-feature="session-login"]')) el.remove();
+    if (!flags) return;
+    if (flags.sessionLogin === false) for (const el of doc.querySelectorAll('[data-feature="session-login"]')) el.remove();
+    if (flags.devTools === false) for (const el of doc.querySelectorAll('[data-feature="dev-tools"]')) el.remove();
   }
 
   function wire() {

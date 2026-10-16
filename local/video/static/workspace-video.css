@@ -50,7 +50,7 @@ html[data-theme="dark"] {
 }
 
 html, body { background: var(--np-bg); color: var(--np-text); }
-body { font: 13px/1.45 Inter, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: var(--np-text); background: var(--np-bg); }
+body { font: 14px/1.45 Inter, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: var(--np-text); background: var(--np-bg); }
 a { color: var(--np-link); text-decoration: none; }
 :focus-visible { outline: 2px solid var(--np-link); outline-offset: 2px; }
 
@@ -70,7 +70,7 @@ a { color: var(--np-link); text-decoration: none; }
 
 /* ---------------------------------------------------------------- side nav */
 .np-sidenav { flex: none; width: 216px; overflow-y: auto; padding: 10px 8px; background: var(--np-side); border-right: 1px solid var(--np-line); }
-.np-sidenav h2 { margin: 16px 10px 4px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--np-muted); }
+.np-sidenav h2 { margin: 16px 10px 4px; font-size: 11.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--np-muted); }
 .np-sidenav a { display: flex; align-items: center; gap: 10px; padding: 6px 10px; border-radius: 6px; color: var(--np-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .np-sidenav a:hover { background: var(--np-hover); }
 .np-sidenav a[aria-current="page"] { background: var(--np-select); color: var(--np-select-text); font-weight: 600; }
@@ -123,8 +123,8 @@ table.np-table th { color: var(--np-muted); font-weight: 600; font-size: 12px; }
 .np-tag { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: 4px; background: var(--np-chip); color: var(--np-body); font-size: 12px; }
 
 /* Run-duration chart (native, never badged). */
-.np-runchart { display: flex; align-items: flex-end; gap: 6px; height: 92px; padding: 8px 10px 0; border: 1px solid var(--np-line); border-radius: 8px; margin: 4px 0 14px; }
-.np-runchart a { display: block; width: 22px; border-radius: 3px 3px 0 0; background: var(--np-bar); }
+.np-runchart { display: inline-flex; align-items: flex-end; gap: 10px; height: 84px; padding: 8px 14px 0; min-width: 360px; border: 1px solid var(--np-line); border-radius: 8px; margin: 4px 0 14px; }
+.np-runchart a { display: block; width: 26px; border-radius: 3px 3px 0 0; background: var(--np-bar); }
 .np-runchart a.hot { background: var(--np-bar-hot); }
 .np-runchart-label { color: var(--np-muted); font-size: 12px; margin: 0 0 4px; }
 
@@ -136,11 +136,12 @@ table.np-table th { color: var(--np-muted); font-weight: 600; font-size: 12px; }
 
 /* Forms (warehouse editor). */
 .np-form { max-width: 640px; }
-.np-field-row { display: grid; gap: 6px; margin: 14px 0; }
+.np-field-row { display: grid; justify-items: start; gap: 6px; margin: 14px 0; }
+.np-field-row .np-input:not([type]) { width: 420px; }
 .np-field-row label, .np-label { font-weight: 600; color: var(--np-text); }
 .np-input { height: 32px; padding: 0 10px; border: 1px solid var(--np-line2); border-radius: 6px; background: var(--np-bg); color: var(--np-text); font: inherit; }
 .np-radios { display: flex; gap: 18px; color: var(--np-text); }
-.np-combo { display: inline-flex; align-items: center; justify-content: space-between; gap: 10px; min-width: 420px; height: 34px; padding: 0 10px; border: 1px solid var(--np-link); border-radius: 6px; background: var(--np-bg); color: var(--np-text); font: inherit; text-align: left; }
+.np-combo { display: inline-flex; align-items: center; justify-content: flex-start; gap: 10px; min-width: 420px; height: 34px; padding: 0 10px; border: 1px solid var(--np-link); border-radius: 6px; background: var(--np-bg); color: var(--np-text); font: inherit; text-align: left; }
 .np-listbox { min-width: 420px; max-width: 520px; border: 1px solid var(--np-line2); border-radius: 8px; padding: 4px 0; background: var(--np-bg); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12); }
 html[data-theme="dark"] .np-listbox { box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5); }
 .np-listbox [role="option"] { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 7px 12px; color: var(--np-text); }
@@ -152,3 +153,12 @@ html[data-theme="dark"] .np-listbox { box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
 .np-card { border: 1px solid var(--np-line); border-radius: 10px; padding: 14px; background: var(--np-bg); }
 .np-card h3 { margin: 0 0 4px; font-size: 14px; }
 .np-card p { margin: 0; color: var(--np-muted); }
+
+/* Docked width (the page next to a 420 px side panel): tighter table cells. */
+@media (max-width: 1300px) {
+  .np-page, .ws-page { padding: 16px 20px 32px; }
+  .np-grid [role="columnheader"], .np-grid [role="gridcell"], table.np-table th, table.np-table td { padding: 9px 8px; }
+}
+
+/* Query History: room below the table so the page can scroll (estimate tooltips open downward). */
+.np-qh { padding-bottom: 420px; }

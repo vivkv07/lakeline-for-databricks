@@ -48,12 +48,23 @@ export function master({ raw, wav, mp3, I = -14, TP = -1.0, LRA = 20 }) {
   return { pass1: p1, pass2: p2 };
 }
 
+// CLI: node video/music/master.mjs [input-audio-file]
+// Without an argument it re-masters dist/video/music/lakeline-theme-raw.wav.
+// With one (e.g. a licensed track), it masters that file into the same output
+// paths, so the composer picks it up unchanged.
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const dir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../dist/video/music');
+  fs.mkdirSync(dir, { recursive: true });
   const res = master({
-    raw: path.join(dir, 'lakeline-theme-raw.wav'),
+    raw: process.argv[2] ? path.resolve(process.argv[2]) : path.join(dir, 'lakeline-theme-raw.wav'),
     wav: path.join(dir, 'lakeline-theme.wav'),
     mp3: path.join(dir, 'lakeline-theme-preview.mp3'),
   });
-  console.log(JSON.stringify(res, null, 2));
+  console.log(
+    `loudnorm (${res.pass2.normalization_type}): in ${res.pass1.input_i} LUFS / ${res.pass1.input_tp} dBTP -> ` +
+      `out ${res.pass2.output_i} LUFS / ${res.pass2.output_tp} dBTP`,
+  );
+  if (res.pass2.normalization_type !== 'linear') {
+    console.warn('note: loudnorm fell back to dynamic mode (source peak-to-loudness ratio too high for -1 dBTP at -14 LUFS)');
+  }
 }

@@ -1085,3 +1085,16 @@ test('options: the store build (flags.sessionLogin false) removes "Use my Databr
   assert.equal(saves[0].connection.authMode, 'pat');
   env.close();
 });
+
+test('popup: store build removes developer-only links (local test workspace); dev build keeps them', async () => {
+  const store = openPage('popup', { onMessage: popupWorker().fn, tabs: [{ id: 7, url: A + '/jobs?o=42' }], flags: { sessionLogin: false, devTools: false } });
+  await store.window.DCC.popupPage.ready;
+  assert.equal(store.$('fixture-link'), null);
+  assert.ok(!/127\.0\.0\.1/.test(store.document.body.innerHTML), 'no local address anywhere in the store popup');
+  assert.ok(store.$('guide-link'), 'the guide link remains');
+  store.close();
+  const dev = openPage('popup', { onMessage: popupWorker().fn, tabs: [{ id: 7, url: A + '/jobs?o=42' }] });
+  await dev.window.DCC.popupPage.ready;
+  assert.ok(dev.$('fixture-link'));
+  dev.close();
+});
