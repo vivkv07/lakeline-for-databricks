@@ -1,0 +1,143 @@
+# Changelog
+
+All notable changes to Databricks Cost Companion are documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
+aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]: 0.1.0 (2026-10-15)
+
+First development version. Not yet released. Independent project, not affiliated with Databricks,
+Inc. All amounts are estimates: "Estimated costs. Billing can be delayed; final invoices may differ."
+
+### Added
+
+**Extension and data modes**
+- Manifest V3 extension for Chrome and Edge (116+), with a stable extension ID from a public
+  manifest key.
+- Three data modes. Demo shows synthetic, labeled data and makes no Databricks requests. Local
+  import reads a validated `costs.json` file (see `costs.example.json`). Connected runs read-only SQL
+  on a SQL warehouse you choose.
+- Workspace identity from URL parameters, documented host names, observed tabs or the saved
+  connection. Conflicting IDs are refused rather than guessed. Requests are checked against the
+  saved workspace ID.
+- One cost connection per workspace origin, with Automatic or explicit SQL warehouse selection.
+  Automatic is resolved at save time and never per query.
+
+**Pricing**
+- A single shared pricing adapter for every cost query. Exactly two price tables are allowed:
+  `system.billing.list_prices` (`pricing.effective_list.default`) and
+  `system.billing.account_prices` (`pricing.default`). The field is chosen before SQL is built, and
+  there is no fallback or mixing between the two.
+- Price matching on account, SKU, cloud, usage unit and currency, with half-open validity
+  (a `NULL` end is open-ended). A record is priced only when exactly one price row matches.
+- Signed corrections (ORIGINAL, RETRACTION and RESTATEMENT) are kept, and currency is never
+  converted.
+- `GENIE_FREE_USAGE` is treated as free and its quantity is reported separately. No other missing
+  price is treated as zero.
+- A "Priced subtotal" with the unpriced record count, affected SKUs and first and last affected
+  dates when coverage is partial. No subtotal is shown when nothing is priced.
+
+**Workspace banner**
+- A sticky banner with the estimated total or priced subtotal for 7, 30 or 90 complete UTC days,
+  the change against the previous equal period, the latest-usage age, the pricing basis, Refresh,
+  Settings and **How costs work**.
+- States for loading, available, no data, partially unpriced, no priced usage, paused, not
+  connected, unidentified workspace and error. Technical details show the SQL error code and
+  statement ID, never secrets.
+
+**Native costs**
+- Period badges for jobs, pipelines, SQL warehouses, notebooks and Databricks Apps, and period
+  totals beside job and pipeline titles.
+- Per-execution costs on job run and pipeline update rows, searched across 365 UTC dates including
+  today. Small amounts show up to six decimal places.
+- Job costs include pipeline updates triggered by the job, through
+  `system.lakeflow.pipeline_update_timeline` and `job_task_run_timeline`. Memberships are
+  deduplicated and each billing record is counted once. If the timelines are unavailable, jobs fall
+  back to "Direct job cost" with a warning on each affected item.
+
+**SQL Query History estimates**
+- Per-execution estimates allocated by time overlap with warehouse billing intervals. Concurrent
+  queries share equally, and idle time stays unallocated.
+- Matching uses the statement ID, or else a unique match on warehouse, start second and duration.
+  The extension never reads SQL text or result rows.
+- Explicit labels when no estimate is given: Waiting for history, Waiting for billing,
+  Cached · unallocated, Execution pending, Match ambiguous, Row unavailable, Compute unsupported,
+  Price unavailable and Estimate unavailable.
+
+**Compute previews**
+- "DBU only" hourly previews beside SQL warehouse sizes, using the latest billed SKU's current price
+  multiplied by DBU/hour. The published Azure serverless DBU table is used only where it applies.
+  5X-Large shows "Rate unavailable".
+- Interactive compute previews from an unambiguous all-purpose DBU rate, multiplied by the native
+  DBU/hour value or range.
+
+**Cost Explorer**
+- Products, Top drivers, Runs, Calendar, SKUs and Daily detail views. Values are available on hover,
+  tap and focus, with keyboard operation, drilldowns, breadcrumbs, filter chips, search and sorting.
+- Exclusive ownership per billing record: job, pipeline, warehouse, notebook, app, cluster, then
+  unattributed.
+- On-demand detail loads with limits: 200 entities with the full candidate count, and a 20,000-row
+  summary. Oversized or truncated results are rejected.
+- CSV export with provenance metadata and formula-injection protection.
+- Heuristic flags for daily positive spikes and high-cost runs. These are explanatory, not anomaly
+  detection.
+
+**Workspace colors**
+- Per-workspace top-bar colors from the popup: strict `#RRGGBB` values, presets, a preview, Save
+  and Reset. Stored separately from cost connections, keyed by `origin|workspaceId`, with host
+  defaults. Text contrast is chosen automatically.
+
+**Monitor widget**
+- A compact monitor window for job runs, pipeline updates, SQL warehouses and clusters. It polls
+  read-only REST `GET` endpoints every 60, 120 or 300 seconds with backoff, and never sends SQL in
+  the background.
+- A toolbar badge with the active run count and a failure marker.
+- Opt-in desktop notifications for failed runs, using the optional `notifications` permission.
+- Opt-in opening when the browser starts.
+- A **Float on top** button that uses Document Picture-in-Picture, which isn't yet verified on
+  extension pages.
+- A separate monitor sign-in (`all-apis`, `dcc-mon-*` profile) when you use the helper.
+
+**Local helper and setup**
+- A Node 20+ helper on `127.0.0.1:8766` that runs the Databricks CLI (v1.12+) browser sign-in on
+  dedicated `dcc-*` profiles with the `sql` scope, and runs the same named query kinds as the
+  extension.
+- `start-helper.command` and `start-helper.sh` start the helper, reuse a running helper of the same
+  version, and explain how to stop an older one.
+- Pairing uses a random key passed in a URL fragment and verified before it is saved. Manual key
+  entry is a fallback.
+- Capability checks (account prices, price adapter version 2, job–pipeline attribution, monitor)
+  block requests against an outdated helper with restart steps.
+- Personal access token mode, with no helper.
+
+**Errors and diagnostics**
+- Plain-language errors with next steps for permissions, missing tables, price-field mismatch,
+  schema mismatch, expired sign-in, timeouts, unavailable warehouses, oversized results and helper
+  problems.
+- The last 20 diagnostics are stored locally, with secrets redacted.
+
+**Documentation**
+- An offline, accessible "How costs are calculated" guide (`extension/docs/calculation-guide.html`).
+  It includes a worked query-allocation example and links to official references checked on
+  2026-10-15.
+- A README covering install, modes, connection, updates, limitations, safe removal, security and
+  privacy.
+
+**Development**
+- Synthetic fixture workspace on `127.0.0.1:8765` (`node local/server.mjs --fixture`).
+- Simulated tests (`npm test`): DuckDB with system-table-shaped tables for SQL, and jsdom for
+  content scripts. Query-history fixtures use SQL-text sentinels.
+- Sanitized, allowlist-based packaging (`npm run package`) with secret and real-host scanning.
+
+### Security
+
+- Optional, per-workspace site access. Other permissions are `storage`, `activeTab`, `scripting`,
+  `alarms` and the optional `notifications`. No cookies, debugger, web-request or broad host
+  permissions, and no remote code.
+- Strict sender validation for content scripts, extension pages, options-only admin actions and the
+  helper setup page.
+- PATs and the helper pairing are kept only in memory-only session storage.
+- The helper binds to loopback only and validates the `Host` header. It authenticates bridge calls
+  with the pairing key and the extension origin, and never runs caller-supplied SQL.
+- Read-only, parameterized SQL. No telemetry. No query text or result rows are collected.

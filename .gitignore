@@ -10,3 +10,4 @@ diagnostics/
 playwright-report/
 test-results/
 .DS_Store
+.playwright-mcp/

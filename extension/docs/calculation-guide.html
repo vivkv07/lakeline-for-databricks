@@ -1,0 +1,827 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="referrer" content="no-referrer">
+<title>How costs are calculated · Databricks Cost Companion</title>
+<link rel="stylesheet" href="calculation-guide.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="site-header">
+  <div class="inner">
+    <p class="eyebrow"><span class="mark" aria-hidden="true"></span>Databricks Cost Companion · User guide</p>
+    <h1>How costs are calculated</h1>
+    <p class="lede">This guide explains where each number in Databricks Cost Companion comes from. It covers what each number includes and excludes, and why the extension sometimes withholds a value instead of showing zero. All examples use made-up numbers. None of them come from a real workspace.</p>
+    <p class="notice" role="note">Estimated costs. Billing can be delayed; final invoices may differ.</p>
+    <p class="independent">Databricks Cost Companion is an independent project. It is not affiliated with, endorsed by, or sponsored by Databricks, Inc. Databricks and related marks are trademarks of Databricks, Inc.</p>
+  </div>
+</header>
+
+<div class="layout">
+  <nav class="toc" aria-labelledby="toc-title">
+    <h2 id="toc-title">On this page</h2>
+    <ol>
+      <li><a href="#overview">What the numbers are</a></li>
+      <li><a href="#connection">Data modes and connection</a></li>
+      <li><a href="#periods">Periods and UTC dates</a></li>
+      <li><a href="#prices">Prices and matching</a></li>
+      <li><a href="#partial">Totals and priced subtotals</a></li>
+      <li><a href="#badges">Resource, run and update costs</a></li>
+      <li><a href="#jobs">Jobs that trigger pipelines</a></li>
+      <li><a href="#queries">Query History estimates</a></li>
+      <li><a href="#compute">Compute size previews</a></li>
+      <li><a href="#explorer">Cost Explorer</a></li>
+      <li><a href="#flags">Heuristic flags</a></li>
+      <li><a href="#freshness">Freshness</a></li>
+      <li><a href="#cache">Caching and Refresh</a></li>
+      <li><a href="#states">Missing data and status labels</a></li>
+      <li><a href="#permissions">Permissions and privacy</a></li>
+      <li><a href="#helper">Local helper troubleshooting</a></li>
+      <li><a href="#colors">Workspace colors</a></li>
+      <li><a href="#monitor">Monitor widget</a></li>
+      <li><a href="#limits">Limitations</a></li>
+      <li><a href="#references">Official references</a></li>
+    </ol>
+  </nav>
+
+  <main id="main" tabindex="-1">
+
+<!-- ================================================================== overview -->
+<section id="overview" aria-labelledby="overview-title">
+  <h2 id="overview-title">What the numbers are</h2>
+  <p>Every amount in the extension is an estimate. The extension keeps different kinds of estimates apart and labels each one, so you can tell what you are looking at.</p>
+  <div class="table-wrap" role="region" aria-labelledby="kinds-caption" tabindex="0">
+    <table>
+      <caption id="kinds-caption">Kinds of amounts</caption>
+      <thead>
+        <tr><th scope="col">Kind</th><th scope="col">Where you see it</th><th scope="col">Label</th><th scope="col">Meaning</th></tr>
+      </thead>
+      <tbody>
+        <tr><th scope="row">Recorded attributed cost</th><td>Workspace banner, resource badges, run and update rows, Explorer</td><td><span class="label">est.</span></td><td>Billed usage records multiplied by their matching unit price, summed over the records that belong to the workspace, resource or execution.</td></tr>
+        <tr><th scope="row">Priced subtotal</th><td>Banner, Explorer</td><td><span class="label">Priced subtotal</span></td><td>The same sum, but some records in scope had no matching price, so the full total is withheld. See <a href="#partial">Totals and priced subtotals</a>.</td></tr>
+        <tr><th scope="row">Allocated query estimate</th><td>SQL Query History rows</td><td><span class="label">approx.</span></td><td>A share of a SQL warehouse's recorded cost, assigned to one query by time overlap. It is not measured. See <a href="#queries">Query History estimates</a>.</td></tr>
+        <tr><th scope="row">Prospective hourly rate</th><td>Compute size pickers</td><td><span class="label">DBU only</span></td><td>What one hour would cost in Databricks DBU charges if that size ran. See <a href="#compute">Compute size previews</a>.</td></tr>
+        <tr><th scope="row">Imported figure</th><td>Banner and badges in Local import mode</td><td><span class="label">Imported</span></td><td>Taken from your own <code>costs.json</code> file and shown as imported.</td></tr>
+        <tr><th scope="row">Demo figure</th><td>Everywhere in Demo mode</td><td><span class="label">DEMO</span></td><td>Synthetic numbers. Demo mode never contacts Databricks.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Missing data is never shown as zero. A <strong>$0.00</strong> means the calculation produced zero, for example because usage was free or corrections cancelled each other out. When the data needed for an amount isn't there, the extension shows a label that says why. See <a href="#states">Missing data and status labels</a>.</p>
+</section>
+
+<!-- ================================================================== connection -->
+<section id="connection" aria-labelledby="connection-title">
+  <h2 id="connection-title">Data modes and connection</h2>
+  <p>Choose a mode in the extension popup.</p>
+  <dl>
+    <dt>Demo</dt>
+    <dd>Synthetic data labeled <span class="label">DEMO</span>. Demo mode makes no Databricks connection and no Databricks network requests.</dd>
+    <dt>Local import</dt>
+    <dd>Validated per-workspace, per-resource summaries for 7, 30 or 90 days, loaded from a <code>costs.json</code> file you provide. The extension shows only what you imported. Query History estimates, compute previews and Explorer queries need Connected mode, so they are unavailable here.</dd>
+    <dt>Connected</dt>
+    <dd>Read-only SQL against Databricks system tables on a SQL warehouse you choose. You sign in through the local helper, or you use a personal access token (PAT).</dd>
+  </dl>
+
+  <h3 id="local-import">Local import file</h3>
+  <p>A <code>costs.json</code> file is either an array of entries or <code>{"entries": [...]}</code>. It may be up to 5 MB and 5,000 entries. Each entry describes one resource for one period:</p>
+  <ul>
+    <li><code>workspace</code>: a workspace URL or numeric ID.</li>
+    <li><code>type</code>: one of <code>workspace</code>, <code>job</code>, <code>pipeline</code>, <code>warehouse</code>, <code>notebook</code> or <code>app</code>. <code>id</code> must have the matching ID format.</li>
+    <li><code>periodDays</code> (7, 30 or 90), <code>currency</code> (three letters), and <code>total</code> and <code>previous</code> (a number or <code>null</code>).</li>
+    <li>Optional: <code>basis</code>, <code>owner</code>, <code>allocation</code>, <code>updatedAt</code> (ISO timestamp), <code>coverageEnd</code> (<code>YYYY-MM-DD</code>), and <code>daily</code> as <code>[{"date": "YYYY-MM-DD", "cost": number|null}]</code>.</li>
+  </ul>
+  <p>The whole file is rejected with a list of problems if any entry is invalid. <code>null</code> stays missing and is never read as zero. Run and update rows aren't part of an import, so they show no amount. Imported figures are only as accurate as the file you provide.</p>
+
+  <h3 id="workspace-identity">Which workspace a page belongs to</h3>
+  <p>Each workspace origin (for example <code>https://&lt;workspace&gt;.cloud.databricks.com</code>) has at most one cost connection. That connection is tied to a numeric workspace ID. The extension reads the ID from places it can trust, in this order:</p>
+  <ol>
+    <li>the <code>o=</code>, <code>w=</code> or <code>workspace_id=</code> URL parameters, including parameters inside supported hash routes;</li>
+    <li>documented per-workspace host names, such as Azure <code>adb-&lt;id&gt;.&lt;n&gt;.azuredatabricks.net</code>;</li>
+    <li>an ID the extension saw earlier in a tab on the same origin;</li>
+    <li>the saved connection.</li>
+  </ol>
+  <p>If no ID can be found, the banner shows <em>Workspace ID not identified</em>. If two sources disagree, it shows <em>Conflicting workspace IDs in this URL</em>. In both cases the extension doesn't guess. Every request from a page is checked against the saved workspace ID. A mismatch shows <em>This page belongs to a different workspace</em>. The extension never switches workspace or identity silently. If you have several workspaces open, you pick which one to connect.</p>
+
+  <h3 id="warehouse">SQL warehouse: Automatic or explicit</h3>
+  <p>Under <strong>Connection preferences</strong>, the options page lists the SQL warehouses your identity can see, with name, ID, state and size. Pick one of two options:</p>
+  <ul>
+    <li><strong>Automatic</strong> prefers a usable warehouse that is already running. Among those, it prefers the smaller size (2X-Small first). Ties are broken by name, then ID. The choice is made when you save or reconnect, never per query, so your queries don't move between warehouses silently.</li>
+    <li><strong>Explicit</strong> uses the warehouse you pick. If that warehouse is later deleted or you lose access, it is shown as unavailable rather than replaced.</li>
+  </ul>
+  <p>A warehouse showing up in the list doesn't prove you have <code>CAN USE</code> on it or can read the billing tables. The first query reveals access problems, and the extension reports them specifically. See <a href="#permissions">Permissions</a>.</p>
+  <div class="callout warn">
+    <p><strong>Cost queries run on your warehouse.</strong> The banner summary, badges, estimates and Explorer are ordinary SQL statements on the selected warehouse. They are billed like any other query. If the warehouse is stopped, the first query starts it, and it then runs until its own auto-stop. Choose a small warehouse that is usually running, or turn off <strong>Show costs inside Databricks</strong> when you don't need costs. The <a href="#monitor">monitor widget</a> never sends SQL in the background.</p>
+  </div>
+
+  <h3 id="sources">Usage and history sources</h3>
+  <p>By default the extension reads <code>system.billing.usage</code> and <code>system.query.history</code>. You can instead name an approved view as a three-part name (<code>catalog.schema.view</code>) outside the <code>system</code> catalog. The view must expose the same columns as the system table it replaces. A source can't point at any other system table. Values are passed as SQL parameters, and names are validated and quoted, never pasted into SQL as free text.</p>
+</section>
+
+<!-- ================================================================== periods -->
+<section id="periods" aria-labelledby="periods-title">
+  <h2 id="periods-title">Periods and UTC dates</h2>
+  <p>All dates are UTC calendar dates. Billing records carry a UTC <code>usage_date</code>, so using local days would split records across days.</p>
+  <div class="table-wrap" role="region" aria-labelledby="scopes-caption" tabindex="0">
+    <table>
+      <caption id="scopes-caption">Date scopes</caption>
+      <thead>
+        <tr><th scope="col">Scope</th><th scope="col">Used for</th><th scope="col">Dates</th><th scope="col">Includes today (UTC)?</th></tr>
+      </thead>
+      <tbody>
+        <tr><th scope="row">Reporting period</th><td>Banner, resource badges, detail-page totals, Explorer</td><td>The last 7, 30 or 90 complete UTC dates</td><td>No</td></tr>
+        <tr><th scope="row">Comparison period</th><td>“vs prior” change, prior-period overlays</td><td>The equal-length period immediately before the reporting period</td><td>No</td></tr>
+        <tr><th scope="row">Run and update search</th><td>Per-run and per-update row costs</td><td>365 UTC dates</td><td>Yes</td></tr>
+        <tr><th scope="row">Query history lookback</th><td>Query History estimates</td><td>90 UTC dates, independent of the banner period</td><td>Yes</td></tr>
+        <tr><th scope="row">Compute rate lookback</th><td>All-purpose SKUs for compute previews</td><td>90 UTC dates</td><td>Yes</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <h3 id="periods-example">Example: on 15 October 2026 (any time of day, UTC)</h3>
+  <div class="table-wrap" role="region" aria-labelledby="periods-ex-caption" tabindex="0">
+    <table>
+      <caption id="periods-ex-caption">Date ranges on 2026-10-15 UTC (inclusive)</caption>
+      <thead>
+        <tr><th scope="col">Scope</th><th scope="col">Current</th><th scope="col">Comparison</th></tr>
+      </thead>
+      <tbody>
+        <tr><th scope="row">7 days</th><td>Oct 8 – Oct 14, 2026</td><td>Oct 1 – Oct 7, 2026</td></tr>
+        <tr><th scope="row">30 days</th><td>Sep 15 – Oct 14, 2026</td><td>Aug 16 – Sep 14, 2026</td></tr>
+        <tr><th scope="row">90 days</th><td>Jul 17 – Oct 14, 2026</td><td>Apr 18 – Jul 16, 2026</td></tr>
+        <tr><th scope="row">Run and update search</th><td>Oct 16, 2025 – Oct 15, 2026</td><td>—</td></tr>
+        <tr><th scope="row">Query history lookback</th><td>Jul 18 – Oct 15, 2026</td><td>—</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>A user in US Pacific time at 6 p.m. on 14 October is already on 15 October UTC, so 14 October is the last complete date. Today is left out of reporting periods because its billing is still arriving. Including it would make the latest period look cheaper than it is.</p>
+  <p>A period total is not lifetime spend. A detail-page label such as <em>Job total: $12.34 · 90d est.</em> covers only the selected 90 complete UTC dates.</p>
+</section>
+
+<!-- ================================================================== prices -->
+<section id="prices" aria-labelledby="prices-title">
+  <h2 id="prices-title">Prices and how they are matched</h2>
+  <p>Recorded cost is the signed sum of usage quantity multiplied by the matching unit price:</p>
+  <p class="formula">cost = SUM( usage_quantity × unit_price )   over every priced usage record in scope</p>
+  <p>Usage comes from <code>system.billing.usage</code> or your approved usage view. Prices come from exactly one of two price tables, chosen under <strong>Connection preferences</strong>. There is no free-text price table field, no schema override and no custom price view.</p>
+
+  <div class="table-wrap" role="region" aria-labelledby="tables-caption" tabindex="0">
+    <table>
+      <caption id="tables-caption">The two allowed price tables</caption>
+      <thead>
+        <tr><th scope="col">Price table</th><th scope="col">Price field read</th><th scope="col">Basis label</th><th scope="col">Not included</th></tr>
+      </thead>
+      <tbody>
+        <tr><th scope="row"><code>system.billing.list_prices</code></th><td><code>pricing.effective_list.default</code></td><td><span class="label">List price</span></td><td>Private or negotiated discounts. Cloud-provider charges.</td></tr>
+        <tr><th scope="row"><code>system.billing.account_prices</code></th><td><code>pricing.default</code></td><td><span class="label">Account price</span></td><td>Invoice adjustments that aren't in that table. Cloud-provider charges.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <ul>
+    <li>The price field is decided from the table <em>before</em> any SQL is generated. The extension never reads both fields or falls back from one to the other.</li>
+    <li>There is no silent fallback between account and list prices, and totals never mix the two sources.</li>
+    <li>The basis (list or account) and the table name travel with every result, label, tooltip and CSV export.</li>
+  </ul>
+  <div class="callout warn">
+    <p><strong><code>account_prices</code> may not exist for your account.</strong> On 2026-10-15, the official system-table reference documents <code>list_prices</code> but not <code>account_prices</code>. Third-party and community reports describe <code>account_prices</code> as a preview limited to some clouds and accounts, and in particular as unavailable on Azure. If your account doesn't have it, you see <em>A required table is not available</em>, and a step suggests switching to <code>list_prices</code> yourself. The extension never switches for you.</p>
+  </div>
+
+  <h3 id="matching">Matching rule</h3>
+  <p>A usage record gets a unit price only when <strong>exactly one</strong> price row matches on every key below and that row's price is a number:</p>
+<pre><code>price.account_id    = usage.account_id
+price.sku_name      = usage.sku_name
+price.cloud         = usage.cloud
+price.usage_unit    = usage.usage_unit
+price.currency_code = :currency            -- the connection's currency, USD by default
+usage.usage_end_time &gt;= price.price_start_time
+AND (price.price_end_time IS NULL OR usage.usage_end_time &lt; price.price_end_time)</code></pre>
+  <ul>
+    <li><strong>Half-open validity.</strong> A price is valid from its start time, inclusive, up to its end time, exclusive. A <code>NULL</code> end time means the price is still current.</li>
+    <li><strong>No match</strong> means the record is unpriced.</li>
+    <li><strong>Two or more matches</strong> (overlapping price rows) mean the record is ambiguous. It stays unpriced and is counted separately. It is never priced twice.</li>
+    <li><strong>No currency conversion.</strong> The usage table has no currency column, so the currency comes from the matched price row. If your prices exist only in a currency other than the connection's, the records stay unpriced.</li>
+    <li><strong>Native units.</strong> Quantities stay in their recorded unit (for example DBU). Nothing is converted.</li>
+  </ul>
+  <p><strong>Example (synthetic).</strong> A SKU has two list-price rows: $0.55 from 2026-01-01 00:00 UTC to 2026-08-01 00:00 UTC, and $0.50 from 2026-08-01 00:00 UTC with no end. A usage record ending exactly at 2026-08-01 00:00 UTC matches only the second row, so its price is $0.50. If someone added a third row covering the same time, the record would match two rows. It would become ambiguous and unpriced.</p>
+
+  <h3 id="corrections">Signed corrections</h3>
+  <p>Databricks corrects billing by adding records rather than editing old ones. A <code>RETRACTION</code> record has a negative quantity that cancels an <code>ORIGINAL</code> record. A <code>RESTATEMENT</code> record carries the corrected values. The extension keeps all three record types in the signed sum.</p>
+  <p class="formula">ORIGINAL +10 DBU   RETRACTION −10 DBU   RESTATEMENT +8 DBU   →   net 8 DBU</p>
+  <p>Corrections can arrive days after the original record. Past totals can therefore change, and a day or resource can legitimately show a negative amount. Negative amounts keep their minus sign.</p>
+
+  <h3 id="free">Free usage: <code>GENIE_FREE_USAGE</code></h3>
+  <p>Databricks documents <code>GENIE_FREE_USAGE</code> as the SKU for free Genie usage. It is not billed and has no row in <code>list_prices</code>, and it appears in billing data from 20 July 2026. The extension prices this one SKU at zero. When the data has free quantity, the banner lists it separately as <em>Free usage (not charged)</em>.</p>
+  <p>No other SKU is ever treated as free. A missing price is never assumed to be zero, and such records make the period a <a href="#partial">priced subtotal</a>. A price row that really contains 0 is a real $0.</p>
+
+  <h3 id="excluded">What is not included</h3>
+  <ul>
+    <li>Cloud-provider charges for classic compute, such as virtual machines, disks, network and storage. Your cloud provider bills these, and they don't appear in the price tables.</li>
+    <li>With list prices: private or negotiated discounts.</li>
+    <li>With account prices: invoice adjustments that aren't in the table.</li>
+    <li>Taxes, support plans, commitments and credits, and anything else outside the usage and price tables.</li>
+  </ul>
+</section>
+
+<!-- ================================================================== partial -->
+<section id="partial" aria-labelledby="partial-title">
+  <h2 id="partial-title">Totals and priced subtotals</h2>
+  <div class="table-wrap" role="region" aria-labelledby="coverage-caption" tabindex="0">
+    <table>
+      <caption id="coverage-caption">What the banner shows for each coverage state</caption>
+      <thead>
+        <tr><th scope="col">Records in the period</th><th scope="col">Banner shows</th></tr>
+      </thead>
+      <tbody>
+        <tr><th scope="row">All priced</th><td>The total, marked <span class="label">est.</span></td></tr>
+        <tr><th scope="row">Some priced, some not</th><td><em>Priced subtotal</em>, the amount, and <em>Some usage unpriced</em>. The details list the number of unpriced records, the affected SKUs, the first and last affected usage dates (UTC), and how many records matched more than one price row. The full total is withheld.</td></tr>
+        <tr><th scope="row">None priced</th><td><em>No priced usage</em>, with no amount.</td></tr>
+        <tr><th scope="row">No records at all</th><td><em>No usage recorded in this period</em>. This is not $0.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <h3 id="not-lower-bound">A priced subtotal is not necessarily a lower bound</h3>
+  <p>Because corrections are signed, the missing records can be negative. Suppose the priced records sum to $40.00 and one unpriced record is a retraction of −10 DBU for a SKU with no matching price. The true total is <em>below</em> $40.00. Treat a priced subtotal as “the part that could be priced”, not as a minimum.</p>
+  <h3 id="comparison">Change versus the prior period</h3>
+  <p>The banner compares the amount shown for each period. That amount is the total when both periods are fully priced. It shows <em>New spend</em> when the prior amount is exactly zero, and <em>No comparison</em> when either period has no amount. If either period is only a priced subtotal, read the percentage with care.</p>
+</section>
+
+<!-- ================================================================== badges -->
+<section id="badges" aria-labelledby="badges-title">
+  <h2 id="badges-title">Resource, title, run and update costs</h2>
+  <ul>
+    <li><strong>Resource badges</strong> appear next to supported native names: jobs, pipelines, SQL warehouses, notebooks and Databricks Apps. Each shows that resource's recorded cost for the selected period.</li>
+    <li><strong>Detail-page totals</strong> appear beside the job or pipeline title, for example <em>Job total: $12.34 · 90d est.</em> This is a period total, not lifetime spend.</li>
+    <li><strong>Run and update rows</strong> show the recorded cost of <em>that execution</em>, not the resource's period total. Billing is searched across 365 UTC dates including today. The result can be incomplete when billing is delayed or when part of the execution falls outside that window. Amounts under $0.01 keep up to six decimal places, for example $0.000412.</li>
+  </ul>
+  <h3 id="identity">How rows are identified</h3>
+  <ul>
+    <li>Identity comes only from real native links and IDs: job and run routes, pipeline and update routes, legacy routes, and supported notebook and app routes. Origin and workspace ID are validated. External, edit, create and navigation-only links are ignored.</li>
+    <li>The extension never infers an identity from a display name. It never reads the page's private application state.</li>
+    <li>On job run tables, a row can contain the current job's run link and also a different workflow in its <em>Launched</em> column. The badge uses the exact current job and run. It is never replaced by the launching workflow's whole cost.</li>
+    <li>Dense duration timeline bars and status dots stay native, without badges.</li>
+    <li>Requests are batched (at most 40 resources at a time) and de-duplicated. Badges follow scrolling, virtualized and recycled rows, route changes and period changes. Stale badges are removed.</li>
+  </ul>
+  <p>Billing records name a notebook only for serverless notebook usage. Notebook badges therefore cover serverless notebook usage only. Usage on classic all-purpose clusters isn't split per notebook.</p>
+</section>
+
+<!-- ================================================================== jobs -->
+<section id="jobs" aria-labelledby="jobs-title">
+  <h2 id="jobs-title">Jobs that trigger pipelines</h2>
+  <p><strong>Direct attribution</strong> uses billing records that carry the job's <code>usage_metadata.job_id</code> and, for a run, <code>job_run_id</code>. Databricks fills these for job compute and serverless jobs. It does not fill them for jobs that run on all-purpose compute.</p>
+  <p>A job task can start a pipeline update. That update is billed under the pipeline's <code>dlt_pipeline_id</code> and <code>dlt_update_id</code>, not the job's ID, so direct attribution alone misses it. The extension adds those updates as follows:</p>
+  <ol>
+    <li>Read <code>system.lakeflow.pipeline_update_timeline</code> for updates whose trigger is a job task. For those rows, <code>trigger_details.job_task.job_id</code> names the job and <code>trigger_details.job_task.job_task_run_id</code> names the task run.</li>
+    <li>Join that task-run ID to <code>system.lakeflow.job_task_run_timeline.run_id</code>, limited to the same workspace and job. This gives each task run's parent <code>job_run_id</code>.</li>
+    <li>De-duplicate. Timeline tables split long runs into hourly slices and can repeat task rows. The extension first reduces them to the unique set of pipeline updates for each job or run. It never joins raw timeline rows to billing, because that would multiply charges.</li>
+    <li>Add the billing records of those updates to the direct records. Each billing record is counted at most once for the same job or run.</li>
+  </ol>
+  <ul>
+    <li>A job's <strong>period total</strong> includes every update the job triggered during the period.</li>
+    <li>A <strong>run's cost</strong> includes only the updates that map to exactly that parent run.</li>
+  </ul>
+  <p><strong>Example (synthetic).</strong> Run A of job 1111 has $3.10 of direct usage. Its second task triggered update U1 of pipeline P, which cost $1.25. Run A shows $4.35. Run B of the same job triggered nothing, so it shows only its direct cost. Pipeline P's own badge still shows all of P's cost, including U1. See <a href="#ownership">why badges and the Explorer differ</a>.</p>
+  <h3 id="direct-job-cost">“Direct job cost” fallback</h3>
+  <p>The Lakeflow timeline tables may be unreadable, or their schema may not match. In that case the extension still shows the direct amount, labeled <strong>Direct job cost</strong>, with a warning that triggered pipeline costs aren't included. This is not a complete job total. The status and warning are attached to each item, so one job's fallback doesn't relabel the others.</p>
+  <p>The extension never invents a share of a shared all-purpose cluster for a job. When billing records carry no job or run identity, that usage isn't attributed to the job.</p>
+</section>
+
+<!-- ================================================================== queries -->
+<section id="queries" aria-labelledby="queries-title">
+  <h2 id="queries-title">Query History estimates</h2>
+  <p>On the native SQL Query History page, each row can show an individual estimate, marked <span class="label">approx.</span>. Generic warehouse-total badges are hidden on this page, and a short note near the page heading explains the estimates.</p>
+  <h3 id="query-identity">Matching a row to an execution</h3>
+  <ul>
+    <li>The extension prefers the statement ID from the row's native attributes or its execution-detail link.</li>
+    <li>Without a statement ID, it accepts only a <strong>unique</strong> metadata match on three things: warehouse ID, start time to the displayed second, and total duration within the display's rounding. Zero matches or several matches mean no estimate.</li>
+    <li><strong>SQL text is never used for matching.</strong> The extension reads only statement IDs, timestamps, durations, status, cache flags and compute metadata. It never reads the SQL text or result rows of the queries it estimates.</li>
+    <li>Executions come from <code>system.query.history</code> (or your approved view) for the last 90 UTC dates, including today. Only executions on a supported SQL warehouse with a usable, completed execution time get a number.</li>
+  </ul>
+
+  <h3 id="allocation">Allocation method</h3>
+  <ol>
+    <li>Find each execution's active window: <code>active_start = MAX(query_start, query_end − execution_duration)</code> and <code>active_end = query_end</code>. Time spent waiting or queued before execution is left out.</li>
+    <li>Price the warehouse's recorded usage intervals that overlap those windows. Prices are matched exactly as described in <a href="#prices">Prices and matching</a>.</li>
+    <li>Include <strong>all</strong> executions visible to your identity that overlap those intervals, not only the rows on screen.</li>
+    <li>Split each billing interval at every execution start and end. For each segment with at least one active execution, give each active execution an equal share:
+      <p class="formula">share = interval_cost × segment_duration ÷ interval_duration ÷ active_execution_count</p></li>
+    <li>Add up each execution's shares. Segments with no active execution stay unallocated.</li>
+  </ol>
+
+  <h3 id="worked-example">Worked example (synthetic)</h3>
+  <p>One warehouse billing record covers 10:00–11:00 UTC: 2.0 DBU × $0.60 per DBU = <strong>$1.20</strong>, or $0.02 per minute. Three queries ran in that hour:</p>
+  <div class="table-wrap" role="region" aria-labelledby="ex-queries-caption" tabindex="0">
+    <table>
+      <caption id="ex-queries-caption">Executions and their active windows</caption>
+      <thead>
+        <tr><th scope="col">Query</th><th scope="col">Start</th><th scope="col">End</th><th scope="col" class="num">Execution time</th><th scope="col">Active window</th></tr>
+      </thead>
+      <tbody>
+        <tr><th scope="row">Q1</th><td>10:05</td><td>10:25</td><td class="num">18 min</td><td>10:07–10:25 (the first 2 minutes were waiting)</td></tr>
+        <tr><th scope="row">Q2</th><td>10:15</td><td>10:40</td><td class="num">25 min</td><td>10:15–10:40</td></tr>
+        <tr><th scope="row">Q3</th><td>10:20</td><td>10:30</td><td class="num">10 min</td><td>10:20–10:30</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Q1's active start is <code>MAX(10:05, 10:25 − 18 min)</code> = 10:07. Splitting the hour at every window boundary gives seven segments:</p>
+  <div class="table-wrap" role="region" aria-labelledby="ex-segments-caption" tabindex="0">
+    <table>
+      <caption id="ex-segments-caption">Segment math for the $1.20 interval</caption>
+      <thead>
+        <tr><th scope="col">Segment</th><th scope="col" class="num">Minutes</th><th scope="col" class="num">Segment cost</th><th scope="col">Active</th><th scope="col" class="num">Each active query gets</th></tr>
+      </thead>
+      <tbody>
+        <tr class="idle"><th scope="row">10:00–10:07</th><td class="num">7</td><td class="num">$0.140000</td><td>none</td><td class="num">unallocated</td></tr>
+        <tr><th scope="row">10:07–10:15</th><td class="num">8</td><td class="num">$0.160000</td><td>Q1</td><td class="num">$0.160000</td></tr>
+        <tr><th scope="row">10:15–10:20</th><td class="num">5</td><td class="num">$0.100000</td><td>Q1, Q2</td><td class="num">$0.050000</td></tr>
+        <tr><th scope="row">10:20–10:25</th><td class="num">5</td><td class="num">$0.100000</td><td>Q1, Q2, Q3</td><td class="num">$0.033333</td></tr>
+        <tr><th scope="row">10:25–10:30</th><td class="num">5</td><td class="num">$0.100000</td><td>Q2, Q3</td><td class="num">$0.050000</td></tr>
+        <tr><th scope="row">10:30–10:40</th><td class="num">10</td><td class="num">$0.200000</td><td>Q2</td><td class="num">$0.200000</td></tr>
+        <tr class="idle"><th scope="row">10:40–11:00</th><td class="num">20</td><td class="num">$0.400000</td><td>none</td><td class="num">unallocated</td></tr>
+      </tbody>
+      <tfoot>
+        <tr><th scope="row">Total</th><td class="num">60</td><td class="num">$1.200000</td><td colspan="2"></td></tr>
+      </tfoot>
+    </table>
+  </div>
+  <p>For example, the 10:20–10:25 segment gives $1.20 × 5 ÷ 60 ÷ 3 = $0.033333 to each of Q1, Q2 and Q3.</p>
+  <div class="table-wrap" role="region" aria-labelledby="ex-results-caption" tabindex="0">
+    <table>
+      <caption id="ex-results-caption">Result per query</caption>
+      <thead>
+        <tr><th scope="col">Query</th><th scope="col">Shares</th><th scope="col" class="num">Estimate</th></tr>
+      </thead>
+      <tbody>
+        <tr><th scope="row">Q1</th><td>0.160000 + 0.050000 + 0.033333</td><td class="num">$0.243333</td></tr>
+        <tr><th scope="row">Q2</th><td>0.050000 + 0.033333 + 0.050000 + 0.200000</td><td class="num">$0.333333</td></tr>
+        <tr><th scope="row">Q3</th><td>0.033333 + 0.050000</td><td class="num">$0.083333</td></tr>
+        <tr class="idle"><th scope="row">Idle (unallocated)</th><td>0.140000 + 0.400000</td><td class="num">$0.540000</td></tr>
+      </tbody>
+      <tfoot>
+        <tr><th scope="row">Allocated to queries</th><td>Q1 + Q2 + Q3</td><td class="num">$0.660000</td></tr>
+      </tfoot>
+    </table>
+  </div>
+  <p>The three estimates add up to $0.66, which is less than the $1.20 interval. The $0.54 of idle time stays unallocated on purpose. It is the cost of keeping the warehouse up, and no query caused it. The figures here are rounded to six decimals.</p>
+  <p><strong>Hidden executions change the shares.</strong> Suppose Q3 was run by someone whose history your identity can't see. Then Q1 and Q2 would each get $0.05 instead of $0.033333 for 10:20–10:25, and Q2 would get the whole $0.10 instead of $0.05 for 10:25–10:30. Estimates depend on what <code>system.query.history</code> shows you.</p>
+
+  <h3 id="query-assumptions">Assumptions</h3>
+  <ul>
+    <li>Cost is spread uniformly within each billing interval.</li>
+    <li>Concurrent queries share equally. CPU, memory or I/O use is not measured.</li>
+    <li>Active timing is approximate. Execution duration is reported by Databricks, and the active window is derived from it.</li>
+    <li>Executions you can't see, autoscaled clusters and unused capacity all affect the result.</li>
+    <li>Billing can be delayed or partial.</li>
+    <li>An estimate is not an invoice line. Estimates don't need to add up to the warehouse's bill.</li>
+  </ul>
+
+  <h3 id="query-labels">When there is no estimate</h3>
+  <p>The extension withholds a value rather than guess. Hover over or focus a label to see the reason.</p>
+  <div class="table-wrap" role="region" aria-labelledby="qlabels-caption" tabindex="0">
+    <table>
+      <caption id="qlabels-caption">Query History labels</caption>
+      <thead>
+        <tr><th scope="col">Label</th><th scope="col">Meaning</th><th scope="col">What you can do</th></tr>
+      </thead>
+      <tbody>
+        <tr><th scope="row">Waiting for history</th><td>The execution ended recently (within about two hours) and isn't in query history yet. Databricks documents typical availability within about an hour.</td><td>Check again later.</td></tr>
+        <tr><th scope="row">Waiting for billing</th><td>The execution was found, but warehouse billing for all or part of its time window hasn't been recorded yet. Databricks documents typical billing availability within 12 hours.</td><td>Check again later.</td></tr>
+        <tr><th scope="row">Cached · unallocated</th><td>The result came from the result cache, or no execution time was recorded, so it gets no share.</td><td>Nothing. This is expected.</td></tr>
+        <tr><th scope="row">Execution pending</th><td>The query is still queued or running, so there is no completed execution time.</td><td>Wait for it to finish.</td></tr>
+        <tr><th scope="row">Match ambiguous</th><td>More than one execution on the warehouse matches the row's start second and duration.</td><td>Open the query so its statement ID is available.</td></tr>
+        <tr><th scope="row">Row unavailable</th><td>The row exposes neither a valid statement ID nor a readable warehouse ID, start time and duration.</td><td>Reload the page. If the layout changed, see <a href="#limits">Limitations</a>.</td></tr>
+        <tr><th scope="row">Compute unsupported</th><td>The execution didn't run on a SQL warehouse, for example serverless notebook or pipeline compute.</td><td>Nothing. Only SQL warehouse executions are estimated.</td></tr>
+        <tr><th scope="row">Price unavailable</th><td>Overlapping billing records have no unique matching price in the selected price table. The hover text names the SKU.</td><td>Check the price table and currency in Connection preferences.</td></tr>
+        <tr><th scope="row">Estimate unavailable</th><td>Any other reason the extension won't guess. There may be no matching record in the last 90 UTC dates: the execution may be older, not ingested, or not visible to you. The execution may have failed or been cancelled, or no billing interval overlaps it. Too many records may match, or a query may have failed, for example for lack of permission on <code>system.query.history</code>.</td><td>Read the hover text. See <a href="#permissions">Permissions</a>.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ================================================================== compute -->
+<section id="compute" aria-labelledby="compute-title">
+  <h2 id="compute-title">Compute size previews</h2>
+  <p>Next to supported native size options, the extension shows a prospective hourly cost labeled <span class="label">DBU only</span>, for example <em>≈ $16.80/h per cluster · DBU only</em>. It covers Databricks DBU charges only. It leaves out virtual machines, disks, network and other infrastructure. <em>Rate unavailable</em> is a normal state. The extension never saves or resizes compute while a preview is shown.</p>
+
+  <h3 id="compute-warehouses">SQL warehouses</h3>
+  <p class="formula">hourly preview = current DBU price of the warehouse's latest billed SKU × DBU per hour</p>
+  <ul>
+    <li>The SKU is the warehouse's most recently billed DBU SKU in the last 90 UTC dates. Its price is the row in your selected price table that is valid right now. A warehouse with no billing in that window shows <em>Rate unavailable</em>. So does a warehouse whose selected type differs from its latest billed SKU.</li>
+    <li>While a warehouse is being created there is no warehouse ID yet. In that case only a serverless selection is priced, and only when the workspace billed exactly one serverless SQL SKU in the last 90 UTC dates.</li>
+    <li>The DBU per hour comes from the native page when the page shows it.</li>
+    <li>When the page doesn't show it, the extension uses the published Azure Databricks table below. It does so only for <strong>Azure serverless</strong> SQL warehouses. The table isn't applied on AWS or GCP, to classic or pro warehouses, or to real-time warehouses.</li>
+    <li>The rate is <strong>per cluster</strong>. With autoscaling, multiply by the number of running clusters. A Medium warehouse at 24 DBU/h and a synthetic $0.70 per DBU costs $16.80 per hour per cluster, so up to $50.40 per hour with a maximum of three clusters.</li>
+  </ul>
+  <div class="table-wrap" role="region" aria-labelledby="azure-caption" tabindex="0">
+    <table>
+      <caption id="azure-caption">Azure serverless SQL warehouse DBU per hour (Microsoft Learn, checked 2026-10-15)</caption>
+      <thead>
+        <tr><th scope="col">Size</th><th scope="col" class="num">DBU/hour</th></tr>
+      </thead>
+      <tbody>
+        <tr><th scope="row">2X-Small</th><td class="num">4</td></tr>
+        <tr><th scope="row">X-Small</th><td class="num">6</td></tr>
+        <tr><th scope="row">Small</th><td class="num">12</td></tr>
+        <tr><th scope="row">Medium</th><td class="num">24</td></tr>
+        <tr><th scope="row">Large</th><td class="num">40</td></tr>
+        <tr><th scope="row">X-Large</th><td class="num">80</td></tr>
+        <tr><th scope="row">2X-Large</th><td class="num">144</td></tr>
+        <tr><th scope="row">3X-Large</th><td class="num">272</td></tr>
+        <tr><th scope="row">4X-Large</th><td class="num">528</td></tr>
+        <tr><th scope="row">5X-Large</th><td class="num">no published rate: shows “Rate unavailable”</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 id="compute-interactive">Interactive (all-purpose) compute</h3>
+  <ul>
+    <li>The extension uses current all-purpose DBU prices for the classic all-purpose SKUs seen in this workspace, or on the existing cluster, during the last 90 UTC dates. When Photon can be detected, it filters by Photon.</li>
+    <li>It needs exactly one unambiguous numeric rate. Otherwise it shows <em>Rate unavailable</em>.</li>
+    <li>That rate is multiplied by the DBU/h value or range the native page shows. The driver is included only where the native estimate includes it.</li>
+    <li>The preview updates when you change node type, worker range or other inputs.</li>
+    <li>An option is priced only if it shows DBU information. The extension never guesses DBU per core. It never uses SQL warehouse rates for interactive compute.</li>
+  </ul>
+  <p><strong>Example (synthetic).</strong> The native form shows 4–8 DBU/h and the matching rate is $0.55 per DBU. The preview reads <em>≈ $2.20–$4.40/h · DBU only</em>.</p>
+</section>
+
+<!-- ================================================================== explorer -->
+<section id="explorer" aria-labelledby="explorer-title">
+  <h2 id="explorer-title">Cost Explorer</h2>
+  <p>Select <strong>Explore</strong> on the banner to expand it into six views:</p>
+  <dl>
+    <dt>Products</dt><dd>Stacked daily bars by product, the total trend, and an aligned overlay of the prior period.</dd>
+    <dt>Top drivers</dt><dd>Ranked horizontal bars and a sortable resource table.</dd>
+    <dt>Runs</dt><dd>A scatter plot of duration against cost, with links to native executions. You can select overlapping points with the keyboard.</dd>
+    <dt>Calendar</dt><dd>A UTC heatmap with weeks starting on Monday. Dates without data are marked unavailable, not zero.</dd>
+    <dt>SKUs</dt><dd>Current against prior cost per SKU, with a daily drilldown.</dd>
+    <dt>Daily detail</dt><dd>A sortable day-level table with comparisons.</dd>
+  </dl>
+  <p>Exact values appear on hover, tap and keyboard focus. You can drill down by product, resource, run, SKU and day. Breadcrumbs and filter chips show where you are. You can search, sort by cost, change or name in either direction, and reset to the whole workspace. Selecting a day keeps its aligned prior-period day for comparison.</p>
+
+  <h3 id="ownership">Ownership: why the Explorer and native badges differ</h3>
+  <p>In the Explorer, every billing record belongs to exactly one owner, chosen in this order of priority:</p>
+  <p class="formula">job → pipeline → warehouse → notebook → app → cluster → unattributed</p>
+  <p>This makes Explorer rows add up to the workspace total without double counting. Native badges answer a different question: what relates to this resource? A job badge can include pipeline updates the job triggered (see <a href="#jobs">Jobs that trigger pipelines</a>), while the Explorer assigns those records to the pipeline. In the earlier example, the Explorer counts update U1's $1.25 under pipeline P, while run A's badge also includes it. Both are correct for their purpose. Never add badge amounts together to get a workspace total.</p>
+
+  <h3 id="explorer-limits">Limits</h3>
+  <ul>
+    <li>The workspace summary query returns at most 20,000 rows.</li>
+    <li>Resource and run details load only when you ask for them. They are cached for about 5 minutes, and duplicate requests are merged.</li>
+    <li>Detail views list at most the top 200 ranked entities. The view shows the full number of candidates and says when the list is limited. The Runs view loads at most 500 runs for the period.</li>
+    <li>A result that is truncated, split into several chunks, or too large is rejected rather than shown as if complete.</li>
+    <li>Run durations are optional. If they can't be read, costs are still shown with a warning, and runs without a usable duration are left out of the scatter plot. A missing duration is never treated as zero.</li>
+    <li>A run's cost in the selected period is not its lifetime cost.</li>
+  </ul>
+
+  <h3 id="csv">CSV export</h3>
+  <p>Export writes the filtered table, together with its source, pricing basis and table, currency, UTC date bounds, freshness, scope and limit information. To keep spreadsheets safe, cells with quotes, commas or line breaks are quoted and escaped. Text cells that begin with <code>=</code>, <code>+</code>, <code>-</code>, <code>@</code>, a tab or a carriage return get a leading single quote, so spreadsheet apps don't run them as formulas. This also applies after leading spaces. Costs are written as plain numbers, so legitimate negative values stay numbers. Missing values are empty cells, never 0. Links are included only when they are validated native links. App names are validated, and routes are never guessed from IDs.</p>
+</section>
+
+<!-- ================================================================== flags -->
+<section id="flags" aria-labelledby="flags-title">
+  <h2 id="flags-title">Heuristic flags</h2>
+  <p>Flags point at numbers worth a second look. They are simple rules, not confirmed anomalies, and they don't explain causes.</p>
+  <h3 id="flag-spike">Daily positive spike</h3>
+  <ul>
+    <li>Needs at least 14 fully priced days in the comparison period. If fewer exist, the flag is suppressed and the reason is shown.</li>
+    <li>Needs recent observed billing. If no billing was observed in the last 48 hours, the flag is suppressed, because recent days may still be incomplete.</li>
+    <li>Baseline samples are the previous period's days on the same weekday, if there are at least 3 of them. Otherwise all previous-period days are used.</li>
+    <li>A positive daily cost is flagged when it exceeds <code>MAX(median × 1.5, median + 3 × MAD)</code>. MAD is the median absolute deviation from the median.</li>
+  </ul>
+  <p><strong>Example (synthetic).</strong> The same-weekday samples are $98, $100, $104 and $110. The median is $102. The deviations from it are 4, 2, 2 and 8, so the MAD is $3. The threshold is MAX($153, $111) = $153. A day at $160 is flagged, and a day at $140 is not.</p>
+  <h3 id="flag-runs">High-cost runs</h3>
+  <ul>
+    <li>Needs at least 8 priced, completed runs with a positive observed duration in the same cohort, meaning runs of the same job.</li>
+    <li>A run is flagged when its cost exceeds <code>Q3 + 1.5 × IQR</code>, the upper quartile plus one and a half interquartile ranges. Quartiles are interpolated linearly between the closest ranks.</li>
+  </ul>
+  <p><strong>Example (synthetic).</strong> If the cohort's quartiles are Q1 = $2.00 and Q3 = $3.00, the IQR is $1.00 and runs above $4.50 are flagged.</p>
+</section>
+
+<!-- ================================================================== freshness -->
+<section id="freshness" aria-labelledby="freshness-title">
+  <h2 id="freshness-title">Freshness</h2>
+  <p>The banner shows a line such as <em>Latest usage 10 h ago</em>. This is the age of the newest <code>usage_end_time</code> among the billing records the summary read. Reporting periods end at 00:00 UTC today, so the smallest possible age is the time since midnight UTC.</p>
+  <ul>
+    <li>Databricks documents that billing records are typically available within 12 hours, and that new workspaces can take longer. Early in the UTC day, yesterday may still be incomplete.</li>
+    <li>Freshness is a signal, not proof that every SKU is complete. Different products and SKUs can arrive at different times, and corrections can arrive days later.</li>
+    <li><em>No usage observed</em> means the summary found no records. It doesn't mean zero spend.</li>
+    <li>Query history typically arrives within an hour, which is faster than billing. That is why recent queries often show <em>Waiting for billing</em>.</li>
+  </ul>
+</section>
+
+<!-- ================================================================== cache -->
+<section id="cache" aria-labelledby="cache-title">
+  <h2 id="cache-title">Caching and Refresh</h2>
+  <ul>
+    <li>Results are cached for about 5 minutes. Identical requests that are already running are merged instead of sent twice.</li>
+    <li>Cache entries are kept apart by workspace origin and ID, auth mode, price table, currency, connection revision, query kind, period and scope (resources, view or filter). Changing any of these makes a new request.</li>
+    <li><strong>Refresh</strong> on the banner re-runs the workspace summary immediately. Badges and Query History estimates keep their own caches and expire on their own schedule.</li>
+    <li>Saving a connection or token clears the cache. A result that finishes after you changed the connection or settings is discarded rather than shown.</li>
+    <li>The cache lives in the extension's background memory. The browser can clear it sooner, for example when the background worker is suspended or the browser restarts.</li>
+    <li>Turning off <strong>Show costs inside Databricks</strong> pauses new cost requests from the page. Workspace colors stay active.</li>
+  </ul>
+</section>
+
+<!-- ================================================================== states -->
+<section id="states" aria-labelledby="states-title">
+  <h2 id="states-title">Missing data and status labels</h2>
+  <p><strong>Missing is not zero.</strong> Zero means the calculation produced zero. Missing means the extension couldn't calculate a value, because billing hasn't arrived, a price is missing, permission is lacking, or the data is outside the window. Showing missing values as $0 would understate spend, so the extension names the state instead.</p>
+  <div class="table-wrap" role="region" aria-labelledby="banner-states-caption" tabindex="0">
+    <table>
+      <caption id="banner-states-caption">Banner states</caption>
+      <thead>
+        <tr><th scope="col">Banner text</th><th scope="col">Meaning</th></tr>
+      </thead>
+      <tbody>
+        <tr><th scope="row">Loading costs…</th><td>The request is in progress.</td></tr>
+        <tr><th scope="row">$… est.</th><td>Every record in the period is priced.</td></tr>
+        <tr><th scope="row">Priced subtotal $…</th><td>Some records are unpriced. See <a href="#partial">Totals and priced subtotals</a>.</td></tr>
+        <tr><th scope="row">No priced usage</th><td>Records exist, but none could be priced.</td></tr>
+        <tr><th scope="row">No usage recorded in this period</th><td>The query returned no billing records for this workspace and period.</td></tr>
+        <tr><th scope="row">No imported summary for this workspace and period</th><td>Local import mode, and the file has no entry for this workspace and period.</td></tr>
+        <tr><th scope="row">Cost display paused</th><td><strong>Show costs inside Databricks</strong> is off. Select <strong>Resume</strong>.</td></tr>
+        <tr><th scope="row">Cost Companion is not connected to this workspace</th><td>There is no connection for this origin. Connect, or switch to Demo mode.</td></tr>
+        <tr><th scope="row">Workspace ID not identified / Conflicting workspace IDs in this URL</th><td>The page URL has no usable ID, or it has IDs that disagree. Open a page whose URL includes <code>?o=&lt;workspace ID&gt;</code>, or choose the workspace in Connection preferences.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Other places use the same rule: <em>Rate unavailable</em> in compute previews, <em>Direct job cost</em> for jobs without pipeline attribution, the nine <a href="#query-labels">Query History labels</a>, and <em>unavailable</em> days in the Explorer calendar.</p>
+
+  <h3 id="errors">Errors and what to do</h3>
+  <p>Errors use plain language and list next steps. <strong>Technical details</strong> show the error code, the SQL error code, the statement ID, the HTTP status and a cleaned-up message. Tokens, keys and other secrets are removed.</p>
+  <div class="table-wrap" role="region" aria-labelledby="errors-caption" tabindex="0">
+    <table>
+      <caption id="errors-caption">Common errors</caption>
+      <thead>
+        <tr><th scope="col">Message</th><th scope="col">Next step</th></tr>
+      </thead>
+      <tbody>
+        <tr><th scope="row">No permission to use the selected SQL warehouse</th><td>Ask a workspace admin for <code>CAN USE</code>, or pick another warehouse.</td></tr>
+        <tr><th scope="row">No permission to read billing system tables</th><td>Ask for <code>USE CATALOG</code> on <code>system</code>, <code>USE SCHEMA</code> on <code>system.billing</code>, and <code>SELECT</code> on <code>system.billing.usage</code> and the selected price table.</td></tr>
+        <tr><th scope="row">No permission to read query history</th><td>Ask for <code>SELECT</code> on <code>system.query.history</code> or your approved view. Workspace totals keep working without it.</td></tr>
+        <tr><th scope="row">No permission to read job/pipeline timelines</th><td>Ask for <code>SELECT</code> on the <code>system.lakeflow</code> tables. Until then, jobs show <em>Direct job cost</em>.</td></tr>
+        <tr><th scope="row">A required table is not available</th><td>Check that system tables are enabled. If the missing table is <code>account_prices</code>, switch to <code>list_prices</code>.</td></tr>
+        <tr><th scope="row">Price table and price field do not match</th><td>Reload the extension and reconnect. If you use the helper, restart it so both use the same price adapter.</td></tr>
+        <tr><th scope="row">A table does not have the expected columns</th><td>Make sure an approved view exposes the system table's columns. Otherwise, update the extension.</td></tr>
+        <tr><th scope="row">Sign-in expired / Databricks rejected the credentials</th><td>Reconnect from the popup, or save a new token.</td></tr>
+        <tr><th scope="row">The cost query is taking too long</th><td>The warehouse may be starting or busy. Wait, then select Refresh, or choose a running warehouse.</td></tr>
+        <tr><th scope="row">The selected warehouse is unavailable</th><td>Pick another warehouse under Connection preferences.</td></tr>
+        <tr><th scope="row">The result was too large to show completely</th><td>Narrow the period or filters. Partial results are never shown as complete totals.</td></tr>
+        <tr><th scope="row">The local helper is not running / is outdated</th><td>See <a href="#helper">Local helper troubleshooting</a>.</td></tr>
+        <tr><th scope="row">This page belongs to a different workspace</th><td>The saved connection for this site is for another workspace ID. Choose the workspace in Connection preferences.</td></tr>
+        <tr><th scope="row">Site access not granted</th><td>Open the popup on this workspace and allow access when asked.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ================================================================== permissions -->
+<section id="permissions" aria-labelledby="permissions-title">
+  <h2 id="permissions-title">Permissions and privacy</h2>
+  <h3 id="browser-permissions">Browser permissions</h3>
+  <div class="table-wrap" role="region" aria-labelledby="perm-caption" tabindex="0">
+    <table>
+      <caption id="perm-caption">What the extension asks the browser for</caption>
+      <thead>
+        <tr><th scope="col">Permission</th><th scope="col">Why</th></tr>
+      </thead>
+      <tbody>
+        <tr><th scope="row">Optional site access, per workspace</th><td>Requested only when you connect or save colors for a workspace. Allowed host families are <code>*.cloud.databricks.com</code>, <code>*.azuredatabricks.net</code> and <code>*.gcp.databricks.com</code> (HTTPS), plus the local fixture at <code>http://127.0.0.1:8765</code>. Account-console hosts are excluded. Nothing runs on a site until you grant it.</td></tr>
+        <tr><th scope="row"><code>activeTab</code></th><td>Temporary access to the current tab after you click the toolbar icon.</td></tr>
+        <tr><th scope="row"><code>scripting</code></th><td>Registers the content scripts for the workspaces you granted, and adds them to tabs that are already open.</td></tr>
+        <tr><th scope="row"><code>storage</code></th><td>Settings in local storage, and secrets in memory-only session storage (below).</td></tr>
+        <tr><th scope="row"><code>alarms</code></th><td>Schedules background work such as monitor polling.</td></tr>
+        <tr><th scope="row"><code>notifications</code> (optional)</th><td>Requested only if you turn on failed-run notifications in the monitor.</td></tr>
+        <tr><th scope="row">Helper setup page connection</th><td>Only <code>http://127.0.0.1:8766</code> (the local helper's setup page) may send the extension a pairing message.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>The extension doesn't request cookies, debugger, web-request or broad all-sites access. It doesn't scrape sessions, and it loads no remote code. Extension pages allow only the extension's own scripts.</p>
+
+  <h3 id="storage">What is stored where</h3>
+  <ul>
+    <li><strong>Local storage</strong> (<code>chrome.storage.local</code>, kept until you remove the extension): settings, one connection per workspace origin (no secrets), workspace IDs seen in tabs, a validated import, the last 20 cleaned-up diagnostics, and workspace color preferences.</li>
+    <li><strong>Session storage</strong> (<code>chrome.storage.session</code>, memory only): personal access tokens, the helper pairing, and the monitor's current state. These are cleared when the browser restarts or the extension is reloaded, updated or disabled. Content scripts can't read them.</li>
+    <li>Signing in through the helper uses the Databricks CLI's own credential store. Those OAuth tokens never enter the extension.</li>
+  </ul>
+
+  <h3 id="api-use">Read-only Databricks access</h3>
+  <ul>
+    <li>SQL runs through the Statement Execution API. Only fixed, parameterized <code>SELECT</code> statements built by the extension are sent, chosen from a small set of named query kinds. The helper never runs SQL text sent by a caller. Long-running statements are cancelled.</li>
+    <li>Inventory and monitor calls are read-only <code>GET</code> requests from an allowlist: SQL warehouses, job runs, pipelines and clusters.</li>
+    <li>The extension never writes to Databricks. It never edits warehouses or clusters, and never starts or stops jobs.</li>
+  </ul>
+
+  <h3 id="grants">Databricks permissions you need</h3>
+  <div class="table-wrap" role="region" aria-labelledby="grants-caption" tabindex="0">
+    <table>
+      <caption id="grants-caption">Grants by feature</caption>
+      <thead>
+        <tr><th scope="col">Feature</th><th scope="col">Needs</th></tr>
+      </thead>
+      <tbody>
+        <tr><th scope="row">Any SQL</th><td><code>CAN USE</code> on the selected SQL warehouse.</td></tr>
+        <tr><th scope="row">Banner, badges, Explorer</th><td><code>USE CATALOG</code> on <code>system</code>, <code>USE SCHEMA</code> on <code>system.billing</code>, and <code>SELECT</code> on <code>system.billing.usage</code> and on the selected price table (<code>list_prices</code> or <code>account_prices</code>). With an approved view, you need the equivalent grants on that view.</td></tr>
+        <tr><th scope="row">Query History estimates</th><td><code>USE SCHEMA</code> on <code>system.query</code> and <code>SELECT</code> on <code>system.query.history</code> or the approved view. By default only admins can read this table.</td></tr>
+        <tr><th scope="row">Job and pipeline attribution, run durations</th><td><code>USE SCHEMA</code> on <code>system.lakeflow</code> and <code>SELECT</code> on <code>pipeline_update_timeline</code>, <code>job_task_run_timeline</code> and <code>job_run_timeline</code>.</td></tr>
+        <tr><th scope="row">Monitor widget</th><td>Workspace permission to view the jobs, pipelines, warehouses and clusters you want to see. Lists only include what your identity can view.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>System tables need a Unity Catalog-enabled workspace. An account admin who is also a metastore admin can read them by default and can grant access to others.</p>
+
+  <h3 id="privacy">Privacy</h3>
+  <ul>
+    <li>No telemetry. The extension sends nothing to its authors or any third party.</li>
+    <li>It never reads SQL statement text or result rows of your queries.</li>
+    <li>It never infers who someone is from a display name.</li>
+    <li>Diagnostics stay in your browser and are cleaned of tokens and keys.</li>
+  </ul>
+</section>
+
+<!-- ================================================================== helper -->
+<section id="helper" aria-labelledby="helper-title">
+  <h2 id="helper-title">Local helper troubleshooting</h2>
+  <p>The local helper is a small Node program that listens only on <code>127.0.0.1:8766</code> and is never reachable from your network. It signs in with the Databricks CLI's browser OAuth and runs the same named cost queries as the extension, built from the same files. The CLI keeps its OAuth credentials in its own store. The helper holds only a short-lived access token in memory, sends it only to the selected workspace, and writes nothing to disk. These tokens never enter the extension. If you'd rather not run a helper, use a personal access token instead (below).</p>
+
+  <h3 id="helper-start">Start and pair</h3>
+  <ol>
+    <li>You need Node.js 20 or newer and the Databricks CLI v1.12 or newer. Check the CLI version with <code>databricks -v</code>.</li>
+    <li>Run the start script: <code>start-helper.command</code> on macOS (double-click), or <code>start-helper.sh</code> in a terminal on macOS or Linux. It checks for Node.js, starts the helper and opens the setup page, in Microsoft Edge if installed, otherwise in your default browser. If a helper of the same version is already running, the script reuses it and only reopens the setup page. If an older helper is running, the script tells you how to stop it.</li>
+    <li>Select <strong>Connect workspace</strong>. The setup page passes a random 24-character pairing key to the extension in the URL fragment. The fragment is removed right away, and the key is never put in a query string, page HTML or logs. The extension checks the pairing with the helper before saving it, then opens Connection preferences.</li>
+    <li>If automatic pairing fails, paste the key under Connection preferences. Manual entry is a fallback.</li>
+  </ol>
+  <p>The pairing lives in session storage. After a browser restart or an extension reload, run the start script again, or reopen the setup page, to pair again. Reopening setup reuses a running helper of the same version. Each new helper start creates a new key, and the old pairing is dropped.</p>
+
+  <h3 id="helper-profiles">Dedicated CLI profiles</h3>
+  <ul>
+    <li>For cost queries, the helper uses a dedicated CLI profile named after the workspace you selected, <code>dcc-&lt;host&gt;-&lt;hash&gt;</code>, and requests the <code>sql</code> scope.</li>
+    <li>It never uses your <code>DEFAULT</code> profile or another existing profile.</li>
+    <li>It reuses a valid session. Otherwise it starts the browser sign-in, and you may see your company's SSO and a consent screen.</li>
+    <li>The monitor widget needs a separate one-time sign-in with the <code>all-apis</code> scope, on its own <code>dcc-mon-</code> profile. Cost queries keep the narrower <code>sql</code> scope.</li>
+  </ul>
+
+  <h3 id="restart-vs-reload">Restart the helper, or reload the extension?</h3>
+  <div class="table-wrap" role="region" aria-labelledby="reload-caption" tabindex="0">
+    <table>
+      <caption id="reload-caption">What each kind of update needs</caption>
+      <thead>
+        <tr><th scope="col">What changed</th><th scope="col">Restart helper</th><th scope="col">Reload extension</th></tr>
+      </thead>
+      <tbody>
+        <tr><th scope="row">Helper code (<code>local/*.mjs</code>), helper capabilities</th><td>Yes</td><td>No</td></tr>
+        <tr><th scope="row">Price adapter or SQL query builders (<code>extension/src/databricks/</code>)</th><td>Yes. The helper loads these files when it starts.</td><td>Yes</td></tr>
+        <tr><th scope="row">Manifest, background service worker</th><td>No</td><td>Yes</td></tr>
+        <tr><th scope="row">Content scripts (banner, badges, colors)</th><td>No</td><td>Yes, then refresh open Databricks tabs</td></tr>
+        <tr><th scope="row">Popup, options, monitor or this guide</th><td>No</td><td>Reopen the page. A reload also works.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Reloading the extension clears session storage, so pair the helper again or re-enter your token afterwards. To restart the helper, stop it with <kbd>Ctrl</kbd>+<kbd>C</kbd> or by closing its terminal window, then run the start script again.</p>
+
+  <h3 id="helper-troubleshooting">Common problems</h3>
+  <dl>
+    <dt>The local helper is not running</dt>
+    <dd>Run the start script again, then select <strong>Connect workspace</strong>.</dd>
+    <dt>The running local helper is outdated</dt>
+    <dd>The running helper lacks a capability this request needs: the account-price adapter, price adapter version 2 or later, job–pipeline attribution, or the monitor. Stop the old helper, run the start script again, and reconnect. A version difference alone doesn't block you. Only missing capabilities do.</dd>
+    <dt>Helper rejected the pairing</dt>
+    <dd>The helper was restarted, so its key changed. Pair again from the setup page.</dd>
+    <dt>Databricks CLI not found or too old</dt>
+    <dd>Install or update the CLI (v1.12 or newer), then restart the helper. Or use a personal access token.</dd>
+    <dt>Sign-in expired</dt>
+    <dd>Select <strong>Connect workspace</strong> again. The helper reuses the dedicated profile and asks you to sign in only if needed.</dd>
+    <dt>Wrong workspace or account in the browser sign-in</dt>
+    <dd>The profile is tied to the workspace you selected. Finish the sign-in with the right account, or remove the <code>dcc-</code> profile (see the README) and connect again.</dd>
+  </dl>
+
+  <h3 id="pat">Personal access token instead</h3>
+  <p>PAT mode needs no helper. Create a token in your workspace under <strong>Settings → Developer → Access tokens</strong> and paste it under Connection preferences. The token is kept only in session storage, so re-enter it after a browser restart or extension reload. Workspace admins can turn PATs off, and Databricks recommends OAuth where possible. Give the token a short lifetime and revoke it when you no longer need it.</p>
+</section>
+
+<!-- ================================================================== colors -->
+<section id="colors" aria-labelledby="colors-title">
+  <h2 id="colors-title">Workspace colors</h2>
+  <p>Workspace colors tint the Databricks top bar so you can tell workspaces apart at a glance. Colors are independent of billing. They need no sign-in, helper or SQL, only site access for that workspace, which the extension requests when you save if it isn't already granted.</p>
+  <ul>
+    <li>Open the popup and choose <strong>Workspace colors</strong>. Pick a saved workspace or enter a URL. Then choose a color with the picker, a six-digit hex value (<code>#RRGGBB</code>) or a preset. Check the preview, then select <strong>Save</strong>.</li>
+    <li>Preferences are stored per <code>origin|workspaceId</code>, separately from cost connections. Changing or disconnecting billing never changes them.</li>
+    <li>A color saved for a URL without a workspace ID becomes a default for that host. A color for a specific workspace ID wins over the host default. If a page URL has no ID, the saved connection's ID is used when there is one.</li>
+    <li>Only the native top navigation is tinted. Other headers and the extension's own banner aren't. Text switches to black or white based on contrast, search and action controls stay readable, and brand graphics are kept.</li>
+    <li>Only strict <code>#RRGGBB</code> values are accepted. Nothing else you type reaches the injected styles.</li>
+    <li><strong>Reset</strong> removes the override. If a host default still applies, the panel says so.</li>
+    <li>Colors stay on when cost display is paused.</li>
+  </ul>
+</section>
+
+<!-- ================================================================== monitor -->
+<section id="monitor" aria-labelledby="monitor-title">
+  <h2 id="monitor-title">Monitor widget</h2>
+  <p>The monitor is a compact window that shows one workspace at a glance: active and recent job runs, pipeline updates, SQL warehouses and clusters. It is off until you turn on <strong>Monitor runs and compute</strong> in the popup. It is unavailable in Demo mode, which makes no Databricks requests.</p>
+  <ul>
+    <li><strong>What it polls.</strong> It polls every 60 seconds by default, or every 2 or 5 minutes if you choose. It uses only read-only REST <code>GET</code> requests: job runs (Jobs API 2.2), pipelines, SQL warehouses and clusters. These requests use no warehouse time. After errors it backs off, up to 30 minutes between attempts.</li>
+    <li><strong>No background SQL.</strong> Background polling never sends SQL, so it never starts a stopped warehouse. The monitor's cost line uses the cached workspace summary when there is one. If loading costs would need a warehouse that isn't running, the monitor asks you first.</li>
+    <li><strong>Sign-in.</strong> With the helper, the monitor needs a separate one-time sign-in. Select <strong>Sign in for monitor (broader access)</strong> in Connection preferences. It requests the <code>all-apis</code> scope on its own <code>dcc-mon-</code> profile. The helper forwards only an allowlist of read-only <code>GET</code> paths, and cost queries keep the SQL-only sign-in. In PAT mode, your token is used for both.</li>
+    <li><strong>Toolbar badge.</strong> The extension icon shows the number of active runs. A different color plus “!” marks failures from the last 24 hours that the monitor window hasn't shown yet, so the alert doesn't rely on color alone.</li>
+    <li><strong>Notifications.</strong> Desktop notifications for failed runs are opt-in (<strong>Desktop notification when a run fails</strong>). The browser asks for the notifications permission when you turn them on. You get at most one notification per run, and none for runs that failed before monitoring started. Your operating system's notification settings can still hide them.</li>
+    <li><strong>Open the monitor when the browser starts</strong> is opt-in.</li>
+    <li>Monitor state is kept in memory-only session storage.</li>
+  </ul>
+  <h3 id="float">Float on top</h3>
+  <p>The <strong>Float on top</strong> button tries to move the monitor into a Document Picture-in-Picture window, which stays above other windows while the browser runs. Limitations:</p>
+  <ul>
+    <li>It needs Chrome or Edge 116 or newer and a click every time. It can't open automatically.</li>
+    <li>The floating window closes when the monitor window that opened it closes. The page can't choose where it appears.</li>
+    <li>Picture-in-Picture from an extension page hasn't been fully verified. If your browser refuses, keep using the normal monitor window.</li>
+  </ul>
+</section>
+
+<!-- ================================================================== limits -->
+<section id="limits" aria-labelledby="limits-title">
+  <h2 id="limits-title">Limitations</h2>
+  <ul>
+    <li><strong>Estimates, not invoices.</strong> Amounts come from system tables and price tables, not from your bill.</li>
+    <li><strong>No cloud-provider costs.</strong> Virtual machines, disks, network and storage billed by AWS, Azure or Google Cloud aren't included. Compute previews are DBU only.</li>
+    <li><strong>Delayed billing.</strong> Recent days can be incomplete, and corrections can change past amounts.</li>
+    <li><strong><code>account_prices</code> availability.</strong> The table may be missing for your account or cloud. Azure in particular is reported to lack it. The extension never falls back to list prices for you.</li>
+    <li><strong>Native page changes.</strong> Badges, previews and colors depend on the Databricks web interface. Selectors are best-effort and may need updates when Databricks changes its pages. When the extension can't find an element, it skips that element rather than guess.</li>
+    <li><strong>Bounded history.</strong> Run search covers 365 UTC dates and query history 90 UTC dates. Older executions show no amount.</li>
+    <li><strong>Visibility.</strong> Estimates and lists depend on what your identity can see.</li>
+    <li><strong>Shared clusters.</strong> Usage on shared all-purpose clusters isn't split among jobs or notebooks.</li>
+    <li><strong>Float on top</strong> may not work from extension pages. See <a href="#float">Float on top</a>.</li>
+    <li><strong>Heuristic flags</strong> are simple rules, not anomaly detection.</li>
+  </ul>
+</section>
+
+<!-- ================================================================== references -->
+<section id="references" aria-labelledby="references-title">
+  <h2 id="references-title">Official references</h2>
+  <p>Each link was opened and checked against the statement it supports on 2026-10-15. Databricks documentation exists per cloud. The AWS edition is linked unless noted, and the Azure and Google Cloud editions have matching pages.</p>
+  <h3 id="refs-tables">System tables</h3>
+  <ul class="refs">
+    <li><a href="https://docs.databricks.com/aws/en/admin/system-tables/">System tables overview</a><span class="what">Unity Catalog requirement, read-only tables, granting <code>USE CATALOG</code>, <code>USE SCHEMA</code> and <code>SELECT</code>.</span></li>
+    <li><a href="https://docs.databricks.com/aws/en/admin/system-tables/billing">Billable usage table (<code>system.billing.usage</code>)</a><span class="what">Columns, <code>usage_metadata</code> IDs, record types ORIGINAL / RETRACTION / RESTATEMENT, typical availability within 12 hours.</span></li>
+    <li><a href="https://learn.microsoft.com/en-us/azure/databricks/admin/system-tables/billing">Billable usage table, Azure Databricks edition</a><span class="what">The same schema on Azure, and that <code>job_id</code> isn't filled for jobs on all-purpose compute.</span></li>
+    <li><a href="https://docs.databricks.com/gcp/en/admin/system-tables/billing">Billable usage table, Google Cloud edition</a><span class="what">The same table on Databricks on Google Cloud.</span></li>
+    <li><a href="https://docs.databricks.com/aws/en/admin/system-tables/pricing">Pricing table (<code>system.billing.list_prices</code>)</a><span class="what"><code>price_start_time</code>, <code>price_end_time</code>, <code>currency_code</code>, <code>usage_unit</code>, and <code>pricing.effective_list.default</code>.</span></li>
+    <li><a href="https://docs.databricks.com/aws/en/admin/usage/system-tables">Monitor costs using system tables</a><span class="what">Joining usage to list prices within each price's validity window.</span></li>
+    <li><a href="https://docs.databricks.com/aws/en/genie/monitor-cost">Monitor Genie costs</a><span class="what"><code>GENIE_FREE_USAGE</code> is not billed, has no list price, and appears from 20 July 2026.</span></li>
+    <li><a href="https://docs.databricks.com/aws/en/admin/system-tables/query-history">Query history table (<code>system.query.history</code>)</a><span class="what"><code>statement_id</code>, <code>compute.type</code> and <code>warehouse_id</code>, durations, <code>from_result_cache</code>, admin-only by default, typical availability within an hour.</span></li>
+    <li><a href="https://docs.databricks.com/aws/en/admin/system-tables/jobs">Jobs and pipelines tables (<code>system.lakeflow</code>)</a><span class="what"><code>pipeline_update_timeline.trigger_details.job_task</code>, <code>job_task_run_timeline.run_id</code> and <code>job_run_id</code>, hourly slicing, 365-day retention.</span></li>
+  </ul>
+  <h3 id="refs-apis">APIs</h3>
+  <ul class="refs">
+    <li><a href="https://docs.databricks.com/aws/en/dev-tools/sql-execution-tutorial">Statement Execution API tutorial</a><span class="what">Running SQL on a warehouse over REST.</span></li>
+    <li><a href="https://docs.databricks.com/api/workspace/statementexecution/executestatement">Execute a SQL statement</a><span class="what">Named parameters with types, the 25 MiB INLINE limit, and the <code>truncated</code> flag.</span></li>
+    <li><a href="https://docs.databricks.com/api/workspace/statementexecution/cancelexecution">Cancel statement execution</a><span class="what">Cancelling long-running statements.</span></li>
+    <li><a href="https://docs.databricks.com/api/workspace/warehouses/list">List SQL warehouses</a><span class="what"><code>state</code>, <code>cluster_size</code>, <code>enable_serverless_compute</code>, min and max clusters.</span></li>
+    <li><a href="https://docs.databricks.com/api/workspace/jobs/listruns">List job runs (Jobs API 2.2)</a><span class="what">The <code>status</code> field, which replaces the deprecated <code>state</code>.</span></li>
+    <li><a href="https://docs.databricks.com/api/workspace/pipelines/listpipelines">List pipelines</a> and <a href="https://docs.databricks.com/api/workspace/pipelines/listupdates">List pipeline updates</a><span class="what">Read-only pipeline inventory.</span></li>
+    <li><a href="https://docs.databricks.com/api/workspace/clusters/list">List clusters</a><span class="what">Read-only cluster inventory.</span></li>
+  </ul>
+  <h3 id="refs-sizing">Warehouse sizing and pricing</h3>
+  <ul class="refs">
+    <li><a href="https://docs.databricks.com/aws/en/compute/sql-warehouse/warehouse-behavior">SQL warehouse sizing, scaling and queuing</a><span class="what">Cluster sizes, minimum and maximum clusters, and autoscaling.</span></li>
+    <li><a href="https://learn.microsoft.com/en-us/azure/databricks/compute/sql-warehouse/warehouse-behavior">SQL warehouse sizing, Azure Databricks edition</a><span class="what">5X-Large is in Public Preview, and Azure classic and pro sizing.</span></li>
+    <li><a href="https://learn.microsoft.com/en-us/azure/databricks/resources/pricing">Serverless DBU consumption by SKU (Azure Databricks)</a><span class="what">The SQL Serverless DBU/hour table, 2X-Small = 4 through 4X-Large = 528, with no 5X-Large value.</span></li>
+    <li><a href="https://docs.databricks.com/aws/en/compute/sql-warehouse/warehouse-types">SQL warehouse types</a><span class="what">Serverless, pro and classic warehouses, and the real-time type.</span></li>
+  </ul>
+  <h3 id="refs-auth">Access, CLI and tokens</h3>
+  <ul class="refs">
+    <li><a href="https://docs.databricks.com/aws/en/security/auth/access-control/">Access control lists</a><span class="what">SQL warehouse <code>CAN USE</code>, and job and pipeline view permissions.</span></li>
+    <li><a href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/manage-privileges/privileges">Unity Catalog privileges</a><span class="what"><code>SELECT</code> also needs <code>USE CATALOG</code> and <code>USE SCHEMA</code> on the parents.</span></li>
+    <li><a href="https://docs.databricks.com/aws/en/dev-tools/cli/install">Install or update the Databricks CLI</a><span class="what">Install and update commands, and <code>databricks -v</code>.</span></li>
+    <li><a href="https://docs.databricks.com/aws/en/dev-tools/cli/authentication">Databricks CLI authentication</a><span class="what"><code>databricks auth login</code>, profiles in <code>.databrickscfg</code>, and tokens in the OS credential store from CLI 1.0.</span></li>
+    <li><a href="https://docs.databricks.com/aws/en/dev-tools/cli/reference/auth-commands">CLI <code>auth</code> commands</a><span class="what"><code>auth profiles</code>, and <code>auth logout [PROFILE] --delete</code> to remove a profile.</span></li>
+    <li><a href="https://docs.databricks.com/aws/en/dev-tools/auth/oauth-u2m">OAuth user-to-machine authentication</a><span class="what">Browser sign-in for CLI profiles.</span></li>
+    <li><a href="https://docs.databricks.com/aws/en/dev-tools/auth/config-profiles">Configuration profiles</a><span class="what">Where <code>.databrickscfg</code> lives on each platform, and the profile format.</span></li>
+    <li><a href="https://docs.databricks.com/aws/en/dev-tools/auth/pat">Personal access tokens</a><span class="what">Creating tokens, admin controls, and automatic revocation of unused tokens.</span></li>
+  </ul>
+  <h3 id="refs-browser">Browser</h3>
+  <ul class="refs">
+    <li><a href="https://developer.chrome.com/docs/extensions/develop/concepts/declare-permissions">Declare permissions</a><span class="what">Optional permissions and optional host permissions.</span></li>
+    <li><a href="https://developer.chrome.com/docs/extensions/reference/api/permissions"><code>chrome.permissions</code></a><span class="what">Runtime requests after a user action, and removing access.</span></li>
+    <li><a href="https://developer.chrome.com/docs/extensions/develop/concepts/activeTab">The activeTab permission</a><span class="what">Temporary access to the current tab after you invoke the extension.</span></li>
+    <li><a href="https://developer.chrome.com/docs/extensions/reference/api/storage"><code>chrome.storage</code></a><span class="what">Local storage is cleared on removal. Session storage is memory-only and hidden from content scripts by default.</span></li>
+    <li><a href="https://developer.chrome.com/docs/extensions/reference/api/notifications"><code>chrome.notifications</code></a><span class="what">Desktop notifications and the <code>notifications</code> permission.</span></li>
+    <li><a href="https://developer.chrome.com/docs/extensions/reference/manifest/externally-connectable"><code>externally_connectable</code></a><span class="what">Which web pages may message the extension.</span></li>
+    <li><a href="https://developer.chrome.com/docs/web-platform/document-picture-in-picture">Document Picture-in-Picture</a><span class="what">Chrome and Edge 116+, needs a user gesture, stays on top, closes with its opener.</span></li>
+  </ul>
+  <h3 id="refs-community">Community report (unofficial)</h3>
+  <ul class="refs">
+    <li><a href="https://community.databricks.com/t5/data-governance/account-prices-for-azure/td-p/158176">Databricks Community thread: “Account prices for Azure”</a><span class="what">A community member reports that <code>account_prices</code> isn't available on Azure. This is not official documentation.</span></li>
+  </ul>
+</section>
+
+  </main>
+</div>
+
+<footer class="site-footer">
+  <div class="inner">
+    <p>Databricks Cost Companion 0.1.0 · Guide last reviewed 2026-10-15.</p>
+    <p>Independent project, not affiliated with Databricks, Inc. All examples are synthetic.</p>
+  </div>
+</footer>
+</body>
+</html>
