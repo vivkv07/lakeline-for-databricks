@@ -358,3 +358,40 @@ test('Settings/Resume work without an identified workspace but still require our
   assert.equal((await router.dispatch({ type: 'dcc:resume', origin: ORIGIN }, { ...noId, url: 'https://evil.example/' })).ok, false);
   assert.equal((await router.dispatch({ type: 'dcc:summary', origin: ORIGIN, workspaceId: '777', periodDays: 7 }, noId)).ok, false, 'data requests still validate the workspace');
 });
+
+/** Fake chrome.scripting that behaves like Chrome: async lookups, duplicate IDs rejected. */
+function fakeScriptingChrome(origins) {
+  const registered = new Map();
+  const tick = () => new Promise((r) => setTimeout(r, 1));
+  return {
+    registered,
+    permissions: { getAll: async () => (await tick(), { origins }) },
+    scripting: {
+      async getRegisteredContentScripts({ ids }) { await tick(); return ids.filter((id) => registered.has(id)).map((id) => registered.get(id)); },
+      async registerContentScripts(defs) { await tick(); for (const d of defs) { if (registered.has(d.id)) throw new Error(`Duplicate script ID '${d.id}'`); registered.set(d.id, d); } },
+      async updateContentScripts(defs) { await tick(); for (const d of defs) registered.set(d.id, d); },
+      async unregisterContentScripts({ ids }) { await tick(); for (const id of ids) registered.delete(id); },
+    },
+  };
+}
+
+test('concurrent registration syncs (grant listener + page request) never fail with a duplicate ID', async () => {
+  const c = fakeScriptingChrome(['https://dbc-66f420e5-6b1d.cloud.databricks.com/*']);
+  const results = await Promise.allSettled([registration.sync(c), registration.sync(c), registration.sync(c)]);
+  assert.deepEqual(results.map((r) => r.status), ['fulfilled', 'fulfilled', 'fulfilled']);
+  assert.equal(c.registered.size, 1);
+  assert.deepEqual(c.registered.get('dcc-main').matches, ['https://dbc-66f420e5-6b1d.cloud.databricks.com/*']);
+});
+
+test('registration recovers when another context registered the script first', async () => {
+  const c = fakeScriptingChrome(['https://dbc-1.cloud.databricks.com/*']);
+  const realGet = c.scripting.getRegisteredContentScripts;
+  let first = true;
+  c.scripting.getRegisteredContentScripts = async (q) => {
+    const out = await realGet(q);
+    if (first) { first = false; c.registered.set('dcc-main', { id: 'dcc-main', matches: [] }); return []; }
+    return out;
+  };
+  await registration.sync(c);
+  assert.deepEqual(c.registered.get('dcc-main').matches, ['https://dbc-1.cloud.databricks.com/*']);
+});

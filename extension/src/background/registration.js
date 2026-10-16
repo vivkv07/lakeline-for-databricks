@@ -55,7 +55,18 @@
     return cls.ok ? cls.origin + '/*' : null;
   }
 
-  async function sync(chromeApi) {
+  // A grant fires permissions.onAdded while the page that asked for it also requests a sync, so
+  // calls are serialized: two interleaved "nothing registered yet → register" passes would fail
+  // with "Duplicate script ID".
+  let queue = Promise.resolve();
+
+  function sync(chromeApi) {
+    const run = queue.then(() => syncNow(chromeApi));
+    queue = run.catch(() => {});
+    return run;
+  }
+
+  async function syncNow(chromeApi) {
     const perms = await chromeApi.permissions.getAll();
     const matches = (perms.origins || []).filter(isSupportedPattern).sort();
     const existing = await chromeApi.scripting.getRegisteredContentScripts({ ids: [SCRIPT_ID] });
@@ -64,8 +75,17 @@
       return [];
     }
     const def = { id: SCRIPT_ID, matches, excludeMatches: EXCLUDE.slice(), js: CONTENT_JS.slice(), runAt: 'document_idle', allFrames: false, persistAcrossSessions: true };
-    if (existing.length) await chromeApi.scripting.updateContentScripts([def]);
-    else await chromeApi.scripting.registerContentScripts([def]);
+    if (existing.length) {
+      await chromeApi.scripting.updateContentScripts([def]);
+      return matches;
+    }
+    try {
+      await chromeApi.scripting.registerContentScripts([def]);
+    } catch (e) {
+      // Registered by another extension context (e.g. an older service worker) in the meantime.
+      if (!/Duplicate script ID/i.test(String(e && e.message))) throw e;
+      await chromeApi.scripting.updateContentScripts([def]);
+    }
     return matches;
   }
 
