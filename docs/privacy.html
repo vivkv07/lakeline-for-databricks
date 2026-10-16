@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lakeline for Databricks: Privacy policy</title>
+<meta name="description" content="Privacy policy for the Lakeline for Databricks browser extension.">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="./">Lakeline <span>for Databricks</span></a>
+</header>
+<main>
+  <p class="label">Privacy policy</p>
+  <h1>Your data stays between your browser and your Databricks workspace.</h1>
+  <p class="meta">Effective 15 October 2026 · applies to the Lakeline for Databricks browser extension and its optional local helper.</p>
+
+  <h2>Summary</h2>
+  <ul>
+    <li>Lakeline has no servers. The developer receives none of your data: no analytics, no telemetry, no crash reports.</li>
+    <li>The extension sends requests only to the Databricks workspaces you connect, and, if you use it, to the optional local helper on your own computer (127.0.0.1).</li>
+    <li>Nothing is sold, shared with third parties, or used for advertising.</li>
+  </ul>
+
+  <h2>What the extension stores, and where</h2>
+  <table>
+    <thead><tr><th scope="col">Data</th><th scope="col">Where</th><th scope="col">How long</th></tr></thead>
+    <tbody>
+      <tr><td>Settings (period, data source, display options), saved workspace connections (workspace URL and ID, chosen SQL warehouse, price table, currency), workspace colors</td><td>Browser local storage on this device</td><td>Until you change them or remove the extension</td></tr>
+      <tr><td>Sign-in tokens (Sign in with Databricks)</td><td>Browser session storage</td><td>Cleared when the browser closes</td></tr>
+      <tr><td>Personal access token</td><td>Browser session storage; local storage only if you tick "Remember on this computer"</td><td>Session, or until you remove it or the extension</td></tr>
+      <tr><td>Genie conversations (questions, answers, result tables)</td><td>Browser session storage, size-capped</td><td>Cleared when the browser closes, or with "Clear now"</td></tr>
+      <tr><td>Cost results</td><td>Memory and session storage, as a short cache (about 5 minutes)</td><td>Cleared when the browser closes</td></tr>
+      <tr><td>Recent error details (sanitized, secrets removed)</td><td>Browser local storage, last 20 entries</td><td>Until you clear Diagnostics or remove the extension</td></tr>
+    </tbody>
+  </table>
+  <p>Websites, including Databricks pages, can't read anything the extension stores. Browser extension storage is only available to the extension itself.</p>
+
+  <h2>What the extension sends, and to whom</h2>
+  <ul>
+    <li><strong>Your Databricks workspace:</strong> read-only SQL queries against Databricks system tables (billing, query history, job and pipeline timelines), and read-only API calls for SQL warehouses, job runs, pipelines and clusters. If you ask Genie a question, the question text goes to the Genie Agent you selected in your own workspace. Requests carry your sign-in token, which goes only to that workspace.</li>
+    <li><strong>Databricks sign-in:</strong> "Sign in with Databricks" uses your workspace's own OAuth endpoints.</li>
+    <li><strong>The optional local helper</strong> (if you choose to run it): it runs on your computer at 127.0.0.1, and its Databricks credentials stay in the Databricks CLI on your computer.</li>
+  </ul>
+  <p>The extension does not read the text of your SQL queries or the result rows of your queries in Query History. Cost estimates use only timestamps, durations, warehouse IDs and billing records.</p>
+
+  <h2>Permissions</h2>
+  <p>Site access is requested one workspace at a time, only when you connect it. The extension never asks for access to all websites. Desktop notifications are optional and contain no query data. See the <a href="https://developer.chrome.com/docs/extensions/develop/concepts/declare-permissions">Chrome permissions documentation</a> for what each permission means.</p>
+
+  <h2>Your choices</h2>
+  <ul>
+    <li>Disconnect a workspace or remove a token in Connection preferences.</li>
+    <li>Clear Genie conversations with "Clear now" in the side panel.</li>
+    <li>Remove the extension to delete everything it stored in your browser.</li>
+    <li>If you used the local helper, you can remove its Databricks CLI profiles (names start with <code>dcc-</code>) with the Databricks CLI.</li>
+  </ul>
+
+  <h2>Children</h2>
+  <p>Lakeline is a tool for Databricks users at work and is not directed to children.</p>
+
+  <h2>Changes</h2>
+  <p>Changes to this policy are published on this page with a new effective date.</p>
+
+  <h2>Contact</h2>
+  <p>[Your name] · [contact email or GitHub issues URL]</p>
+
+  <p class="fine">Lakeline is an independent project and is not affiliated with, endorsed by or sponsored by Databricks, Inc. Databricks and Genie are trademarks of Databricks, Inc.</p>
+</main>
+</body>
+</html>

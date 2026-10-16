@@ -1,0 +1,113 @@
+# Chrome Web Store listing: Lakeline for Databricks
+
+Copy each block into the matching field of the Chrome Web Store developer dashboard. Placeholders
+in square brackets need your input before you submit.
+
+Build the upload ZIP with `node scripts/package.mjs --store`. It writes
+`dist/lakeline-for-databricks-store-<version>.zip`, with `manifest.json` at the root, no
+development `key`, the experimental browser login hidden, and no local test-workspace permission.
+
+---
+
+## Store listing tab
+
+**Name** (from the manifest)
+Lakeline for Databricks
+
+**Summary** (manifest description, 123 of 132 characters)
+Databricks cost estimates, run monitoring and a Genie side panel. Independent project; not affiliated with Databricks, Inc.
+
+**Category:** Developer Tools
+**Language:** English
+
+**Description**
+
+Lakeline puts Databricks cost context, run status and Genie answers right where you work.
+
+Cost estimates inside your workspace
+- A slim banner shows estimated spend for the last 7, 30 or 90 complete UTC days, the change from the previous period, and how fresh the billing data is.
+- Badges next to jobs, pipelines, SQL warehouses, notebooks and apps. Each job run and pipeline update shows the cost of that single execution.
+- Job totals include the pipeline updates the job triggered, with no record counted twice.
+- Query History shows a per-query estimate, with the assumptions explained.
+- SQL warehouse and cluster size pickers show the hourly DBU cost before you choose.
+- A Cost Explorer with product, top driver, run, calendar, SKU and daily views, plus CSV export.
+
+Run monitor
+- A compact window (it can float on top) with running and failed job runs, pipelines, SQL warehouses and clusters.
+- Optional desktop notifications when a run fails.
+
+Ask Genie from the side panel
+- Pick a Genie Agent, ask a question and keep working. The answer, the result table, a chart and the generated SQL appear when Genie is done.
+
+How the numbers are calculated
+- Read-only SQL against your own Databricks system tables, priced with system.billing.list_prices (or system.billing.account_prices if you choose it).
+- Every amount is labeled as an estimate. Billing can be delayed, and final invoices may differ. Cloud provider charges are not included.
+- A built-in guide explains every formula and limitation.
+
+Privacy
+- No analytics, no tracking, no developer servers. The extension talks only to the Databricks workspaces you connect.
+- Sign-in tokens and Genie conversations stay in your browser.
+
+Sign in
+- Sign in with Databricks (OAuth). An account admin registers the app once.
+- Or use a personal access token.
+
+Lakeline is an independent project and is not affiliated with, endorsed by or sponsored by Databricks, Inc. Databricks and Genie are trademarks of Databricks, Inc.
+
+**Screenshots:** 1280×800 PNG in `store/assets/` (Demo mode, synthetic data only).
+**Small promo tile:** 440×280 PNG in `store/assets/`.
+**Icon:** `extension/icons/icon-128.png`.
+
+**Official URL / Homepage:** [GitHub repository or GitHub Pages URL]
+**Support URL:** [GitHub issues URL]
+
+---
+
+## Privacy practices tab
+
+**Single purpose**
+Show estimated Databricks costs, job run status and Genie answers for the user's own Databricks workspaces, inside and beside the Databricks web app.
+
+**Permission justifications**
+
+| Permission | Justification |
+|---|---|
+| storage | Saves settings, the connection for each workspace (warehouse, price table) and workspace colors in local storage. Sign-in tokens and Genie conversations are kept in session storage, which is cleared when the browser closes. |
+| activeTab | When the user clicks the toolbar icon, reads the current tab's URL to offer "Connect this workspace" if it is a Databricks workspace. |
+| scripting | Registers the in-page cost banner and badges only for Databricks workspaces the user has granted access to, and loads them into tabs that were already open when access was granted. |
+| alarms | Refreshes the opt-in run monitor on a schedule (60 to 300 seconds) and resumes Genie questions that were in flight when the background worker restarted. |
+| identity | "Sign in with Databricks": OAuth authorization code with PKCE through chrome.identity.launchWebAuthFlow against the user's own workspace. |
+| sidePanel | The "Ask Genie" side panel. |
+| notifications (optional) | Requested only when the user turns on notifications for failed job runs or for Genie answers that are ready. Notifications never contain query data. |
+| Host permissions (optional): https://*.cloud.databricks.com/*, https://*.azuredatabricks.net/*, https://*.gcp.databricks.com/* | Requested at runtime for the one workspace the user chooses to connect, never for all sites. Used to show costs inside that workspace and to call that workspace's Databricks APIs (SQL Statement Execution, SQL warehouses, Jobs, Pipelines, Clusters and Genie). Account console hosts are excluded. |
+| externally_connectable: http://127.0.0.1:8766/* | Lets the optional local helper program, running on the user's own computer, pair with the extension from its setup page. Nothing on the internet can use this. |
+
+**Remote code:** No. All JavaScript is included in the package. No eval, and no code loaded from the network.
+
+**Data usage** (answer the checkboxes conservatively and add this note)
+- *Authentication information:* yes, handled. Databricks OAuth tokens or a personal access token are used only to call the user's own Databricks workspace. They are kept in session storage. A token is kept in local storage only if the user ticks "Remember on this computer". They are never sent to the developer or any third party.
+- *Website content:* yes, handled. The extension reads Databricks page URLs and page structure to place cost badges, and it shows Databricks query results and Genie answers. This data stays in the browser and goes only to the user's own workspace.
+- Everything else: no. That covers personally identifiable information, health, financial and payment, personal communications, location, web history and user activity.
+- Certify all three: data is not sold to third parties; it is not used or transferred for purposes unrelated to the single purpose; it is not used to determine creditworthiness or for lending.
+
+**Privacy policy URL:** [your GitHub Pages URL]/privacy.html (the source is `docs/privacy.html`)
+
+---
+
+## Notes for reviewers (Distribution or "Test instructions" field)
+
+Lakeline needs a Databricks workspace for its in-page features. The fastest way to review it:
+1. Install it, click the toolbar icon, and choose **Demo** as the data source. Demo mode uses synthetic data and makes no network requests.
+2. Click **Ask Genie** to open the side panel. Demo Genie Agents return synthetic answers with tables and charts.
+3. For the in-page banner and badges, use any Databricks workspace (a free trial works), with access to the system.billing tables. Open it, click the toolbar icon, choose **Connect this workspace** and allow access for that one site. Then sign in with a personal access token (Settings, Developer, Access tokens) in Connection preferences.
+
+The extension runs only read-only SQL and read-only API calls. Asking Genie a question starts a Genie conversation in the user's own workspace, and only because the user explicitly asked it to.
+
+---
+
+## After the first upload (before publishing)
+
+1. In the dashboard, open the **Package** tab, choose **View public key**, and put that key into `extension/manifest.json` as `"key"` (one line, no BEGIN/END markers). Local builds then share the store ID.
+2. Update `extension/EXTENSION_ID` and the constant in `local/setup.js` to the store ID.
+3. The OAuth redirect URL becomes `https://<store-id>.chromiumapp.org/`. Add it to the Databricks App connection (account console, Settings, App connections).
+4. Publish as **Unlisted** first, test with a few people, then switch to **Public**.

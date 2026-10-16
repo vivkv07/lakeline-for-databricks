@@ -193,3 +193,11 @@ test('a 401 in browser-login mode is a refused login, never "sign-in expired" (r
   const client = http.create({ origin: ORIGIN, token: null, fetch: transportMod.create({ chromeApi: chromeWithTab(reply) }).fetchFor(ORIGIN) });
   await assert.rejects(client.get('/api/2.0/sql/warehouses'), (e) => e.dcc.code === 'SESSION_REJECTED' && /browser login/.test(e.dcc.title));
 });
+
+test('store build flag: the background refuses browser login when sessionLogin is false', async () => {
+  const env = await sessionConnectEnv({ ok: true, status: 200, orgId: '1234567890', text: '{"warehouses":[]}' });
+  globalThis.DCC.flags = Object.freeze({ sessionLogin: false });
+  await assert.rejects(env.handlers['connect:oneClick'].handle({ url: ORIGIN + '/jobs', method: 'session' }), (e) => /not available in this build/.test(e.dcc.details.message));
+  assert.equal(env.sent.length, 0, 'no request reaches the tab');
+  delete globalThis.DCC.flags;
+});

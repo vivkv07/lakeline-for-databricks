@@ -5,6 +5,7 @@
 'use strict';
 
 importScripts(
+  '../core/flags.js',
   '../core/validate.js',
   '../core/ids.js',
   '../core/periods.js',
