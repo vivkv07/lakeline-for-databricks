@@ -1,0 +1,35 @@
+<!--
+  Launch-video fragment (SYNTHETIC): job detail, Runs tab, for the smaller workspaces (first job).
+-->
+<section class="np-job" data-testid="job-detail-page">
+  <nav class="np-crumbs" aria-label="Breadcrumb"><a href="/jobs?o={{WS_ID}}">Jobs &amp; Pipelines</a><span>/</span><span>{{JOB_1_NAME}}</span></nav>
+  <div class="np-titlerow">
+    <h1 data-testid="page-title">{{JOB_1_NAME}}</h1>
+    <div class="np-actions"><span class="np-btn">Edit task</span><span class="np-btn np-btn--primary">Run now</span></div>
+  </div>
+  <p class="np-sub">{{JOB_1_SCHEDULE}} · 1 task · Owner {{JOB_1_OWNER}}</p>
+  <div class="np-tabs" role="tablist" aria-label="Job sections">
+    <a role="tab" aria-selected="true" href="/jobs/{{JOB_1}}/runs?o={{WS_ID}}">Runs</a>
+    <a role="tab" aria-selected="false" href="/jobs/{{JOB_1}}?o={{WS_ID}}">Tasks</a>
+  </div>
+  <p class="np-runchart-label">Run duration, last 9 runs</p>
+  <div class="np-runchart" role="img" aria-label="Run duration chart">
+    <a style="height: {{J1_RUN_9_BAR}}px"></a><a style="height: {{J1_RUN_8_BAR}}px"></a><a style="height: {{J1_RUN_7_BAR}}px"></a><a style="height: {{J1_RUN_6_BAR}}px"></a><a style="height: {{J1_RUN_5_BAR}}px"></a><a style="height: {{J1_RUN_4_BAR}}px"></a><a style="height: {{J1_RUN_3_BAR}}px"></a><a style="height: {{J1_RUN_2_BAR}}px"></a><a style="height: {{J1_RUN_1_BAR}}px"></a>
+  </div>
+  <table class="np-table" role="grid" aria-label="Job runs">
+    <thead>
+      <tr role="row"><th role="columnheader" scope="col">Start time</th><th role="columnheader" scope="col">Run ID</th><th role="columnheader" scope="col">Launched</th><th role="columnheader" scope="col">Duration</th><th role="columnheader" scope="col">Status</th></tr>
+    </thead>
+    <tbody>
+      <tr role="row" data-fx-run="{{J1_RUN_1}}"><td role="gridcell"><a href="/jobs/{{JOB_1}}/runs/{{J1_RUN_1}}?o={{WS_ID}}">{{J1_RUN_1_START}}</a></td><td role="gridcell" class="np-mono">{{J1_RUN_1}}</td><td role="gridcell">{{J1_RUN_1_LAUNCHED}}</td><td role="gridcell"><span class="np-durbar" style="width: {{J1_RUN_1_BAR}}px"></span>{{J1_RUN_1_DURATION}}</td><td role="gridcell"><span class="np-dot"></span>Succeeded</td></tr>
+      <tr role="row" data-fx-run="{{J1_RUN_2}}"><td role="gridcell"><a href="/jobs/{{JOB_1}}/runs/{{J1_RUN_2}}?o={{WS_ID}}">{{J1_RUN_2_START}}</a></td><td role="gridcell" class="np-mono">{{J1_RUN_2}}</td><td role="gridcell">{{J1_RUN_2_LAUNCHED}}</td><td role="gridcell"><span class="np-durbar" style="width: {{J1_RUN_2_BAR}}px"></span>{{J1_RUN_2_DURATION}}</td><td role="gridcell"><span class="np-dot"></span>Succeeded</td></tr>
+      <tr role="row" data-fx-run="{{J1_RUN_3}}"><td role="gridcell"><a href="/jobs/{{JOB_1}}/runs/{{J1_RUN_3}}?o={{WS_ID}}">{{J1_RUN_3_START}}</a></td><td role="gridcell" class="np-mono">{{J1_RUN_3}}</td><td role="gridcell">{{J1_RUN_3_LAUNCHED}}</td><td role="gridcell"><span class="np-durbar" style="width: {{J1_RUN_3_BAR}}px"></span>{{J1_RUN_3_DURATION}}</td><td role="gridcell"><span class="np-dot"></span>Succeeded</td></tr>
+      <tr role="row" data-fx-run="{{J1_RUN_4}}"><td role="gridcell"><a href="/jobs/{{JOB_1}}/runs/{{J1_RUN_4}}?o={{WS_ID}}">{{J1_RUN_4_START}}</a></td><td role="gridcell" class="np-mono">{{J1_RUN_4}}</td><td role="gridcell">{{J1_RUN_4_LAUNCHED}}</td><td role="gridcell"><span class="np-durbar" style="width: {{J1_RUN_4_BAR}}px"></span>{{J1_RUN_4_DURATION}}</td><td role="gridcell"><span class="np-dot"></span>Succeeded</td></tr>
+      <tr role="row" data-fx-run="{{J1_RUN_5}}"><td role="gridcell"><a href="/jobs/{{JOB_1}}/runs/{{J1_RUN_5}}?o={{WS_ID}}">{{J1_RUN_5_START}}</a></td><td role="gridcell" class="np-mono">{{J1_RUN_5}}</td><td role="gridcell">{{J1_RUN_5_LAUNCHED}}</td><td role="gridcell"><span class="np-durbar" style="width: {{J1_RUN_5_BAR}}px"></span>{{J1_RUN_5_DURATION}}</td><td role="gridcell"><span class="np-dot"></span>Succeeded</td></tr>
+      <tr role="row" data-fx-run="{{J1_RUN_6}}"><td role="gridcell"><a href="/jobs/{{JOB_1}}/runs/{{J1_RUN_6}}?o={{WS_ID}}">{{J1_RUN_6_START}}</a></td><td role="gridcell" class="np-mono">{{J1_RUN_6}}</td><td role="gridcell">{{J1_RUN_6_LAUNCHED}}</td><td role="gridcell"><span class="np-durbar" style="width: {{J1_RUN_6_BAR}}px"></span>{{J1_RUN_6_DURATION}}</td><td role="gridcell"><span class="np-dot"></span>Succeeded</td></tr>
+      <tr role="row" data-fx-run="{{J1_RUN_7}}"><td role="gridcell"><a href="/jobs/{{JOB_1}}/runs/{{J1_RUN_7}}?o={{WS_ID}}">{{J1_RUN_7_START}}</a></td><td role="gridcell" class="np-mono">{{J1_RUN_7}}</td><td role="gridcell">{{J1_RUN_7_LAUNCHED}}</td><td role="gridcell"><span class="np-durbar" style="width: {{J1_RUN_7_BAR}}px"></span>{{J1_RUN_7_DURATION}}</td><td role="gridcell"><span class="np-dot"></span>Succeeded</td></tr>
+      <tr role="row" data-fx-run="{{J1_RUN_8}}"><td role="gridcell"><a href="/jobs/{{JOB_1}}/runs/{{J1_RUN_8}}?o={{WS_ID}}">{{J1_RUN_8_START}}</a></td><td role="gridcell" class="np-mono">{{J1_RUN_8}}</td><td role="gridcell">{{J1_RUN_8_LAUNCHED}}</td><td role="gridcell"><span class="np-durbar" style="width: {{J1_RUN_8_BAR}}px"></span>{{J1_RUN_8_DURATION}}</td><td role="gridcell"><span class="np-dot"></span>Succeeded</td></tr>
+      <tr role="row" data-fx-run="{{J1_RUN_9}}"><td role="gridcell"><a href="/jobs/{{JOB_1}}/runs/{{J1_RUN_9}}?o={{WS_ID}}">{{J1_RUN_9_START}}</a></td><td role="gridcell" class="np-mono">{{J1_RUN_9}}</td><td role="gridcell">{{J1_RUN_9_LAUNCHED}}</td><td role="gridcell"><span class="np-durbar" style="width: {{J1_RUN_9_BAR}}px"></span>{{J1_RUN_9_DURATION}}</td><td role="gridcell"><span class="np-dot"></span>Succeeded</td></tr>
+    </tbody>
+  </table>
+</section>

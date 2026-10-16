@@ -18,7 +18,9 @@
 (function () {
   'use strict';
 
-  const WORKSPACE_ID = '1234567890';
+  // A shell may name its own synthetic workspace ID (local/video/shell.html does); default 1234567890.
+  const META_ID = document.querySelector('meta[name="fixture-workspace-id"]');
+  const WORKSPACE_ID = META_ID && /^[1-9][0-9]{0,18}$/.test(META_ID.content) ? META_ID.content : '1234567890';
   const IDS = Object.freeze({
     workspaceId: WORKSPACE_ID,
     // Synthetic IDs that exist in the fixture billing data (local/fixture-data.mjs). The fixture

@@ -1,0 +1,22 @@
+<!--
+  Launch-video fragment (SYNTHETIC): SQL warehouses list. Each row links its warehouse by the
+  16-hex ID; the badge goes after the name link.
+-->
+<section class="np-wh" data-testid="warehouses-list-page">
+  <div class="np-titlerow">
+    <h1>SQL Warehouses</h1>
+    <div class="np-actions"><span class="np-btn np-btn--primary">Create SQL warehouse</span></div>
+  </div>
+  <div class="np-tabs" role="tablist" aria-label="Compute sections">
+    <a role="tab" aria-selected="false" href="/sql/warehouses?o={{WS_ID}}">All-purpose compute</a>
+    <a role="tab" aria-selected="false" href="/sql/warehouses?o={{WS_ID}}">Job compute</a>
+    <a role="tab" aria-selected="true" href="/sql/warehouses?o={{WS_ID}}">SQL warehouses</a>
+  </div>
+  <table class="np-table" role="table" aria-label="SQL warehouses">
+    <thead><tr><th scope="col">Name</th><th scope="col">State</th><th scope="col">Size</th><th scope="col">Type</th><th scope="col"></th></tr></thead>
+    <tbody>
+      <tr data-fx-warehouse="{{WH_1}}"><td><a href="/sql/warehouses/{{WH_1}}?o={{WS_ID}}">{{WH_1_NAME}}</a></td><td><span class="np-dot"></span>{{WH_1_STATE}}</td><td>{{WH_1_SIZE}}</td><td>{{WH_1_TYPE}}</td><td><a href="/sql/warehouses/{{WH_1}}/edit?o={{WS_ID}}">Edit</a></td></tr>
+      <tr data-fx-warehouse="{{WH_2}}"><td><a href="/sql/warehouses/{{WH_2}}?o={{WS_ID}}">{{WH_2_NAME}}</a></td><td><span class="np-dot off"></span>{{WH_2_STATE}}</td><td>{{WH_2_SIZE}}</td><td>{{WH_2_TYPE}}</td><td><a href="/sql/warehouses/{{WH_2}}/edit?o={{WS_ID}}">Edit</a></td></tr>
+    </tbody>
+  </table>
+</section>

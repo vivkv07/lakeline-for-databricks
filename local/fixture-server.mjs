@@ -33,6 +33,12 @@
  *   SQL runs through local/support/sqlengine.mjs (DuckDB dialect shim). This is a SIMULATION
  *   that checks query logic; it is not proof of Databricks compatibility.
  * - Binds 127.0.0.1 only and rejects any Host header other than 127.0.0.1:<port>.
+ *
+ * createFixtureApp(o) is everything above without the listener and the Host check: one synthetic
+ * workspace (dataset, DuckDB engine, mock REST/SQL/Genie/monitor, SPA and fragments) behind a
+ * handle(req, res). startFixtureServer wraps one app; local/video/video-server.mjs serves two apps
+ * (per-host datasets and fake tokens) over HTTPS for the launch-video captures. With no options
+ * the app behaves exactly as it always did.
  */
 import nodeHttp from 'node:http';
 import crypto from 'node:crypto';
@@ -41,7 +47,8 @@ import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createEngine, SENTINEL_SQL_TEXT } from './support/sqlengine.mjs';
-import { buildDataset, toInsertSql, monitorSnapshot, fixtureTemplateValues, renderFixtureTemplate, WAREHOUSES, GENIE_SPACES, GENIE_FAILING_SPACE, GENIE_STEPS, GENIE_FAIL_STEPS, genieAnswer } from './fixture-data.mjs';
+import * as fixtureData from './fixture-data.mjs';
+import { toInsertSql, renderFixtureTemplate } from './fixture-data.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const FIXTURE_PORT = 8765;
@@ -124,27 +131,47 @@ function containsSentinel(response) {
 }
 
 /**
+ * One synthetic workspace behind handle(req, res) (no listener, no Host check).
  * @param {object} [o]
- * @param {number} [o.port=8765]       0 → ephemeral (tests)
  * @param {number} [o.nowMs]           anchor for the synthetic dataset and monitor data
  * @param {number} [o.pendingPolls=0]  GET polls that still report RUNNING before SUCCEEDED
  * @param {Function} [o.log]
  * @param {Function} [o.onApiRequest]  test hook: ({method, path, body}) for every authorized /api/
  *                                     request (body = raw request text, '' for GET)
  * @param {number} [o.genieStepPolls=1] message GETs per Genie status before it advances
+ * @param {object} [o.data]            replaces parts of local/fixture-data.mjs: buildDataset,
+ *                                     fixtureTemplateValues, monitorSnapshot, WAREHOUSES,
+ *                                     GENIE_SPACES, GENIE_FAILING_SPACE, GENIE_STEPS,
+ *                                     GENIE_FAIL_STEPS, genieAnswer (synchronous)
+ * @param {string} [o.token]           the one fake bearer token /api/ accepts (default FIXTURE_TOKEN)
+ * @param {string} [o.origin]          origin for monitor run links (startFixtureServer sets it)
+ * @param {Function} [o.afterLoad]     async ({engine, dataset}) after the tables are loaded
+ * @param {string[]} [o.staticDirs]    directories for /workspace*.{js,css,svg}, first hit wins
+ *                                     (default: local/)
+ * @param {string[]} [o.fragmentDirs]  directories for /fixture/<name>, first hit wins
+ *                                     (default: local/fixture/)
+ * @param {string} [o.shellFile]       SPA shell for app routes (default local/workspace.html)
+ * @param {boolean} [o.shellTemplate]  render the shell's {{…}} placeholders like a fragment
  */
-export async function startFixtureServer(o = {}) {
+export async function createFixtureApp(o = {}) {
   const log = o.log || ((line) => process.stderr.write('[dcc-fixture] ' + line + '\n'));
+  const data = Object.assign({}, fixtureData, o.data || {});
+  const { WAREHOUSES, GENIE_SPACES, GENIE_FAILING_SPACE, GENIE_STEPS, GENIE_FAIL_STEPS, genieAnswer } = data;
+  const token = typeof o.token === 'string' && o.token ? o.token : FIXTURE_TOKEN;
+  const staticDirs = Array.isArray(o.staticDirs) && o.staticDirs.length ? o.staticDirs : [HERE];
+  const fragmentDirs = Array.isArray(o.fragmentDirs) && o.fragmentDirs.length ? o.fragmentDirs : [path.join(HERE, 'fixture')];
+  const shellFile = o.shellFile || path.join(HERE, 'workspace.html');
   const anchor = o.nowMs;
   const now = () => (anchor === undefined ? Date.now() : anchor);
   const engine = await createEngine();
-  const dataset = buildDataset({ nowMs: now() });
+  const dataset = data.buildDataset({ nowMs: now() });
   for (const [table, rows] of Object.entries(dataset.tables)) {
     if (!rows.length) continue;
     for (const sql of toInsertSql(table, rows)) await engine.exec(sql);
   }
+  if (typeof o.afterLoad === 'function') await o.afterLoad({ engine, dataset });
   const counts = Object.fromEntries(Object.entries(dataset.tables).map(([t, rows]) => [t, rows.length]));
-  const templateValues = fixtureTemplateValues(dataset);
+  const templateValues = data.fixtureTemplateValues(dataset);
   const onApiRequest = typeof o.onApiRequest === 'function' ? o.onApiRequest : null;
 
   const state = {
@@ -156,10 +183,9 @@ export async function startFixtureServer(o = {}) {
     pendingPolls: Number.isInteger(o.pendingPolls) ? o.pendingPolls : 0,
     genie: { conversations: new Map(), messages: new Map(), stepPolls: Number.isInteger(o.genieStepPolls) && o.genieStepPolls > 0 ? o.genieStepPolls : 1, started: 0, followUps: 0, resultReads: 0 },
   };
-  let port = o.port === undefined ? FIXTURE_PORT : o.port;
-  let expectedHost = null;
-  let origin = null;
+  let origin = o.origin || null;
   let queue = Promise.resolve();
+  const monitorSnapshot = (nowMs, at) => data.monitorSnapshot(nowMs, at);
 
   function serialize(fn) {
     const p = queue.then(fn, fn);
@@ -218,7 +244,7 @@ export async function startFixtureServer(o = {}) {
   }
 
   async function handleApi(req, res, url) {
-    if (req.headers.authorization !== 'Bearer ' + FIXTURE_TOKEN) return apiError(res, 401, 'UNAUTHENTICATED', 'Invalid access token. (fixture accepts only the documented fake token)');
+    if (req.headers.authorization !== 'Bearer ' + token) return apiError(res, 401, 'UNAUTHENTICATED', 'Invalid access token. (fixture accepts only the documented fake token)');
     const p = url.pathname;
     const q = url.searchParams;
     const bodyLater = req.method === 'POST' && (p === '/api/2.0/sql/statements' || p.startsWith('/api/2.0/genie/'));
@@ -392,36 +418,45 @@ export async function startFixtureServer(o = {}) {
   }
 
   async function serveFile(res, file, method, { template = false } = {}) {
-    let data;
+    let body;
     try {
-      data = await fsp.readFile(file);
+      body = await fsp.readFile(file);
     } catch (_) {
       return send(res, 404, 'Not found', { 'Content-Type': 'text/plain; charset=utf-8' });
     }
     if (template) {
-      const out = renderFixtureTemplate(data.toString('utf8'), templateValues);
+      const out = renderFixtureTemplate(body.toString('utf8'), templateValues);
       if (out.unknown.length) {
         log('unknown placeholder(s) in ' + path.basename(file) + ': ' + out.unknown.join(', '));
         return send(res, 500, 'Unknown fixture placeholder(s): ' + out.unknown.join(', '), { 'Content-Type': 'text/plain; charset=utf-8' });
       }
-      data = Buffer.from(out.html, 'utf8');
+      body = Buffer.from(out.html, 'utf8');
     }
     const type = TYPES[path.extname(file)] || 'application/octet-stream';
     if (method === 'HEAD') {
-      res.writeHead(200, headers({ 'Content-Type': type, 'Content-Length': data.length }));
+      res.writeHead(200, headers({ 'Content-Type': type, 'Content-Length': body.length }));
       return res.end();
     }
-    return send(res, 200, data, { 'Content-Type': type });
+    return send(res, 200, body, { 'Content-Type': type });
+  }
+
+  /** First directory that has the file (names are already restricted by the route regexes). */
+  function firstInside(dirs, name) {
+    for (const dir of dirs) {
+      const file = inside(dir, name);
+      if (file && fs.existsSync(file)) return file;
+    }
+    return inside(dirs[dirs.length - 1], name);
   }
 
   const PLACEHOLDER = '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Fixture workspace (synthetic)</title></head><body><main><h1>Synthetic fixture workspace</h1><p>local/workspace.html has not been created yet.</p></main></body></html>';
 
+  /** Serve one request (the caller has already checked the Host header). */
   async function handle(req, res) {
-    if (!expectedHost || req.headers.host !== expectedHost) return send(res, 403, 'Forbidden', { 'Content-Type': 'text/plain; charset=utf-8' });
     if (typeof req.url !== 'string' || !req.url.startsWith('/')) return send(res, 400, '');
     let url;
     try {
-      url = new URL(req.url, origin);
+      url = new URL(req.url, origin || 'http://127.0.0.1');
     } catch (_) {
       return send(res, 400, '');
     }
@@ -432,22 +467,50 @@ export async function startFixtureServer(o = {}) {
     if (p === '/favicon.ico') return send(res, 204, '');
     let m = TOP_STATIC.exec(p);
     if (m) {
-      const file = inside(HERE, m[1]);
+      const file = firstInside(staticDirs, m[1]);
       return file ? serveFile(res, file, req.method) : send(res, 404, '');
     }
     if (p.startsWith('/fixture/')) {
       m = FIXTURE_STATIC.exec(p);
-      const file = m && inside(path.join(HERE, 'fixture'), m[1]);
+      const file = m && firstInside(fragmentDirs, m[1]);
       return file ? serveFile(res, file, req.method, { template: path.extname(file) === '.html' }) : send(res, 404, 'Not found', { 'Content-Type': 'text/plain; charset=utf-8' });
     }
     // Every other path is an app route of the routed fixture SPA.
-    const html = path.join(HERE, 'workspace.html');
-    if (!fs.existsSync(html)) return send(res, 200, PLACEHOLDER, { 'Content-Type': 'text/html; charset=utf-8' });
-    return serveFile(res, html, req.method);
+    if (!fs.existsSync(shellFile)) return send(res, 200, PLACEHOLDER, { 'Content-Type': 'text/html; charset=utf-8' });
+    return serveFile(res, shellFile, req.method, { template: o.shellTemplate === true });
   }
 
+  return {
+    handle,
+    send,
+    state,
+    counts,
+    dataset,
+    engine,
+    /** Values the /fixture/*.html placeholders were rendered with (IDs that exist in `dataset`). */
+    templateValues,
+    get origin() {
+      return origin;
+    },
+    setOrigin(value) {
+      origin = value;
+    },
+  };
+}
+
+/**
+ * @param {object} [o]  createFixtureApp options, plus:
+ * @param {number} [o.port=8765]  0 → ephemeral (tests)
+ */
+export async function startFixtureServer(o = {}) {
+  const log = o.log || ((line) => process.stderr.write('[dcc-fixture] ' + line + '\n'));
+  const app = await createFixtureApp(Object.assign({}, o, { log }));
+  let port = o.port === undefined ? FIXTURE_PORT : o.port;
+  let expectedHost = null;
+
   const server = nodeHttp.createServer({ requestTimeout: 60000, headersTimeout: 10000 }, (req, res) => {
-    handle(req, res).catch((e) => {
+    const run = !expectedHost || req.headers.host !== expectedHost ? Promise.resolve(send(res, 403, 'Forbidden', { 'Content-Type': 'text/plain; charset=utf-8' })) : app.handle(req, res);
+    run.catch((e) => {
       log('request failed: ' + String((e && e.message) || e).slice(0, 200));
       if (!res.headersSent) send(res, 500, '');
     });
@@ -461,18 +524,19 @@ export async function startFixtureServer(o = {}) {
   });
   port = server.address().port;
   expectedHost = '127.0.0.1:' + port;
-  origin = 'http://' + expectedHost;
+  const origin = 'http://' + expectedHost;
+  app.setOrigin(origin);
 
   return {
     server,
     port,
     origin,
-    state,
-    counts,
-    dataset,
-    engine,
+    state: app.state,
+    counts: app.counts,
+    dataset: app.dataset,
+    engine: app.engine,
     /** Values the /fixture/*.html placeholders were rendered with (IDs that exist in `dataset`). */
-    templateValues,
+    templateValues: app.templateValues,
     close: () =>
       new Promise((resolve) => {
         server.close(() => resolve());

@@ -1,0 +1,33 @@
+<!--
+  Launch-video fragment (SYNTHETIC): SQL warehouse editor for BI Serverless with the cluster-size
+  dropdown open. Same native structure as local/fixture/warehouse-size.html: each option shows an
+  explicit DBU/h hint, so the extension adds "≈ $X/h per cluster · DBU only" to every option and
+  to the trigger. Nothing is saved or resized.
+-->
+<section class="np-whf" data-testid="warehouse-edit-page">
+  <nav class="np-crumbs" aria-label="Breadcrumb"><a href="/sql/warehouses?o={{WS_ID}}">SQL Warehouses</a><span>/</span><span>{{WH_1_NAME}}</span></nav>
+  <div class="np-titlerow"><h1>Edit SQL warehouse</h1></div>
+  <form class="np-form" onsubmit="return false">
+    <div class="np-field-row"><label for="np-wh-name">Name</label><input id="np-wh-name" class="np-input" value="{{WH_1_NAME}}"></div>
+    <div class="np-field-row">
+      <span class="np-label" id="np-size-label">Cluster size</span>
+      <button type="button" class="np-combo" role="combobox" aria-haspopup="listbox" aria-expanded="true" aria-labelledby="np-size-label" aria-controls="np-size-list">Large</button>
+      <div class="np-listbox" role="listbox" id="np-size-list" aria-labelledby="np-size-label">
+        <div role="option" aria-selected="false"><span>X-Small</span><span class="np-hint">6 DBU/h</span></div>
+        <div role="option" aria-selected="false"><span>Small</span><span class="np-hint">12 DBU/h</span></div>
+        <div role="option" aria-selected="false"><span>Medium</span><span class="np-hint">24 DBU/h</span></div>
+        <div role="option" aria-selected="true"><span>Large</span><span class="np-hint">40 DBU/h</span></div>
+        <div role="option" aria-selected="false"><span>X-Large</span><span class="np-hint">80 DBU/h</span></div>
+        <div role="option" aria-selected="false"><span>2X-Large</span><span class="np-hint">144 DBU/h</span></div>
+      </div>
+    </div>
+    <div class="np-field-row">
+      <span class="np-label">Scaling</span>
+      <span class="np-muted">Min <input class="np-input" style="width: 64px" type="number" value="1" min="1"> Max <input class="np-input" style="width: 64px" type="number" value="4" min="1"> clusters</span>
+    </div>
+    <div class="np-field-row">
+      <span class="np-label">Type</span>
+      <div class="np-radios"><label><input type="radio" name="np-wh-type" value="serverless" checked> Serverless</label><label><input type="radio" name="np-wh-type" value="pro"> Pro</label><label><input type="radio" name="np-wh-type" value="classic"> Classic</label></div>
+    </div>
+  </form>
+</section>
