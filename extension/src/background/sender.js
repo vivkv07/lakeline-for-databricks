@@ -1,7 +1,7 @@
 /*
  * Service-worker sender validation. Three trust classes:
  *   content  — our content script in a top-level supported workspace tab
- *   page     — our own extension pages (popup, options, monitor, explorer)
+ *   page     — our own extension pages (popup, options, monitor, Genie side panel)
  *   admin    — only the options page (connection settings, secrets, pairing)
  *   external — the helper setup page on the exact loopback origin (externally_connectable)
  */
@@ -11,7 +11,7 @@
   const ids = NODE ? require('../core/ids.js') : root.DCC.ids;
   const V = NODE ? require('../core/validate.js') : root.DCC.validate;
 
-  const PAGE_PATHS = Object.freeze(['/ui/popup.html', '/ui/options.html', '/ui/monitor.html']);
+  const PAGE_PATHS = Object.freeze(['/ui/popup.html', '/ui/options.html', '/ui/monitor.html', '/ui/sidepanel.html']);
   const ADMIN_PATHS = Object.freeze(['/ui/options.html']);
 
   function deny(reason) {

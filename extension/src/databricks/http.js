@@ -3,6 +3,11 @@
  * helper (CLI OAuth mode). Only allowlisted API paths; GETs are read-only inventory; the only
  * POSTs are SQL statement execution and cancellation of our own statement. Redirects are
  * refused. Shared by browser and Node (fetch is injected).
+ *
+ * Genie (Chat mode) paths form a separate allowlist that only a client created with
+ * `scope: 'genie'` can use, and that client can use nothing else. The default allowlist (also
+ * used by the local helper to vet forwarded GETs) never admits Genie paths. Paths verified in
+ * notes/GENIE.md.
  */
 (function (root) {
   'use strict';
@@ -20,12 +25,21 @@
     /^\/api\/2\.1\/clusters\/list$/,
   ];
   const POST_ALLOW = [/^\/api\/2\.0\/sql\/statements$/, /^\/api\/2\.0\/sql\/statements\/[0-9a-f-]{36}\/cancel$/];
+  // Genie IDs: 32 hex or a hyphenated UUID; attachment IDs: a bounded token.
+  const G_ID = '(?:[0-9a-fA-F]{32}|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})';
+  const G_SPACE = '/api/2\\.0/genie/spaces/' + G_ID;
+  const G_MSG = G_SPACE + '/conversations/' + G_ID + '/messages/' + G_ID;
+  const G_ATT = G_MSG + '/attachments/[A-Za-z0-9_-]{1,64}';
+  const GENIE_GET_ALLOW = [/^\/api\/2\.0\/genie\/spaces$/, new RegExp('^' + G_MSG + '$'), new RegExp('^' + G_ATT + '/query-result$')];
+  const GENIE_POST_ALLOW = [new RegExp('^' + G_SPACE + '/start-conversation$'), new RegExp('^' + G_SPACE + '/conversations/' + G_ID + '/messages$'), new RegExp('^' + G_ATT + '/execute-query$')];
   const QUERY_KEY = /^[a-z_.]{1,40}$/;
   const QUERY_VALUE = /^[A-Za-z0-9_.:-]{0,128}$/;
 
-  function isAllowed(method, path) {
-    const list = method === 'GET' ? GET_ALLOW : method === 'POST' ? POST_ALLOW : [];
-    return list.some((re) => re.test(path));
+  /** @param {{scope?: 'genie'}} [opts] a Genie client gets the Genie allowlist and nothing else. */
+  function isAllowed(method, path, opts) {
+    const genie = Boolean(opts && opts.scope === 'genie');
+    const list = method === 'GET' ? (genie ? GENIE_GET_ALLOW : GET_ALLOW) : method === 'POST' ? (genie ? GENIE_POST_ALLOW : POST_ALLOW) : [];
+    return typeof path === 'string' && list.some((re) => re.test(path));
   }
 
   function buildUrl(origin, path, query) {
@@ -42,12 +56,13 @@
   }
 
   /**
-   * @param {{origin:string, token:string, fetch:Function}} o
+   * @param {{origin:string, token:string, fetch:Function, scope?:'genie', onHeaders?:Function}} o
    */
   function create(o) {
     const doFetch = o.fetch;
+    const scope = o.scope === 'genie' ? 'genie' : null;
     async function request(method, path, { query, body } = {}) {
-      if (!isAllowed(method, path)) throw new errors.DccError({ code: 'UNKNOWN', message: 'Blocked non-allowlisted API call' });
+      if (!isAllowed(method, path, { scope })) throw new errors.DccError({ code: 'UNKNOWN', message: 'Blocked non-allowlisted API call' });
       const url = buildUrl(o.origin, path, query);
       let res;
       try {

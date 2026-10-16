@@ -3,7 +3,7 @@
   "name": "Lakeline for Databricks",
   "short_name": "Lakeline",
   "version": "0.1.0",
-  "description": "Estimated Databricks costs and run monitoring inside your workspace. Independent project; not affiliated with Databricks, Inc.",
+  "description": "Databricks cost estimates, run monitoring and a Genie side panel. Independent project; not affiliated with Databricks, Inc.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtu2uY9w62r0J+1KgQUUhpAHSHRQ3gI6rYneqby8wx5cSo5FRolBJZIpqier8Vi6d9pFhQywTLIes1PNhG8vxh7iYtMRHmhxIXa4l76ZINWT2+wgzR2WPXl7bBfPny5DggrI+pprUep9pgOgnqc28PoBaSKujAg8YNHfE3fSmPb9MK98VKzO0+JQTq8r4RCbyVWlsNOGLG8/ctowrrWLY8YPzj/9xv3lKjekkeQHqZRFx6EItJT4c79JQs5ELtGyJ2eqsALyK2Xb1IjZZtJN80+wqcdZunj196EhxVg+KTl3fR5nD4hFElaSxe6fuisstIv9ctE6VrSr9BA/SDQLfoQIDAQAB",
   "minimum_chrome_version": "116",
   "icons": {
@@ -17,7 +17,8 @@
     "activeTab",
     "scripting",
     "alarms",
-    "identity"
+    "identity",
+    "sidePanel"
   ],
   "optional_permissions": [
     "notifications"
@@ -42,6 +43,9 @@
   "options_ui": {
     "page": "ui/options.html",
     "open_in_tab": true
+  },
+  "side_panel": {
+    "default_path": "ui/sidepanel.html"
   },
   "externally_connectable": {
     "matches": [

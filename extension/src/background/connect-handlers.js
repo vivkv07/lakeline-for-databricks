@@ -111,6 +111,8 @@
           return { redirectUrl: chromeApi.identity.getRedirectURL() };
         },
       },
+      // The broader all-apis consent is one sign-in shared by the run monitor and Genie
+      // (oauth purpose 'apis'; 'monitor' and 'genie' are aliases). Genie's panel uses genie:signIn.
       'connect:signInMonitor': {
         trust: 'page',
         async handle(msg) {
@@ -118,7 +120,7 @@
           const conn = cls.ok ? await store.getConnection(cls.origin) : null;
           if (!conn || conn.authMode !== 'oauth') throw new errors.DccError({ code: 'NOT_CONNECTED' });
           const settings = await store.getSettings();
-          await oauth.signIn({ origin: conn.origin, clientId: conn.oauthClientId || settings.oauth.clientId, purpose: 'monitor', interactive: true });
+          await oauth.signIn({ origin: conn.origin, clientId: conn.oauthClientId || settings.oauth.clientId, purpose: 'apis', interactive: true });
           return { signedIn: true };
         },
       },

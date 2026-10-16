@@ -134,6 +134,65 @@
       title: 'Site access not granted',
       steps: ['Open the extension popup on this workspace and allow access when asked.'],
     },
+    GENIE_SIGNIN: {
+      title: 'Allow Genie for this workspace',
+      steps: ['Select "Allow Genie and run status". Databricks asks once for API access (all-apis). The run monitor uses the same sign-in, and cost queries keep their SQL-only sign-in.'],
+    },
+    GENIE_PAT_MISSING: {
+      title: 'Save a personal access token first',
+      steps: ['This workspace connects with a personal access token, and none is saved in this browser session. Open Connection preferences, save the token, then ask again.'],
+    },
+    GENIE_HELPER_MODE: {
+      title: 'Genie needs Sign in with Databricks or a personal access token',
+      steps: ['This workspace connects through the local helper, which runs cost queries only. Reconnect it with Connect in the popup (Sign in with Databricks), or save a personal access token in Connection preferences.'],
+    },
+    GENIE_MODE: {
+      title: 'Genie is off in Local import mode',
+      steps: ['Local import makes no Databricks requests. Switch to Connected mode in the popup to ask your Genie Agents, or to Demo mode to try the panel with synthetic answers.'],
+    },
+    GENIE_RATE_LIMITED: {
+      title: 'Genie is busy right now',
+      steps: ['Databricks limited how many questions can run at once in this workspace. Wait a minute, then ask again. This question was not answered.'],
+    },
+    GENIE_ACCESS_DENIED: {
+      title: 'No access to this Genie Agent',
+      steps: [
+        'Ask the agent\'s owner to share it with you. Genie also needs the Databricks SQL entitlement and CAN USE on the agent\'s SQL warehouse.',
+        'A personal access token with limited scopes needs the genie scope.',
+      ],
+    },
+    GENIE_NOT_FOUND: {
+      title: 'Genie Agent not found',
+      steps: ['It may have been deleted or you may have lost access. Pick another agent from the list.'],
+    },
+    GENIE_UNAVAILABLE: {
+      title: 'Genie isn\'t available in this workspace',
+      steps: ['Genie Agents may be turned off for this workspace. Ask a workspace admin, or try another workspace.'],
+    },
+    GENIE_FAILED: {
+      title: 'Genie couldn\'t answer',
+      steps: ['Rephrase the question, or ask about data this agent covers, then try again.'],
+    },
+    GENIE_TIMEOUT: {
+      title: 'Genie took too long',
+      steps: ['There was no answer after 10 minutes, so Lakeline stopped waiting. The SQL warehouse may be starting or busy. Ask again in a moment.'],
+    },
+    GENIE_CANCELLED: {
+      title: 'This question was cancelled',
+      steps: ['It was cancelled in Databricks. Ask again if you still need the answer.'],
+    },
+    GENIE_SEND_UNCONFIRMED: {
+      title: 'Couldn\'t confirm the question reached Genie',
+      steps: ['The request stopped before Databricks confirmed it. Ask again. If Genie did receive it, the answer is also in the agent\'s history in Databricks.'],
+    },
+    GENIE_BUSY: {
+      title: 'Genie is still answering',
+      steps: ['Wait for the current answer, or start a new conversation. Up to three questions can run at once.'],
+    },
+    GENIE_RESULT_EXPIRED: {
+      title: 'The query result expired',
+      steps: ['Select Run query again to refresh the table. The query runs on the agent\'s SQL warehouse.'],
+    },
     UNKNOWN: {
       title: 'Something went wrong',
       steps: ['Select Refresh. If it keeps happening, copy the technical details from Diagnostics.'],

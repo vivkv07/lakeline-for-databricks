@@ -47,6 +47,23 @@
     </div>
   </section>
 
+  <section class="pp-section" aria-labelledby="h-genie">
+    <div class="pp-section-head">
+      <h2 id="h-genie" class="dcc-eyebrow pp-h">Genie</h2>
+      <button type="button" class="dcc-btn dcc-btn--small" id="genie-open" aria-describedby="genie-desc">
+        <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M2.5 3.5h11v7h-6l-3 2.5v-2.5h-2z"/></svg>
+        Ask Genie
+      </button>
+    </div>
+    <div id="genie-status" class="pp-alert-slot" role="status"></div>
+    <p class="pp-hint" id="genie-desc">Ask your Genie Agents in a side panel and keep working. The answer waits for you there.</p>
+    <div class="pp-row">
+      <label for="genie-notify">Notify me when Genie answers</label>
+      <input type="checkbox" role="switch" class="dcc-switch" id="genie-notify" aria-describedby="genie-notify-desc">
+    </div>
+    <p class="pp-hint" id="genie-notify-desc">Only while the panel is closed. It names the agent and never shows the answer.</p>
+  </section>
+
   <section class="pp-section" aria-labelledby="h-source">
     <h2 id="h-source" class="dcc-eyebrow pp-h">Data source</h2>
     <fieldset class="dcc-fieldset">

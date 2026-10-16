@@ -1,6 +1,6 @@
 /*
- * Toolbar popup: data mode, connect hand-off, cost visibility, period, monitor preferences,
- * diagnostics and links. Talks to the service worker only through sender-validated page:*
+ * Toolbar popup: data mode, connect hand-off, Genie side panel, cost visibility, period, monitor
+ * preferences, diagnostics and links. Talks to the service worker only through sender-validated page:*
  * messages. All DOM is built with textContent, never innerHTML with variable data.
  *
  * The active tab's URL is visible only while the popup is open (activeTab). It is used to offer
@@ -30,6 +30,7 @@
 
   let state = null; // page:state data
   let tab = null; // {supported, url, origin, host, workspaceId, conflict, granted} | {supported:false, reason}
+  let windowId = null; // the popup's browser window, read at load so sidePanel.open stays in the click
 
   /** h('div', {class, onclick, ...}, [children]): text nodes only. */
   function h(tag, attrs, children) {
@@ -105,6 +106,12 @@
     slot.appendChild(alertBox('error', p.title, p.steps));
   }
 
+  function setGenieStatus(kind, title, lines) {
+    const slot = $('genie-status');
+    slot.textContent = '';
+    if (title) slot.appendChild(alertBox(kind, title, lines));
+  }
+
   function setMonitorStatus(kind, title, lines) {
     const slot = $('monitor-status');
     slot.textContent = '';
@@ -117,6 +124,7 @@
     try {
       const tabs = await chromeApi.tabs.query({ active: true, currentWindow: true });
       const t = tabs && tabs[0];
+      if (t && Number.isInteger(t.windowId)) windowId = t.windowId;
       if (!t || typeof t.url !== 'string' || !t.url) return null;
       const cls = ids.classifyOrigin(t.url);
       if (!cls.ok) return { supported: false, reason: cls.reason };
@@ -321,6 +329,7 @@
     $('monitor-notify').checked = m.notifyFailures === true;
     $('monitor-autoopen').disabled = m.enabled !== true;
     $('monitor-notify').disabled = m.enabled !== true;
+    $('genie-notify').checked = Boolean(s.genie && s.genie.notify === true);
     renderModeHint();
     renderSummary();
   }
@@ -390,6 +399,72 @@
       () => {
         el.checked = false;
         setMonitorStatus('warn', 'Could not ask for notification permission', ['Failure alerts stay off.']);
+      }
+    );
+  }
+
+  /* ---------------------------------------------------------------- Genie */
+
+  /**
+   * Open the Genie side panel. sidePanel.open must run inside the click (user gesture), so the
+   * window ID is read when the popup loads and nothing is awaited before the call.
+   */
+  function onAskGenie() {
+    setGenieStatus(null);
+    const sp = chromeApi.sidePanel;
+    if (!sp || typeof sp.open !== 'function') {
+      setGenieStatus('warn', 'The side panel isn\'t available here', ['It needs Chrome or Edge 116 or newer.']);
+      return;
+    }
+    const target = Number.isInteger(windowId) ? windowId : chromeApi.windows && chromeApi.windows.WINDOW_ID_CURRENT;
+    let opening;
+    try {
+      opening = sp.open({ windowId: target });
+    } catch (e) {
+      opening = Promise.reject(e);
+    }
+    Promise.resolve(opening).then(
+      () => closePopup(),
+      (e) => setGenieStatus('warn', 'The side panel could not be opened', [clean(e && e.message) || 'Try again.'])
+    );
+  }
+
+  function onGenieNotifyChange(ev) {
+    const el = ev.currentTarget;
+    const save = async (notify) => {
+      const r = await send({ type: 'genie:settings', notify });
+      if (!r.ok) {
+        el.checked = !notify;
+        setGenieStatus('warn', errorParts(r.error).title, errorParts(r.error).steps.slice(0, 1));
+        return;
+      }
+      if (state && state.settings) state.settings.genie = Object.assign({}, state.settings.genie, { notify: r.data.notify });
+      el.checked = r.data.notify === true;
+    };
+    if (!el.checked) {
+      save(false);
+      return;
+    }
+    // Ask for the optional permission first, synchronously inside the user gesture.
+    let req;
+    try {
+      req = chromeApi.permissions.request({ permissions: ['notifications'] });
+    } catch (e) {
+      req = Promise.reject(e);
+    }
+    Promise.resolve(req).then(
+      (granted) => {
+        if (!granted) {
+          el.checked = false;
+          setGenieStatus('warn', 'Notifications were not allowed', ['Genie answers still wait in the side panel. You can try again at any time.']);
+          return null;
+        }
+        setGenieStatus(null);
+        return save(true);
+      },
+      () => {
+        el.checked = false;
+        setGenieStatus('warn', 'Could not ask for notification permission', ['Genie answers still wait in the side panel.']);
       }
     );
   }
@@ -479,11 +554,13 @@
     $('monitor-autoopen').addEventListener('change', (ev) => updateSettings({ monitor: { autoOpen: ev.currentTarget.checked } }));
     $('monitor-notify').addEventListener('change', onNotifyChange);
     $('monitor-open').addEventListener('click', onOpenMonitor);
+    $('genie-open').addEventListener('click', onAskGenie);
+    $('genie-notify').addEventListener('change', onGenieNotifyChange);
     $('diag-clear').addEventListener('click', onClearDiagnostics);
   }
 
   function setControlsDisabled(disabled) {
-    for (const el of doc.querySelectorAll('input[name="mode"], input[name="period"], #show-costs, #monitor-enabled, #monitor-autoopen, #monitor-notify')) el.disabled = disabled;
+    for (const el of doc.querySelectorAll('input[name="mode"], input[name="period"], #show-costs, #monitor-enabled, #monitor-autoopen, #monitor-notify, #genie-notify')) el.disabled = disabled;
   }
 
   async function init() {

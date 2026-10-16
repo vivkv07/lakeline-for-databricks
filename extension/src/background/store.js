@@ -1,6 +1,6 @@
 /*
  * Non-secret persistent state in chrome.storage.local, with schema migration.
- *   dcc.settings     — mode, period, cost visibility, monitor prefs (revisioned)
+ *   dcc.settings     — mode, period, cost visibility, monitor and Genie prefs (revisioned)
  *   dcc.connections  — one cost connection per workspace origin (revisioned)
  *   dcc.observed     — workspace IDs observed in tab URLs, per origin
  *   dcc.import       — validated local import
@@ -21,8 +21,24 @@
     importData: 'dcc.import',
     diagnostics: 'dcc.diagnostics',
   });
-  const SCHEMA_VERSION = 2;
+  const SCHEMA_VERSION = 3;
   const MODES = Object.freeze(['demo', 'import', 'connected']);
+  // Genie: a remembered agent per workspace origin ('demo' is the Demo-mode workspace). Agent IDs
+  // are 32 hex or a hyphenated UUID (notes/GENIE.md). Never any question or answer text here.
+  const GENIE_ORIGIN = /^(?:demo|https:\/\/[a-z0-9.-]{1,253}|http:\/\/127\.0\.0\.1:8765)$/;
+  const GENIE_SPACE = /^(?:[0-9a-fA-F]{32}|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$/;
+  const GENIE_LAST_SPACE_CAP = 20;
+
+  function migrateGenie(raw) {
+    const g = raw && typeof raw === 'object' ? raw : {};
+    const last = {};
+    const src = g.lastSpace && typeof g.lastSpace === 'object' && !Array.isArray(g.lastSpace) ? g.lastSpace : {};
+    for (const [origin, space] of Object.entries(src)) {
+      if (Object.keys(last).length >= GENIE_LAST_SPACE_CAP) break;
+      if (GENIE_ORIGIN.test(origin) && typeof space === 'string' && GENIE_SPACE.test(space)) last[origin] = space;
+    }
+    return { notify: g.notify === true, lastSpace: last };
+  }
 
   function defaultSettings() {
     return {
@@ -31,6 +47,7 @@
       periodDays: 30,
       showCosts: true,
       monitor: { enabled: false, autoOpen: false, notifyFailures: false, intervalSec: 60, origin: null },
+      genie: { notify: false, lastSpace: {} },
       oauth: { clientId: null },
       revision: 1,
     };
@@ -38,7 +55,8 @@
 
   /**
    * Migrate any earlier shape to the current schema. v1 stored `paused` instead of `showCosts`
-   * and `period` instead of `periodDays`; unknown fields are dropped; invalid values fall back.
+   * and `period` instead of `periodDays`; v2 had no `genie` prefs (defaults: notify off, no
+   * remembered agents). Unknown fields are dropped; invalid values fall back.
    */
   function migrateSettings(raw) {
     const d = defaultSettings();
@@ -57,6 +75,7 @@
       intervalSec: [60, 120, 300].includes(m.intervalSec) ? m.intervalSec : 60,
       origin: typeof m.origin === 'string' ? m.origin : null,
     };
+    out.genie = migrateGenie(raw.genie);
     const oa = raw.oauth && typeof raw.oauth === 'object' ? raw.oauth : {};
     out.oauth = { clientId: typeof oa.clientId === 'string' && /^[A-Za-z0-9][A-Za-z0-9._-]{5,127}$/.test(oa.clientId) ? oa.clientId : null };
     out.revision = Number.isInteger(raw.revision) && raw.revision > 0 ? raw.revision : 1;
@@ -99,7 +118,9 @@
       /** Patch validated fields only; bumps revision so in-flight results from old settings are discarded. */
       async updateSettings(patch) {
         const cur = await store.getSettings();
-        const next = migrateSettings(Object.assign({}, cur, patch, { monitor: Object.assign({}, cur.monitor, patch && patch.monitor), oauth: Object.assign({}, cur.oauth, patch && patch.oauth) }));
+        const g = patch && patch.genie && typeof patch.genie === 'object' ? patch.genie : {};
+        const genie = Object.assign({}, cur.genie, g, { lastSpace: Object.assign({}, cur.genie.lastSpace, g.lastSpace && typeof g.lastSpace === 'object' ? g.lastSpace : {}) });
+        const next = migrateSettings(Object.assign({}, cur, patch, { monitor: Object.assign({}, cur.monitor, patch && patch.monitor), genie, oauth: Object.assign({}, cur.oauth, patch && patch.oauth) }));
         next.revision = cur.revision + 1;
         await area.set({ [KEYS.settings]: next });
         return next;
@@ -169,7 +190,7 @@
     return store;
   }
 
-  const api = Object.freeze({ KEYS, SCHEMA_VERSION, MODES, create, defaultSettings, migrateSettings, migrateConnections });
+  const api = Object.freeze({ KEYS, SCHEMA_VERSION, MODES, create, defaultSettings, migrateSettings, migrateConnections, migrateGenie });
   if (NODE) module.exports = api;
   else (root.DCC || (root.DCC = {})).store = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

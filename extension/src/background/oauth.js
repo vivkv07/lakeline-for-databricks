@@ -6,9 +6,11 @@
  *   redirect:  chrome.identity.getRedirectURL()  → https://<extension-id>.chromiumapp.org/
  *   client_id: a public custom app connection registered once per Databricks account
  *
- * Scopes are least-privilege per purpose: costs use `sql offline_access`; the run monitor asks
- * separately for `all-apis offline_access`. Tokens live only in chrome.storage.session and are
- * never returned to pages or content scripts.
+ * Scopes per purpose: costs use `sql offline_access`. Everything that needs other REST APIs (the
+ * run monitor and the Genie side panel) shares ONE broader consent, `all-apis offline_access`,
+ * under the canonical purpose 'apis'; 'monitor' and 'genie' are aliases of it, so a user grants
+ * it once. Tokens live only in chrome.storage.session and are never returned to pages or
+ * content scripts.
  */
 (function (root) {
   'use strict';
@@ -18,7 +20,15 @@
   const ids = dep('ids', '../core/ids.js');
   const V = dep('validate', '../core/validate.js');
 
-  const SCOPES = Object.freeze({ cost: 'sql offline_access', monitor: 'all-apis offline_access' });
+  const SCOPES = Object.freeze({ cost: 'sql offline_access', apis: 'all-apis offline_access' });
+  /** Feature names that share a canonical purpose (one consent, one stored token). */
+  const PURPOSE_ALIASES = Object.freeze({ monitor: 'apis', genie: 'apis' });
+
+  /** Canonical purpose for a feature name, or null when unknown. */
+  function canonicalPurpose(purpose) {
+    const p = Object.prototype.hasOwnProperty.call(PURPOSE_ALIASES, purpose) ? PURPOSE_ALIASES[purpose] : purpose;
+    return Object.prototype.hasOwnProperty.call(SCOPES, p) ? p : null;
+  }
   const KEY = 'dcc.secrets.oauth';
   const CLIENT_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{5,127}$/;
   const SKEW_MS = 60 * 1000;
@@ -58,9 +68,17 @@
   function create({ chromeApi, fetch: doFetch, cryptoApi = root.crypto, now = () => Date.now() }) {
     const area = chromeApi.storage.session;
 
+    /** Entries per origin. A token saved by an earlier version under 'monitor' counts as 'apis'. */
     async function readAll() {
       const got = await area.get(KEY);
-      return (got && got[KEY]) || {};
+      const all = (got && got[KEY]) || {};
+      for (const e of Object.values(all)) {
+        if (e && typeof e === 'object' && e.monitor && !e.apis) {
+          e.apis = e.monitor;
+          delete e.monitor;
+        }
+      }
+      return all;
     }
     async function writeEntry(origin, purpose, entry) {
       const all = await readAll();
@@ -110,11 +128,12 @@
      * Run the authorization-code + PKCE flow. With interactive:false it succeeds only when the
      * browser already has a Databricks session (used for silent reconnects).
      */
-    async function signIn({ origin, clientId, purpose = 'cost', interactive = true }) {
+    async function signIn({ origin, clientId, purpose: requested = 'cost', interactive = true }) {
       const o = workspaceOrigin(origin);
       if (!isClientId(clientId)) throw new errors.DccError({ code: 'OAUTH_CLIENT_MISSING', message: 'No OAuth client ID configured' });
+      const purpose = canonicalPurpose(requested);
+      if (!purpose) throw new errors.DccError({ code: 'UNKNOWN', message: 'Unknown sign-in purpose' });
       const scope = SCOPES[purpose];
-      if (!scope) throw new errors.DccError({ code: 'UNKNOWN', message: 'Unknown sign-in purpose' });
       const redirectUri = chromeApi.identity.getRedirectURL();
       const { verifier, challenge } = await pkcePair(cryptoApi);
       const state = randomState(cryptoApi);
@@ -145,8 +164,10 @@
     }
 
     /** A valid access token for the purpose: cached, refreshed, or silently re-acquired. */
-    async function getAccessToken(origin, purpose = 'cost', { clientId } = {}) {
+    async function getAccessToken(origin, requested = 'cost', { clientId } = {}) {
       const o = workspaceOrigin(origin);
+      const purpose = canonicalPurpose(requested);
+      if (!purpose) throw new errors.DccError({ code: 'UNKNOWN', message: 'Unknown sign-in purpose' });
       const all = await readAll();
       const entry = all[o] && all[o][purpose];
       if (entry && entry.expiresAt - SKEW_MS > now()) return entry.accessToken;
@@ -180,16 +201,18 @@
       await area.set({ [KEY]: all });
     }
 
+    /** Which consents exist (never the tokens). monitor and genie mirror the shared 'apis' one. */
     async function describe(origin) {
       const all = await readAll();
       const e = all[origin] || {};
-      return { cost: Boolean(e.cost), monitor: Boolean(e.monitor) };
+      const apis = Boolean(e.apis);
+      return { cost: Boolean(e.cost), apis, monitor: apis, genie: apis };
     }
 
     return { signIn, getAccessToken, signOut, describe };
   }
 
-  const api = Object.freeze({ SCOPES, KEY, isClientId, pkcePair, create });
+  const api = Object.freeze({ SCOPES, PURPOSE_ALIASES, KEY, isClientId, pkcePair, canonicalPurpose, create });
   if (NODE) module.exports = api;
   else (root.DCC || (root.DCC = {})).oauth = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
