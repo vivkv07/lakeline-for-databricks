@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Genie · Lakeline</title>
+  <link rel="stylesheet" href="brand.css">
+  <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body class="gp">
+  <a class="dcc-skip" href="#question">Skip to the question box</a>
+  <div class="gp-app" id="app">
+    <header class="gp-head">
+      <div class="gp-bar">
+        <svg class="dcc-mark gp-mark" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect width="16" height="16" rx="4" fill="#000000"/><rect x="3.5" y="8.5" width="2" height="4" fill="#FFFFFF"/><rect x="7" y="5.5" width="2" height="7" fill="#FFFFFF"/><rect x="10.5" y="3.5" width="2" height="9" fill="#5B8CFF"/></svg>
+        <div class="gp-titles">
+          <p class="dcc-eyebrow gp-eyebrow">Lakeline</p>
+          <h1 class="gp-h1">Ask Genie</h1>
+        </div>
+        <span class="dcc-pill dcc-pill--warn gp-demo" id="demo-chip" title="Synthetic agents and answers. No Databricks requests." hidden>DEMO</span>
+        <span class="gp-spacer"></span>
+        <button type="button" class="dcc-btn dcc-btn--small gp-new" id="new-conv" title="Start a new conversation with this agent" disabled>
+          <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg>
+          <span>New</span><span class="dcc-visually-hidden"> conversation</span>
+        </button>
+      </div>
+      <div class="gp-pickers">
+        <div class="gp-field">
+          <label for="ws" class="gp-label">Workspace</label>
+          <select id="ws" class="dcc-select gp-select" disabled><option value="">Loading…</option></select>
+        </div>
+        <div class="gp-field">
+          <label for="space" class="gp-label">Genie Agent</label>
+          <select id="space" class="dcc-select gp-select" disabled aria-describedby="space-desc"><option value="">Loading…</option></select>
+        </div>
+      </div>
+      <p class="gp-desc" id="space-desc"></p>
+    </header>
+
+    <div class="gp-notice" id="notice" hidden></div>
+
+    <main class="gp-thread" id="thread" role="log" aria-live="polite" aria-relevant="additions text" aria-label="Conversation with Genie" tabindex="-1"></main>
+
+    <footer class="gp-composer">
+      <form id="composer" class="gp-form" novalidate>
+        <label for="question" class="dcc-visually-hidden">Question for Genie</label>
+        <textarea id="question" class="gp-input" rows="1" maxlength="2000" autocomplete="off" spellcheck="true" placeholder="Ask a question about your data" aria-describedby="composer-hint" disabled></textarea>
+        <button type="submit" class="dcc-btn dcc-btn--primary gp-send" id="send" disabled>
+          <span>Send</span>
+          <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h9M8.5 4.5 12 8l-3.5 3.5"/></svg>
+        </button>
+      </form>
+      <p class="gp-hint" id="composer-hint"><kbd>Enter</kbd> sends · <kbd>Shift</kbd> + <kbd>Enter</kbd> adds a line</p>
+      <p class="gp-privacy" id="privacy">Questions go only to your own workspace. Conversations stay in this browser session and are cleared when it closes. <button type="button" class="dcc-link gp-clear" id="clear">Clear now</button></p>
+    </footer>
+  </div>
+
+  <script src="../src/core/validate.js"></script>
+  <script src="../src/core/ids.js"></script>
+  <script src="../src/errors.js"></script>
+  <script src="sidepanel.js"></script>
+</body>
+</html>

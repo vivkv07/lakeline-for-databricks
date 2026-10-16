@@ -1,0 +1,580 @@
+/*
+ * Genie side panel (ui/sidepanel.html). Builds on brand.css tokens and components; defines no
+ * tokens of its own. Designed for the browser side panel (about 320 to 480 px wide) and also
+ * works full width in a tab. Light and dark follow prefers-color-scheme through brand.css.
+ */
+
+html,
+body {
+  height: 100%;
+}
+
+body.gp {
+  min-width: 300px;
+  overflow: hidden;
+}
+
+.gp-app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+/* ------------------------------------------------------------------ header */
+
+.gp-head {
+  flex: none;
+  padding: 12px 16px 10px;
+  border-bottom: 1px solid var(--dcc-line);
+  background: var(--dcc-bg);
+}
+
+.gp-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.gp-mark {
+  width: 24px;
+  height: 24px;
+}
+
+.gp-titles {
+  min-width: 0;
+}
+
+.gp-eyebrow {
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+.gp-h1 {
+  font-size: var(--dcc-text-lg);
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.gp-spacer {
+  flex: 1;
+}
+
+.gp-demo {
+  font-family: var(--dcc-mono);
+  letter-spacing: 0.08em;
+}
+
+.gp-new {
+  flex: none;
+}
+
+.gp-pickers {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+  gap: 8px;
+  margin-top: 12px;
+}
+
+@media (max-width: 360px) {
+  .gp-pickers {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.gp-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.gp-label {
+  font-family: var(--dcc-mono);
+  font-size: var(--dcc-text-xs);
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dcc-muted);
+}
+
+.gp-select {
+  min-height: 34px;
+  padding: 5px 10px;
+  text-overflow: ellipsis;
+}
+
+.gp-desc {
+  margin-top: 8px;
+  font-size: var(--dcc-text-sm);
+  line-height: 1.45;
+  color: var(--dcc-body);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.gp-desc:empty {
+  display: none;
+}
+
+/* ------------------------------------------------------------------ notice */
+
+.gp-notice {
+  flex: none;
+  padding: 12px 16px 0;
+}
+
+.gp-notice .dcc-alert {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gp-notice-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* ------------------------------------------------------------------ thread */
+
+.gp-thread {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 16px 16px 8px;
+  scroll-padding-bottom: 16px;
+}
+
+.gp-thread:focus {
+  outline: none;
+}
+
+.gp-thread:focus-visible {
+  outline: 2px solid var(--dcc-accent);
+  outline-offset: -2px;
+}
+
+.gp-empty {
+  margin: 8px 0 0;
+  padding: 18px 18px 16px;
+  border: 1px solid var(--dcc-line);
+  border-radius: var(--dcc-radius-card);
+}
+
+.gp-empty h2 {
+  margin-top: 6px;
+  font-size: var(--dcc-text-lg);
+  overflow-wrap: anywhere;
+}
+
+.gp-empty p {
+  margin-top: 6px;
+  font-size: var(--dcc-text-md);
+  color: var(--dcc-body);
+}
+
+.gp-empty .gp-starters {
+  margin-top: 14px;
+}
+
+.gp-turn {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-bottom: 18px;
+}
+
+.gp-turn + .gp-turn {
+  padding-top: 18px;
+  border-top: 1px solid var(--dcc-line);
+}
+
+/* The user's question: a soft bubble on the right. */
+.gp-q {
+  align-self: flex-end;
+  max-width: 88%;
+  padding: 8px 12px;
+  font-size: var(--dcc-text-base);
+  line-height: 1.45;
+  color: var(--dcc-text);
+  background: var(--dcc-surface);
+  border: 1px solid var(--dcc-line);
+  border-radius: 14px 14px 4px 14px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.gp-a {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.gp-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  font-size: var(--dcc-text-sm);
+  color: var(--dcc-muted);
+}
+
+.gp-chip {
+  gap: 6px;
+  font-family: var(--dcc-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.gp-chip::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+
+.gp-chip--live::before {
+  animation: gp-pulse 1.4s var(--dcc-ease) infinite;
+}
+
+@keyframes gp-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
+.gp-step {
+  font-family: var(--dcc-mono);
+  font-size: var(--dcc-text-xs);
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.gp-text {
+  font-size: var(--dcc-text-base);
+  line-height: 1.55;
+  color: var(--dcc-text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.gp-kicker {
+  font-family: var(--dcc-mono);
+  font-size: var(--dcc-text-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dcc-warm);
+}
+
+.gp-none {
+  font-size: var(--dcc-text-md);
+  color: var(--dcc-muted);
+}
+
+/* Result card */
+.gp-result {
+  overflow: hidden;
+}
+
+.gp-result-head {
+  padding: 10px 12px 8px;
+}
+
+.gp-result-title {
+  font-size: var(--dcc-text-md);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.gp-result-desc {
+  margin-top: 2px;
+  font-size: var(--dcc-text-sm);
+  color: var(--dcc-body);
+  overflow-wrap: anywhere;
+}
+
+.gp-table-wrap {
+  max-height: 320px;
+  overflow: auto;
+  border-top: 1px solid var(--dcc-line);
+}
+
+.gp-table-wrap:focus-visible {
+  outline-offset: -2px;
+}
+
+.gp-table {
+  font-size: var(--dcc-text-sm);
+}
+
+.gp-table th,
+.gp-table td {
+  padding: 6px 10px;
+  white-space: nowrap;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gp-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--dcc-surface);
+  border-bottom: 1px solid var(--dcc-line);
+}
+
+.gp-table td.num {
+  color: var(--dcc-text);
+}
+
+.gp-table .gp-null {
+  font-family: var(--dcc-mono);
+  font-size: var(--dcc-text-xs);
+  color: var(--dcc-muted);
+}
+
+.gp-table-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  padding: 8px 12px;
+  font-size: var(--dcc-text-sm);
+  color: var(--dcc-muted);
+  border-top: 1px solid var(--dcc-line);
+}
+
+.gp-table-meta .gp-count {
+  font-family: var(--dcc-mono);
+  font-size: var(--dcc-text-xs);
+  letter-spacing: 0.02em;
+}
+
+.gp-sql {
+  border-top: 1px solid var(--dcc-line);
+}
+
+.gp-sql > summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  font-size: var(--dcc-text-sm);
+  list-style: none;
+}
+
+.gp-sql > summary::-webkit-details-marker {
+  display: none;
+}
+
+.gp-sql > summary::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform 120ms var(--dcc-ease);
+}
+
+.gp-sql[open] > summary::before {
+  transform: rotate(45deg);
+}
+
+.gp-sql > summary:focus-visible {
+  outline-offset: -2px;
+}
+
+.gp-sql-body {
+  padding: 0 12px 12px;
+}
+
+.gp-sql pre {
+  margin: 0;
+  padding: 10px 12px;
+  max-height: 260px;
+  overflow: auto;
+  font-family: var(--dcc-mono);
+  font-size: var(--dcc-text-xs);
+  line-height: 1.55;
+  color: var(--dcc-text);
+  background: var(--dcc-surface2);
+  border: 1px solid var(--dcc-line);
+  border-radius: var(--dcc-radius);
+  white-space: pre;
+  tab-size: 2;
+}
+
+.gp-sql pre code {
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: inherit;
+}
+
+.gp-sql-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.gp-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.gp-suggest {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gp-suggest-list,
+.gp-starters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.gp-chipbtn {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  min-height: 30px;
+  padding: 5px 12px;
+  font: inherit;
+  font-size: var(--dcc-text-sm);
+  line-height: 1.35;
+  text-align: left;
+  color: var(--dcc-accent-text);
+  background: var(--dcc-accent-soft);
+  border: 1px solid var(--dcc-accent-line);
+  border-radius: 999px;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+  transition: background-color 120ms var(--dcc-ease), border-color 120ms var(--dcc-ease);
+}
+
+.gp-chipbtn:hover {
+  background: var(--dcc-accent-fill);
+  border-color: var(--dcc-accent);
+}
+
+.gp-chipbtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.gp-error-detail {
+  margin-top: 6px;
+  font-family: var(--dcc-mono);
+  font-size: var(--dcc-text-xs);
+  color: var(--dcc-body);
+  overflow-wrap: anywhere;
+}
+
+/* ------------------------------------------------------------------ composer */
+
+.gp-composer {
+  flex: none;
+  padding: 10px 16px 12px;
+  border-top: 1px solid var(--dcc-line);
+  background: var(--dcc-bg);
+}
+
+.gp-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 6px 6px 6px 12px;
+  border: 1px solid var(--dcc-control);
+  border-radius: 18px;
+  background: var(--dcc-bg);
+  transition: border-color 120ms var(--dcc-ease);
+}
+
+.gp-form:focus-within {
+  border-color: var(--dcc-accent);
+  outline: 2px solid var(--dcc-accent);
+  outline-offset: 2px;
+}
+
+.gp-input {
+  flex: 1;
+  min-width: 0;
+  min-height: 32px;
+  max-height: 160px;
+  padding: 6px 0;
+  font: inherit;
+  font-size: var(--dcc-text-base);
+  line-height: 1.4;
+  color: var(--dcc-text);
+  background: transparent;
+  border: 0;
+  resize: none;
+  overflow-y: auto;
+}
+
+.gp-input:focus,
+.gp-input:focus-visible {
+  outline: none;
+}
+
+.gp-input::placeholder {
+  color: var(--dcc-muted);
+}
+
+.gp-input:disabled {
+  cursor: not-allowed;
+}
+
+.gp-send {
+  flex: none;
+  min-height: 32px;
+  padding: 0 12px 0 14px;
+}
+
+.gp-hint {
+  margin-top: 6px;
+  font-size: var(--dcc-text-xs);
+  color: var(--dcc-muted);
+}
+
+.gp-hint kbd {
+  font-size: 10px;
+  padding: 0 4px;
+}
+
+.gp-privacy {
+  margin-top: 4px;
+  font-size: var(--dcc-text-xs);
+  line-height: 1.45;
+  color: var(--dcc-muted);
+}
+
+.gp-clear {
+  font-size: inherit;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gp-chip--live::before {
+    animation: none;
+  }
+}

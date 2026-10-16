@@ -37,6 +37,9 @@ importScripts(
   './connect-handlers.js',
   '../databricks/monitor-api.js',
   './monitor.js',
+  '../core/genie-demo.js',
+  '../databricks/genie-api.js',
+  './genie.js',
   './router.js'
 );
 
