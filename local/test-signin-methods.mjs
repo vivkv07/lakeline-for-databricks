@@ -187,3 +187,9 @@ test('transport tags Genie-scoped requests and leaves others untagged', async ()
   assert.equal(c.sent[0].msg.scope, 'genie');
   assert.equal('scope' in c.sent[1].msg, false);
 });
+
+test('a 401 in browser-login mode is a refused login, never "sign-in expired" (real Databricks wording)', async () => {
+  const reply = { ok: true, status: 401, text: JSON.stringify({ error_code: 401, message: 'Credential was not sent or was of an unsupported type for this API. [ReqId: 0000]' }) };
+  const client = http.create({ origin: ORIGIN, token: null, fetch: transportMod.create({ chromeApi: chromeWithTab(reply) }).fetchFor(ORIGIN) });
+  await assert.rejects(client.get('/api/2.0/sql/warehouses'), (e) => e.dcc.code === 'SESSION_REJECTED' && /browser login/.test(e.dcc.title));
+});

@@ -51,7 +51,10 @@
           if (reply && reply.network) throw new errors.DccError({ code: 'SESSION_EXPIRED', message: reply.message || 'Request redirected or failed in the tab' });
           throw new errors.DccError({ code: 'UNKNOWN', message: 'Browser login request refused' + (reply && reply.blocked ? ' (' + reply.blocked + ')' : '') });
         }
-        if ((reply.status === 401 || reply.status === 403) && !looksLikeApiError(reply.text)) {
+        // The browser login is the only credential here, so any 401 means Databricks refused it
+        // (its public API answers "Credential was not sent or was of an unsupported type").
+        // A 403 with a real API error (e.g. PERMISSION_DENIED on a warehouse) passes through.
+        if (reply.status === 401 || (reply.status === 403 && !looksLikeApiError(reply.text))) {
           throw new errors.DccError({ code: 'SESSION_REJECTED', httpStatus: reply.status, message: 'The workspace did not accept browser-login API requests' });
         }
         const headers = { get: (k) => (String(k).toLowerCase() === 'x-databricks-org-id' ? reply.orgId || null : String(k).toLowerCase() === 'content-type' ? reply.contentType || null : null) };

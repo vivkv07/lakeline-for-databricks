@@ -76,8 +76,11 @@
       steps: ['"Use my Databricks login" works through an open workspace tab. Open (or reload) a tab for this workspace and try again, or switch to Sign in with Databricks for background features.'],
     },
     SESSION_REJECTED: {
-      title: 'This workspace does not allow browser-login access',
-      steps: ['Your workspace blocked API requests that reuse the browser login. Use Sign in with Databricks or a personal access token instead.'],
+      title: 'Databricks did not accept your browser login for API calls',
+      steps: [
+        'The Databricks API answered that a browser login is not a supported credential for it. Nothing is wrong with your login.',
+        'Use a personal access token (create it with the sql scope and tick Remember on this computer), or Sign in with Databricks.',
+      ],
     },
     SESSION_EXPIRED: {
       title: 'Your Databricks login in this browser has expired',
