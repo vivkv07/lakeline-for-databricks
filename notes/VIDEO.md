@@ -21,7 +21,7 @@ Owner's brief:
 2. **Numbers come from the captures.** Every number in a caption must be read from the captured UI state (`manifest.json`), never typed by hand.
 3. **Synthetic data only.**
    - **Company:** "Northpeak Retail".
-   - **Workspaces:** `northpeak-prod` and `northpeak-analytics`.
+   - **Workspaces:** `northpeak-prod` and `northpeak-analytics`, plus lightweight `northpeak-dev` and `northpeak-stage` for the colors scene.
    - No real customer data, and no Databricks logos or brand marks.
    - Show the line "Independent project; not affiliated with Databricks, Inc." on the closing card.
 4. **House style** (notes/STYLE.md):
@@ -32,7 +32,7 @@ Owner's brief:
 6. **Output:**
    - `dist/video/lakeline-launch-4k.mp4`: 3840×2160, 30 fps, H.264 High, yuv420p, CRF ≤ 16, AAC 48 kHz 320 kb/s.
    - `dist/video/lakeline-launch-1080p.mp4`: for LinkedIn and YouTube.
-   - Target length 1:40 (±5 s).
+   - Target length 1:52 (±5 s).
 
 ## Story: "Where did last month's Databricks spend go?"
 
@@ -57,11 +57,11 @@ Then they ask Genie, switching workspaces and agents. The run monitor catches a 
 | 6 | 40.0–48.0 | Queries and sizing | light | Query History rows with per-query estimates plus the explanatory note; the warehouse size picker with "≈ $X/h per cluster · DBU only". Caption: "Know the cost before you scale." |
 | 7 | 48.0–58.0 | Cost Explorer | light | Explorer expanded: Products stacked bars → Top drivers → Calendar heatmap with the spike flag. Caption: "Explore what drives spend." |
 | 8 | 58.0–62.0 | Theme flip | light→dark | The same Explorer view crossfades from light to dark (Databricks dark mode). Caption: "Light or dark, it fits in." Music breakdown. |
-| 9 | 62.0–78.0 | Ask Genie | dark | Side panel docked next to the dark prod workspace. Switch the workspace selector prod → analytics, and the Genie Agent "Platform ops" ↔ "Revenue analytics". Ask "Which jobs drove last week's compute increase?" and show "Genie is working" → answer with Markdown and a bar chart. Switch to Table. Show SQL. Then a second agent answer with a line chart and KPI tiles. Caption: "Ask Genie, keep working." |
-| 10 | 78.0–86.0 | Run monitor | dark | Floating monitor window: running and failed runs, warehouses, clusters. A failed `customer_360_refresh` run and its desktop notification (rendered by the composer in the house style from the real notification text). Caption: "A run fails, you know." |
-| 11 | 86.0–90.0 | Workspace colors | light + dark | Prod (red top bar) and analytics (blue top bar), side by side or as a quick switch. Caption: "Never mix up prod and dev." |
-| 12 | 90.0–97.0 | Security and privacy | MG navy panel | "Nothing leaves your Databricks and your browser." Points: read-only SQL on your own system tables; talks only to your workspace, with no Lakeline servers or analytics; sign-in and Genie chats live in your browser session and clear when it closes; your full chat history stays in Genie in Databricks; access granted one workspace at a time. |
-| 13 | 97.0–100.0 | CTA | MG | Icon, "Lakeline for Databricks", "Add to Chrome", small line "Independent project; not affiliated with Databricks, Inc." Music resolves. |
+| 9 | 62.0–82.0 | Ask Genie: work while you wait | dark | Why a side panel matters: you keep working while Genie answers.<br>(a) 62–69: prod workspace, dark, with the side panel docked. Ask "Which jobs drove last week's compute increase?" The panel shows Genie is working. The cursor goes back to the main page and keeps working (scrolling job runs or opening a notebook). Caption: "Ask in the side panel. Keep working."<br>(b) 69–73: the answer lands in the panel (Markdown + bar chart), noticed while working. Switch to Table, then Show SQL.<br>(c) 73–77: switch Genie Agent "Platform ops" → "Revenue analytics"; ask; KPI tiles or bars.<br>(d) 77–82: switch workspace prod → analytics. The main page follows (blue top bar), the agent list changes; ask; line chart. Caption: "Switch workspaces and Genie Agents without leaving your work." |
+| 10 | 82.0–90.0 | Run monitor | dark | Floating monitor window: running and failed runs, warehouses, clusters. A failed `customer_360_refresh` run and its desktop notification (rendered by the composer in the house style from the real notification text). Caption: "A run fails, you know." |
+| 11 | 90.0–100.0 | Workspace colors | light | The problem, then the fix.<br>(a) 90–93: three tabs (dev, stage, prod) with identical default top bars. Caption: "Dev, stage, prod. They all look the same."<br>(b) 93–96: Workspace colors in the popup: pick any color per workspace (e.g. dev green, stage amber, prod red) with the picker and presets.<br>(c) 96–100: switching between the three tabs, each top bar in its own color. Caption: "Pick any color. Know where you are at a glance." |
+| 12 | 100.0–108.0 | Security and privacy | MG navy panel | "Nothing leaves your Databricks and your browser." Points: read-only SQL on your own system tables; talks only to your workspace, with no Lakeline servers or analytics; sign-in and Genie chats live in your browser session and clear when it closes; your full chat history stays in Genie in Databricks; access granted one workspace at a time. |
+| 13 | 108.0–112.0 | CTA | MG | Icon, "Lakeline for Databricks", "Add to Chrome", small line "Independent project; not affiliated with Databricks, Inc." Music resolves; tail to about 114 s. |
 
 ## Asset contract
 
