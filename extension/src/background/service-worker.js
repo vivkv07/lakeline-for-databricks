@@ -27,6 +27,7 @@ importScripts(
   './registration.js',
   './appearance-handlers.js',
   './data-service.js',
+  './ui-handlers.js',
   './router.js'
 );
 

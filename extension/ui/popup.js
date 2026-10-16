@@ -1,0 +1,396 @@
+/*
+ * Toolbar popup: data mode, connect hand-off, cost visibility, period, monitor preferences,
+ * diagnostics and links. Talks to the service worker only through sender-validated page:*
+ * messages. All DOM is built with textContent — never innerHTML with variable data.
+ *
+ * The active tab's URL is visible only while the popup is open (activeTab). It is used to offer
+ * "Connect this workspace" and is handed to the options page through page:setPendingConnect,
+ * which keeps only the origin and a numeric workspace ID.
+ */
+(function (root) {
+  'use strict';
+  const DCC = root.DCC || {};
+  const doc = root.document;
+  const chromeApi = root.chrome;
+  const V = DCC.validate;
+  const ids = DCC.ids;
+  const errors = DCC.errors;
+  const $ = (id) => doc.getElementById(id);
+
+  const MODE_HINTS = {
+    demo: 'Synthetic figures, labeled DEMO. No Databricks connection or requests.',
+    import: 'Summaries from a costs.json file you import. No query history or run detail unless imported.',
+    connected: 'Read-only SQL on your workspace\'s billing tables, using your own sign-in.',
+  };
+  const MODE_NAMES = { demo: 'Demo mode', import: 'Local import', connected: 'Connected' };
+  const UNSUPPORTED_TAB = {
+    'account-console': 'This is the account console. Open a workspace to connect it.',
+    'not-https': 'Databricks workspaces use https:// URLs.',
+  };
+
+  let state = null; // page:state data
+  let tab = null; // {supported, url, origin, host, workspaceId, conflict, granted} | {supported:false, reason}
+
+  /** h('div', {class, onclick, ...}, [children]) — text nodes only. */
+  function h(tag, attrs, children) {
+    const el = doc.createElement(tag);
+    for (const [k, v] of Object.entries(attrs || {})) {
+      if (v === null || v === undefined || v === false) continue;
+      if (k.startsWith('on') && typeof v === 'function') el.addEventListener(k.slice(2), v);
+      else if (k === 'class') el.className = v;
+      else el.setAttribute(k, v === true ? '' : String(v));
+    }
+    for (const c of [].concat(children === undefined ? [] : children)) {
+      if (c === null || c === undefined || c === false) continue;
+      el.appendChild(typeof c === 'string' || typeof c === 'number' ? doc.createTextNode(String(c)) : c);
+    }
+    return el;
+  }
+
+  const clean = (t, max = 300) => (errors ? errors.redact(V.safeText(t, max)) : V.safeText(t, max));
+
+  function backgroundError(message) {
+    return {
+      code: 'UNKNOWN',
+      title: 'Could not reach the extension background',
+      steps: ['Close and reopen this popup. If it keeps happening, reload the extension from the browser\'s extensions page.'],
+      details: { message: message || null },
+    };
+  }
+
+  /** sendMessage that always resolves to {ok, data} | {ok:false, error}. */
+  async function send(msg) {
+    try {
+      const res = await chromeApi.runtime.sendMessage(msg);
+      if (res && typeof res === 'object' && typeof res.ok === 'boolean') return res;
+      return { ok: false, error: backgroundError('No response') };
+    } catch (e) {
+      return { ok: false, error: backgroundError(e && e.message) };
+    }
+  }
+
+  function closePopup() {
+    try {
+      root.close();
+    } catch (_) {
+      /* not closable in this context */
+    }
+  }
+
+  /* ---------------------------------------------------------------- alerts */
+
+  function alertBox(kind, title, lines) {
+    const items = (lines || []).filter(Boolean);
+    return h('div', { class: 'dcc-alert dcc-alert--' + kind, role: kind === 'error' ? 'alert' : null }, [
+      h('p', { class: 'dcc-alert__title' }, title),
+      items.length === 1 ? h('p', { class: 'dcc-alert__body' }, items[0]) : null,
+      items.length > 1 ? h('ul', { class: 'dcc-alert__steps' }, items.map((l) => h('li', {}, l))) : null,
+    ]);
+  }
+
+  function errorParts(error) {
+    const e = error && typeof error === 'object' ? error : {};
+    const code = typeof e.code === 'string' && /^[A-Z_]{1,40}$/.test(e.code) ? e.code : 'UNKNOWN';
+    const cat = (errors && errors.CATALOG[code]) || { title: 'Something went wrong', steps: [] };
+    const title = clean(e.title) || cat.title;
+    const steps = (Array.isArray(e.steps) ? e.steps : cat.steps).map((s) => clean(s)).filter(Boolean).slice(0, 4);
+    return { code, title, steps };
+  }
+
+  function showAlert(error) {
+    const slot = $('page-alert');
+    slot.textContent = '';
+    if (!error) return;
+    const p = errorParts(error);
+    slot.appendChild(alertBox('error', p.title, p.steps));
+  }
+
+  function setMonitorStatus(kind, title, lines) {
+    const slot = $('monitor-status');
+    slot.textContent = '';
+    if (title) slot.appendChild(alertBox(kind, title, lines));
+  }
+
+  /* ---------------------------------------------------------------- active tab */
+
+  async function readActiveTab() {
+    try {
+      const tabs = await chromeApi.tabs.query({ active: true, currentWindow: true });
+      const t = tabs && tabs[0];
+      if (!t || typeof t.url !== 'string' || !t.url) return null;
+      const cls = ids.classifyOrigin(t.url);
+      if (!cls.ok) return { supported: false, reason: cls.reason };
+      const resolved = ids.resolveWorkspaceId(t.url, {});
+      let granted = null;
+      try {
+        granted = await chromeApi.permissions.contains({ origins: [cls.origin + '/*'] });
+      } catch (_) {
+        granted = null;
+      }
+      return {
+        supported: true,
+        url: t.url,
+        origin: cls.origin,
+        host: cls.host,
+        kind: cls.kind,
+        workspaceId: V.isWorkspaceId(resolved.id) ? resolved.id : null,
+        conflict: resolved.conflict === true,
+        granted,
+      };
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function connections() {
+    return (state && state.connections) || {};
+  }
+
+  function renderTab() {
+    const box = $('tab-status');
+    const btn = $('connect-btn');
+    box.textContent = '';
+    const saved = Object.keys(connections()).length;
+    if (tab && tab.supported) {
+      const conn = connections()[tab.origin] || null;
+      box.appendChild(h('p', { class: 'pp-host' }, [h('span', {}, tab.host), tab.kind === 'fixture' ? h('span', { class: 'dcc-pill' }, 'Local test') : null]));
+      if (conn) {
+        const mismatch = tab.workspaceId && tab.workspaceId !== conn.workspaceId;
+        if (mismatch) {
+          box.appendChild(h('p', { class: 'pp-line pp-line--warn' }, 'This tab shows workspace ' + tab.workspaceId + ', but the saved connection is for workspace ' + conn.workspaceId + '. Costs stay hidden here until you choose.'));
+          btn.textContent = 'Review connection';
+        } else {
+          box.appendChild(h('p', { class: 'pp-line pp-line--ok' }, 'Connected · workspace ' + conn.workspaceId));
+          btn.textContent = 'Edit connection';
+        }
+      } else {
+        box.appendChild(h('p', { class: 'pp-line' }, tab.conflict ? 'Not connected. This URL has conflicting workspace IDs; you will choose one.' : 'Not connected yet.'));
+        btn.textContent = 'Connect this workspace';
+      }
+      if (tab.granted === false) box.appendChild(h('p', { class: 'pp-line pp-line--warn' }, 'Site access is not granted yet; you can allow it on the next page.'));
+    } else {
+      const reason = tab && UNSUPPORTED_TAB[tab.reason];
+      box.appendChild(h('p', { class: 'pp-line' }, reason || 'Open a Databricks workspace tab to connect it from here, or set one up in Connection preferences.'));
+      if (saved) box.appendChild(h('p', { class: 'pp-line' }, saved === 1 ? '1 workspace connected.' : saved + ' workspaces connected.'));
+      btn.textContent = 'Connect Databricks';
+    }
+  }
+
+  async function onConnect() {
+    const btn = $('connect-btn');
+    btn.disabled = true;
+    showAlert(null);
+    if (tab && tab.supported) {
+      const r = await send({ type: 'page:setPendingConnect', url: tab.url });
+      if (!r.ok) {
+        showAlert(r.error);
+        btn.disabled = false;
+        return;
+      }
+    }
+    const o = await send({ type: 'page:open', page: 'options', anchor: 'connect' });
+    if (!o.ok) {
+      showAlert(o.error);
+      btn.disabled = false;
+      return;
+    }
+    closePopup();
+  }
+
+  /* ---------------------------------------------------------------- settings */
+
+  function renderSettings() {
+    const s = (state && state.settings) || {};
+    for (const input of doc.querySelectorAll('input[name="mode"]')) input.checked = input.value === s.mode;
+    for (const input of doc.querySelectorAll('input[name="period"]')) input.checked = Number(input.value) === s.periodDays;
+    $('show-costs').checked = s.showCosts !== false;
+    const m = s.monitor || {};
+    $('monitor-enabled').checked = m.enabled === true;
+    $('monitor-autoopen').checked = m.autoOpen === true;
+    $('monitor-notify').checked = m.notifyFailures === true;
+    $('monitor-autoopen').disabled = m.enabled !== true;
+    $('monitor-notify').disabled = m.enabled !== true;
+    renderModeHint();
+    renderSummary();
+  }
+
+  function renderModeHint() {
+    const s = (state && state.settings) || {};
+    const hint = $('mode-hint');
+    let text = MODE_HINTS[s.mode] || '';
+    if (s.mode === 'connected' && !Object.keys(connections()).length) text += ' No workspace is connected yet — select Connect.';
+    if (s.mode === 'import') {
+      const imp = state && state.importSummary;
+      text += imp ? ' ' + imp.entries + (imp.entries === 1 ? ' summary' : ' summaries') + ' imported.' : ' Nothing imported yet — import costs.json in Connection preferences.';
+    }
+    hint.textContent = text;
+  }
+
+  function renderSummary() {
+    const s = (state && state.settings) || {};
+    const parts = [MODE_NAMES[s.mode] || 'Mode unknown'];
+    if (s.mode === 'connected') {
+      const n = Object.keys(connections()).length;
+      parts.push(n === 1 ? '1 workspace' : n + ' workspaces');
+    }
+    if (V.isPeriodDays(s.periodDays)) parts.push(s.periodDays + ' days');
+    if (s.showCosts === false) parts.push('Paused');
+    $('mode-summary').textContent = parts.join(' · ');
+  }
+
+  /** Patch settings; the response is the full saved settings. Out-of-order replies are ignored. */
+  async function updateSettings(patch) {
+    const r = await send({ type: 'page:updateSettings', patch });
+    if (!r.ok) {
+      showAlert(r.error);
+      renderSettings(); // revert controls to the last saved state
+      return false;
+    }
+    showAlert(null);
+    const next = r.data;
+    if (next && (!state.settings || !Number.isInteger(state.settings.revision) || next.revision >= state.settings.revision)) state.settings = next;
+    renderSettings();
+    return true;
+  }
+
+  function onNotifyChange(ev) {
+    const el = ev.currentTarget;
+    if (!el.checked) {
+      updateSettings({ monitor: { notifyFailures: false } });
+      return;
+    }
+    // Request the optional permission first, synchronously inside the user gesture.
+    let req;
+    try {
+      req = chromeApi.permissions.request({ permissions: ['notifications'] });
+    } catch (e) {
+      req = Promise.reject(e);
+    }
+    Promise.resolve(req).then(
+      (granted) => {
+        if (!granted) {
+          el.checked = false;
+          setMonitorStatus('warn', 'Notifications were not allowed', ['Failure alerts stay off. You can try again at any time.']);
+          return null;
+        }
+        setMonitorStatus(null);
+        return updateSettings({ monitor: { notifyFailures: true } });
+      },
+      () => {
+        el.checked = false;
+        setMonitorStatus('warn', 'Could not ask for notification permission', ['Failure alerts stay off.']);
+      }
+    );
+  }
+
+  async function onOpenMonitor() {
+    const btn = $('monitor-open');
+    btn.disabled = true;
+    setMonitorStatus(null);
+    const r = await send({ type: 'monitor:open' });
+    btn.disabled = false;
+    if (!r.ok) {
+      const p = errorParts(r.error);
+      const unknown = p.code === 'UNKNOWN';
+      setMonitorStatus('warn', 'The monitor could not be opened', unknown ? ['The monitor may not be available in this version yet, or it needs a moment to start. Try again shortly.'] : [p.title].concat(p.steps.slice(0, 1)));
+      return;
+    }
+    closePopup();
+  }
+
+  /* ---------------------------------------------------------------- diagnostics */
+
+  function timeLabel(ms) {
+    if (!Number.isFinite(ms)) return '';
+    return new Date(ms).toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
+  }
+
+  function renderDiagnostics() {
+    const list = $('diag-list');
+    const items = Array.isArray(state && state.diagnostics) ? state.diagnostics : [];
+    list.textContent = '';
+    $('diag-count').textContent = items.length ? '(' + items.length + ')' : '';
+    $('diag-clear').disabled = !items.length;
+    if (!items.length) {
+      list.appendChild(h('li', { class: 'pp-diag-empty' }, 'No recent errors.'));
+      return;
+    }
+    for (const d of items.slice(0, 5)) {
+      const p = errorParts({ code: d && d.code });
+      const det = (d && d.details) || {};
+      const statementId = V.isStatementId(String(det.statementId || '').toLowerCase()) ? String(det.statementId).toLowerCase() : null;
+      const meta = [timeLabel(d && d.at), p.code, d && typeof d.type === 'string' ? clean(d.type, 40) : null].filter(Boolean).join(' · ');
+      list.appendChild(
+        h('li', {}, [
+          h('div', { class: 'pp-diag-title' }, p.title),
+          h('div', { class: 'pp-diag-meta' }, meta),
+          statementId ? h('div', { class: 'pp-diag-meta' }, ['Statement ID ', h('code', {}, statementId)]) : null,
+        ])
+      );
+    }
+    if (items.length > 5) list.appendChild(h('li', { class: 'pp-diag-empty' }, 'Older entries are in Connection preferences → Diagnostics.'));
+  }
+
+  async function onClearDiagnostics() {
+    const r = await send({ type: 'page:clearDiagnostics' });
+    if (!r.ok) return showAlert(r.error);
+    state.diagnostics = [];
+    renderDiagnostics();
+  }
+
+  /* ---------------------------------------------------------------- wiring */
+
+  async function openPage(page, anchor) {
+    const r = await send(anchor ? { type: 'page:open', page, anchor } : { type: 'page:open', page });
+    if (!r.ok) return showAlert(r.error);
+    closePopup();
+  }
+
+  function wire() {
+    $('connect-btn').addEventListener('click', onConnect);
+    $('open-options').addEventListener('click', () => openPage('options'));
+    $('guide-link').addEventListener('click', () => openPage('guide'));
+    for (const input of doc.querySelectorAll('input[name="mode"]')) {
+      input.addEventListener('change', () => {
+        if (input.checked) updateSettings({ mode: input.value });
+      });
+    }
+    for (const input of doc.querySelectorAll('input[name="period"]')) {
+      input.addEventListener('change', () => {
+        if (input.checked) updateSettings({ periodDays: Number(input.value) });
+      });
+    }
+    $('show-costs').addEventListener('change', (ev) => updateSettings({ showCosts: ev.currentTarget.checked }));
+    $('monitor-enabled').addEventListener('change', (ev) => updateSettings({ monitor: { enabled: ev.currentTarget.checked } }));
+    $('monitor-autoopen').addEventListener('change', (ev) => updateSettings({ monitor: { autoOpen: ev.currentTarget.checked } }));
+    $('monitor-notify').addEventListener('change', onNotifyChange);
+    $('monitor-open').addEventListener('click', onOpenMonitor);
+    $('diag-clear').addEventListener('click', onClearDiagnostics);
+  }
+
+  function setControlsDisabled(disabled) {
+    for (const el of doc.querySelectorAll('input[name="mode"], input[name="period"], #show-costs, #monitor-enabled, #monitor-autoopen, #monitor-notify')) el.disabled = disabled;
+  }
+
+  async function init() {
+    wire();
+    const [res, t] = await Promise.all([send({ type: 'page:state' }), readActiveTab()]);
+    tab = t;
+    if (!res.ok || !res.data) {
+      state = { settings: {}, connections: {}, diagnostics: [] };
+      showAlert(res.error);
+      setControlsDisabled(true);
+      $('mode-summary').textContent = 'Unavailable';
+      renderTab();
+      renderDiagnostics();
+      return;
+    }
+    state = res.data;
+    renderSettings();
+    renderTab();
+    renderDiagnostics();
+  }
+
+  const ready = init().catch((e) => showAlert(backgroundError(e && e.message)));
+  (root.DCC || (root.DCC = {})).popupPage = Object.freeze({ ready });
+})(typeof globalThis !== 'undefined' ? globalThis : this);

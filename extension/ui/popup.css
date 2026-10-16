@@ -1,0 +1,245 @@
+/* Toolbar popup. Builds on brand.css tokens; stays within 380px. */
+
+html {
+  background: var(--dcc-surface);
+}
+
+body {
+  width: 360px;
+  max-width: 380px;
+  font-size: var(--dcc-text-md);
+  line-height: 1.45;
+}
+
+.pp-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 10px 10px 14px;
+}
+
+.pp-title {
+  min-width: 0;
+}
+
+.pp-header h1 {
+  font-size: var(--dcc-text-base);
+}
+
+.pp-sub {
+  font-size: var(--dcc-text-sm);
+  color: var(--dcc-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pp-icon-btn {
+  margin-left: auto;
+  width: 32px;
+  padding: 0;
+}
+
+.pp-notice {
+  margin: 0 14px 10px;
+}
+
+.pp-alert-slot:empty {
+  display: none;
+}
+
+#page-alert {
+  margin: 0 14px 10px;
+}
+
+.pp-section {
+  padding: 12px 14px;
+  border-top: 1px solid var(--dcc-border);
+}
+
+.pp-section h2 {
+  font-size: var(--dcc-text-md);
+  font-weight: 650;
+  margin-bottom: 8px;
+}
+
+.pp-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.pp-section-head h2 {
+  margin-bottom: 0;
+}
+
+.pp-hint {
+  margin-top: 4px;
+  font-size: var(--dcc-text-sm);
+  color: var(--dcc-text-subtle);
+}
+
+.pp-hint:empty {
+  display: none;
+}
+
+.pp-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.pp-actions .dcc-btn--primary {
+  flex: 1 1 auto;
+}
+
+/* Active tab card */
+.pp-tab-status {
+  display: grid;
+  gap: 4px;
+}
+
+.pp-host {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-weight: 600;
+}
+
+.pp-host span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pp-line {
+  font-size: var(--dcc-text-sm);
+  color: var(--dcc-text-muted);
+}
+
+.pp-line--warn {
+  color: var(--dcc-warn);
+}
+
+.pp-line--ok {
+  color: var(--dcc-ok);
+}
+
+/* Segmented controls fill the popup width for the mode selector. */
+.pp-segmented-full {
+  display: flex;
+  width: 100%;
+}
+
+.pp-segmented-full label {
+  flex: 1 1 0;
+  text-align: center;
+  padding-left: 6px;
+  padding-right: 6px;
+}
+
+.pp-period {
+  margin-top: 12px;
+}
+
+.pp-legend {
+  padding: 0;
+  margin-bottom: 6px;
+  font-size: var(--dcc-text-md);
+  font-weight: 550;
+}
+
+.pp-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 28px;
+}
+
+.pp-row label {
+  flex: 1 1 auto;
+  cursor: pointer;
+}
+
+.pp-row + .pp-row,
+.pp-hint + .pp-row {
+  margin-top: 6px;
+}
+
+.pp-row--sub {
+  padding-left: 12px;
+}
+
+#monitor-status {
+  margin-bottom: 8px;
+}
+
+/* Diagnostics */
+.pp-diag > summary {
+  font-size: var(--dcc-text-md);
+}
+
+.pp-count {
+  font-weight: 400;
+  color: var(--dcc-text-muted);
+}
+
+.pp-diag-list {
+  list-style: none;
+  padding: 0;
+  margin-top: 8px;
+}
+
+.pp-diag-list li {
+  padding: 6px 0;
+  font-size: var(--dcc-text-sm);
+  border-top: 1px solid var(--dcc-border);
+}
+
+.pp-diag-list li:first-child {
+  border-top: 0;
+}
+
+.pp-diag-title {
+  font-weight: 600;
+}
+
+.pp-diag-meta {
+  color: var(--dcc-text-muted);
+}
+
+.pp-diag-empty {
+  color: var(--dcc-text-subtle);
+}
+
+.pp-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding: 10px 14px 12px;
+  font-size: var(--dcc-text-sm);
+  border-top: 1px solid var(--dcc-border);
+  background: var(--dcc-surface-muted);
+}
+
+.pp-footer .dcc-link {
+  font-size: var(--dcc-text-sm);
+}
+
+/* Container owned by workspace-appearance.js: only separate it from its neighbours. */
+#appearance-panel:not(:empty) {
+  padding: 12px 14px;
+  border-top: 1px solid var(--dcc-border);
+}
+
+.pp-alert-slot .dcc-alert,
+#page-alert .dcc-alert {
+  font-size: var(--dcc-text-sm);
+  padding: 8px 10px;
+}

@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Databricks Cost Companion</title>
+  <link rel="stylesheet" href="brand.css">
+  <link rel="stylesheet" href="popup.css">
+  <link rel="stylesheet" href="workspace-appearance.css">
+</head>
+<body>
+  <header class="pp-header">
+    <svg class="dcc-mark" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect width="16" height="16" rx="4" fill="#0f766e"/><rect x="3.5" y="8.5" width="2" height="4" fill="#fff"/><rect x="7" y="5.5" width="2" height="7" fill="#fff"/><rect x="10.5" y="3.5" width="2" height="9" fill="#fff"/></svg>
+    <div class="pp-title">
+      <h1>Cost Companion</h1>
+      <p class="pp-sub" id="mode-summary" aria-live="polite">Loading…</p>
+    </div>
+    <button type="button" class="dcc-btn dcc-btn--quiet pp-icon-btn" id="open-options" aria-label="Connection preferences" title="Connection preferences">
+      <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 4h7.5M12.5 4H14M2 8h2.5M7.5 8H14M2 12h8.5M13.5 12H14"/><circle cx="11" cy="4" r="1.5"/><circle cx="6" cy="8" r="1.5"/><circle cx="12" cy="12" r="1.5"/></svg>
+    </button>
+  </header>
+
+  <p class="dcc-notice pp-notice" id="disclaimer">Estimated costs. Billing can be delayed; final invoices may differ.</p>
+  <div id="page-alert" class="pp-alert-slot"></div>
+
+  <section class="pp-section" aria-labelledby="h-workspace">
+    <h2 id="h-workspace">Databricks workspace</h2>
+    <div id="tab-status" class="pp-tab-status" aria-live="polite"></div>
+    <div class="pp-actions">
+      <button type="button" class="dcc-btn dcc-btn--primary" id="connect-btn">Connect Databricks</button>
+    </div>
+  </section>
+
+  <section class="pp-section" aria-labelledby="h-source">
+    <h2 id="h-source">Data source</h2>
+    <fieldset class="dcc-fieldset">
+      <legend class="dcc-visually-hidden">Data source</legend>
+      <div class="dcc-segmented pp-segmented-full">
+        <input type="radio" name="mode" id="mode-demo" value="demo" aria-describedby="mode-hint">
+        <label for="mode-demo">Demo</label>
+        <input type="radio" name="mode" id="mode-import" value="import" aria-describedby="mode-hint">
+        <label for="mode-import">Local import</label>
+        <input type="radio" name="mode" id="mode-connected" value="connected" aria-describedby="mode-hint">
+        <label for="mode-connected">Connected</label>
+      </div>
+    </fieldset>
+    <p class="pp-hint" id="mode-hint"></p>
+  </section>
+
+  <section class="pp-section" aria-labelledby="h-display">
+    <h2 id="h-display">Inside Databricks</h2>
+    <div class="pp-row">
+      <label for="show-costs">Show costs inside Databricks</label>
+      <input type="checkbox" role="switch" class="dcc-switch" id="show-costs" aria-describedby="show-costs-desc">
+    </div>
+    <p class="pp-hint" id="show-costs-desc">When off, no new cost requests are made. Workspace colors stay active.</p>
+    <fieldset class="dcc-fieldset pp-period">
+      <legend class="pp-legend">Period</legend>
+      <div class="dcc-segmented">
+        <input type="radio" name="period" id="period-7" value="7" aria-describedby="period-desc">
+        <label for="period-7">7 days</label>
+        <input type="radio" name="period" id="period-30" value="30" aria-describedby="period-desc">
+        <label for="period-30">30 days</label>
+        <input type="radio" name="period" id="period-90" value="90" aria-describedby="period-desc">
+        <label for="period-90">90 days</label>
+      </div>
+      <p class="pp-hint" id="period-desc">Complete UTC days, excluding today.</p>
+    </fieldset>
+  </section>
+
+  <section id="appearance-panel" aria-label="Workspace colors"></section>
+
+  <section class="pp-section" aria-labelledby="h-monitor">
+    <div class="pp-section-head">
+      <h2 id="h-monitor">Run monitor</h2>
+      <button type="button" class="dcc-btn dcc-btn--small" id="monitor-open">Open monitor</button>
+    </div>
+    <div id="monitor-status" class="pp-alert-slot" role="status"></div>
+    <div class="pp-row">
+      <label for="monitor-enabled">Monitor runs and compute</label>
+      <input type="checkbox" role="switch" class="dcc-switch" id="monitor-enabled" aria-describedby="monitor-enabled-desc">
+    </div>
+    <p class="pp-hint" id="monitor-enabled-desc">Read-only status of job runs, pipeline updates, SQL warehouses and clusters. Never starts a stopped warehouse.</p>
+    <div class="pp-row pp-row--sub">
+      <label for="monitor-autoopen">Open the monitor when the browser starts</label>
+      <input type="checkbox" role="switch" class="dcc-switch" id="monitor-autoopen">
+    </div>
+    <div class="pp-row pp-row--sub">
+      <label for="monitor-notify">Desktop notification when a run fails</label>
+      <input type="checkbox" role="switch" class="dcc-switch" id="monitor-notify" aria-describedby="monitor-notify-desc">
+    </div>
+    <p class="pp-hint pp-row--sub" id="monitor-notify-desc">Asks for the browser's notification permission when you turn it on.</p>
+  </section>
+
+  <section class="pp-section" aria-label="Diagnostics">
+    <details id="diag-details" class="pp-diag">
+      <summary>Diagnostics <span id="diag-count" class="pp-count"></span></summary>
+      <p class="pp-hint">Recent errors, with secrets removed. No query text or results are recorded.</p>
+      <ul id="diag-list" class="pp-diag-list"></ul>
+      <div class="pp-actions">
+        <button type="button" class="dcc-btn dcc-btn--small" id="diag-clear">Clear diagnostics</button>
+      </div>
+    </details>
+  </section>
+
+  <footer class="pp-footer">
+    <button type="button" class="dcc-link" id="guide-link">How costs are calculated</button>
+    <a href="http://127.0.0.1:8765/workspace.html" target="_blank" rel="noopener noreferrer" id="fixture-link" title="Requires the local fixture server (npm run fixture)">Local test workspace</a>
+  </footer>
+
+  <script src="../src/core/validate.js"></script>
+  <script src="../src/core/ids.js"></script>
+  <script src="../src/core/labels.js"></script>
+  <script src="../src/errors.js"></script>
+  <script src="popup.js"></script>
+  <script src="../src/content/workspace-color.js"></script>
+  <script src="workspace-appearance.js"></script>
+</body>
+</html>

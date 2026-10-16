@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Connection preferences · Databricks Cost Companion</title>
+  <link rel="stylesheet" href="brand.css">
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <a class="dcc-skip" href="#main">Skip to settings</a>
+
+  <header class="op-header">
+    <div class="op-header-inner">
+      <svg class="dcc-mark op-mark" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect width="16" height="16" rx="4" fill="#0f766e"/><rect x="3.5" y="8.5" width="2" height="4" fill="#fff"/><rect x="7" y="5.5" width="2" height="7" fill="#fff"/><rect x="10.5" y="3.5" width="2" height="9" fill="#fff"/></svg>
+      <div>
+        <p class="op-eyebrow">Databricks Cost Companion</p>
+        <h1>Connection preferences</h1>
+      </div>
+      <button type="button" class="dcc-link op-header-link" data-guide="connection">How costs are calculated</button>
+    </div>
+  </header>
+
+  <div class="op-layout">
+    <nav class="op-toc" aria-label="On this page">
+      <ol>
+        <li><a href="#connect">Workspace</a></li>
+        <li><a href="#site-access">Site access</a></li>
+        <li><a href="#auth">Sign-in</a></li>
+        <li><a href="#warehouse">SQL warehouse</a></li>
+        <li><a href="#billing">Billing source</a></li>
+        <li><a href="#save">Save</a></li>
+        <li><a href="#import">Local import</a></li>
+        <li><a href="#diagnostics">Diagnostics</a></li>
+        <li><a href="#storage">Stored data and reset</a></li>
+      </ol>
+    </nav>
+
+    <main id="main" class="op-main" tabindex="-1">
+      <p class="dcc-notice">Estimated costs. Billing can be delayed; final invoices may differ.</p>
+      <div id="page-alert" class="op-result" aria-live="polite"></div>
+
+      <!-- 1. Workspace -------------------------------------------------------------------- -->
+      <section id="connect" class="op-section" aria-labelledby="h-connect">
+        <h2 id="h-connect"><span class="op-step">1</span>Workspace</h2>
+        <p class="op-lede">Choose the Databricks workspace for this cost connection. There is one connection per workspace URL. When more than one workspace is listed, pick one yourself — the extension never switches workspaces on its own.</p>
+        <div id="pending-note" class="op-result"></div>
+
+        <fieldset class="dcc-fieldset op-group">
+          <legend class="op-label">Workspaces found in this browser</legend>
+          <div id="ws-candidates" class="op-options"></div>
+        </fieldset>
+
+        <div class="op-field">
+          <label for="ws-url" class="op-label">Or enter a workspace URL</label>
+          <div class="op-inline">
+            <input id="ws-url" class="dcc-input" type="url" placeholder="https://your-workspace.cloud.databricks.com" autocomplete="off" spellcheck="false" aria-describedby="ws-url-help ws-url-error">
+            <button type="button" id="ws-url-use" class="dcc-btn">Use this URL</button>
+          </div>
+          <p id="ws-url-help" class="op-help">Supported hosts: <code>*.cloud.databricks.com</code>, <code>*.azuredatabricks.net</code>, <code>*.gcp.databricks.com</code>. Account-console URLs are not workspaces.</p>
+          <p id="ws-url-error" class="op-field-error" hidden></p>
+        </div>
+
+        <div id="ws-detail" class="op-detail" hidden>
+          <div id="ws-selected" class="op-selected" aria-live="polite"></div>
+          <div id="ws-id-candidates"></div>
+          <div class="op-field">
+            <label for="ws-id" class="op-label">Numeric workspace ID</label>
+            <input id="ws-id" class="dcc-input op-input-id" type="text" inputmode="numeric" autocomplete="off" spellcheck="false" maxlength="19" aria-describedby="ws-id-help ws-id-error">
+            <p id="ws-id-help" class="op-help"></p>
+            <p id="ws-id-error" class="op-field-error" hidden></p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. Site access ------------------------------------------------------------------ -->
+      <section id="site-access" class="op-section" aria-labelledby="h-access">
+        <h2 id="h-access"><span class="op-step">2</span>Site access</h2>
+        <p class="op-lede">The extension runs only on workspaces you allow. Access is requested for exactly the selected workspace URL, nothing broader.</p>
+        <p id="access-status" class="op-status"></p>
+        <div class="op-actions">
+          <button type="button" id="access-grant" class="dcc-btn dcc-btn--primary">Allow access to this workspace</button>
+          <button type="button" id="access-remove" class="dcc-btn">Remove site access</button>
+        </div>
+        <div id="access-result" class="op-result" aria-live="polite"></div>
+      </section>
+
+      <!-- 3. Sign-in ---------------------------------------------------------------------- -->
+      <section id="auth" class="op-section" aria-labelledby="h-auth">
+        <h2 id="h-auth"><span class="op-step">3</span>Sign-in</h2>
+        <fieldset class="dcc-fieldset op-group">
+          <legend class="op-label">How should the extension query Databricks?</legend>
+          <div class="op-options">
+            <label class="op-option">
+              <input type="radio" name="auth" value="helper" id="auth-helper-radio">
+              <span class="op-option__main">
+                <span class="op-option__title">Browser sign-in (local helper)</span>
+                <span class="op-option__meta">You sign in to Databricks in your browser. A small helper on this computer runs the read-only SQL with a SQL-only scope; its sign-in stays in the Databricks CLI and never enters the extension.</span>
+              </span>
+            </label>
+            <label class="op-option">
+              <input type="radio" name="auth" value="pat" id="auth-pat-radio">
+              <span class="op-option__main">
+                <span class="op-option__title">Personal access token</span>
+                <span class="op-option__meta">Works without the helper. The token is kept only for this browser session.</span>
+              </span>
+            </label>
+          </div>
+        </fieldset>
+
+        <div id="auth-helper" class="op-subpanel">
+          <h3 id="helper">Local helper</h3>
+          <div id="helper-status" class="op-helper-status" aria-live="polite"></div>
+          <ol class="op-steps">
+            <li>Run <code>start-helper.command</code> from the project folder (double-click it on macOS, or run <code>npm run helper</code>).</li>
+            <li>The helper's setup page opens and pairs with this extension automatically.</li>
+            <li>Come back here, choose your workspace above, and select <strong>Sign in</strong>. Databricks opens its sign-in page in your browser.</li>
+          </ol>
+          <div class="op-actions">
+            <button type="button" id="helper-login" class="dcc-btn dcc-btn--primary">Sign in</button>
+            <button type="button" id="helper-check" class="dcc-btn">Check helper</button>
+          </div>
+          <div id="helper-result" class="op-result" aria-live="polite"></div>
+
+          <div class="op-monitor-signin">
+            <h4>Monitor sign-in (optional, broader access)</h4>
+            <p class="op-help">The run monitor needs its own sign-in. It requests the <code>all-apis</code> scope on a separate, dedicated profile. The extension uses it only for read-only run, pipeline, SQL warehouse and cluster status, and the helper forwards only an allowlist of read-only requests. Cost queries keep using the SQL-only sign-in above.</p>
+            <div class="op-actions">
+              <button type="button" id="helper-login-monitor" class="dcc-btn">Sign in for monitor (broader access)</button>
+            </div>
+            <div id="helper-monitor-result" class="op-result" aria-live="polite"></div>
+          </div>
+
+          <details id="pair-manual" class="op-disclosure">
+            <summary>Can't use the setup page?</summary>
+            <p class="op-help">Paste the 24-character pairing key printed in the helper's terminal window. Use this only when the setup page can't reach the extension. The key is checked with the helper before it is kept, and it is cleared when the browser closes.</p>
+            <div class="op-field">
+              <label for="pair-key" class="op-label">Pairing key</label>
+              <div class="op-inline">
+                <input id="pair-key" class="dcc-input dcc-input--mono" type="password" autocomplete="off" spellcheck="false" maxlength="40" aria-describedby="pair-key-help">
+                <button type="button" id="pair-submit" class="dcc-btn">Pair</button>
+              </div>
+              <p id="pair-key-help" class="op-help">24 characters: digits 0–9 and letters a–f.</p>
+            </div>
+            <div id="pair-result" class="op-result" aria-live="polite"></div>
+          </details>
+
+          <div class="op-actions op-actions--end">
+            <button type="button" id="helper-unpair" class="dcc-btn dcc-btn--quiet dcc-btn--small">Forget helper pairing</button>
+          </div>
+        </div>
+
+        <div id="auth-pat" class="op-subpanel" hidden>
+          <h3 id="pat">Personal access token</h3>
+          <p id="pat-status" class="op-status"></p>
+          <div class="op-field">
+            <label for="pat-input" class="op-label">Token</label>
+            <div class="op-inline">
+              <input id="pat-input" class="dcc-input dcc-input--mono" type="password" autocomplete="off" spellcheck="false" aria-describedby="pat-help">
+              <button type="button" id="pat-save" class="dcc-btn dcc-btn--primary">Save token</button>
+            </div>
+            <p id="pat-help" class="op-help">Kept in session storage for this browser session only (cleared when the browser closes) and never shown again. Use a token for an identity that can use the SQL warehouse and read the billing tables — nothing more.</p>
+          </div>
+          <div id="pat-result" class="op-result" aria-live="polite"></div>
+          <div class="op-actions">
+            <button type="button" id="pat-clear" class="dcc-btn dcc-btn--small">Remove token</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. Warehouse -------------------------------------------------------------------- -->
+      <section id="warehouse" class="op-section" aria-labelledby="h-warehouse">
+        <h2 id="h-warehouse"><span class="op-step">4</span>SQL warehouse</h2>
+        <p class="op-lede">Cost queries run on one SQL warehouse per workspace. Automatic picks a running warehouse first, then the smallest size, and is resolved when you save — never switched per query.</p>
+        <div id="wh-saved" class="op-result"></div>
+        <div class="op-actions">
+          <button type="button" id="wh-list" class="dcc-btn">List warehouses</button>
+        </div>
+        <div id="wh-body" class="op-result" aria-live="polite"></div>
+        <p class="op-help op-gap">Listing a warehouse doesn't prove that you have CAN USE on it or read access to the billing tables. The first cost query may still fail; its error names what is missing.</p>
+      </section>
+
+      <!-- 5. Billing ---------------------------------------------------------------------- -->
+      <section id="billing" class="op-section" aria-labelledby="h-billing">
+        <h2 id="h-billing"><span class="op-step">5</span>Billing source</h2>
+        <div class="op-field">
+          <label for="price-table" class="op-label">Price table</label>
+          <select id="price-table" class="dcc-select" aria-describedby="price-table-help"></select>
+          <p id="price-table-help" class="op-help">Only these two tables are supported. No silent fallback between them: if the selected table isn't available, you'll see a specific error.</p>
+          <p id="price-table-warn" class="op-field-warn" hidden></p>
+        </div>
+        <div class="op-field">
+          <label for="currency" class="op-label">Currency</label>
+          <input id="currency" class="dcc-input op-input-currency" type="text" maxlength="3" autocomplete="off" spellcheck="false" value="USD" aria-describedby="currency-help currency-error">
+          <p id="currency-help" class="op-help">Three-letter code that matches <code>currency_code</code> in the price table. Amounts are never converted.</p>
+          <p id="currency-error" class="op-field-error" hidden></p>
+        </div>
+        <details id="advanced" class="op-disclosure">
+          <summary>Advanced: data sources</summary>
+          <p class="op-help">Use the system tables, or an approved view with the same columns in your own catalog (<code>catalog.schema.view</code>, outside the <code>system</code> catalog).</p>
+          <div class="op-field">
+            <label for="usage-source" class="op-label">Usage source</label>
+            <input id="usage-source" class="dcc-input dcc-input--mono" type="text" autocomplete="off" spellcheck="false" placeholder="system.billing.usage" aria-describedby="usage-source-error">
+            <p id="usage-source-error" class="op-field-error" hidden></p>
+          </div>
+          <div class="op-field">
+            <label for="history-source" class="op-label">Query history source</label>
+            <input id="history-source" class="dcc-input dcc-input--mono" type="text" autocomplete="off" spellcheck="false" placeholder="system.query.history" aria-describedby="history-source-error">
+            <p id="history-source-error" class="op-field-error" hidden></p>
+          </div>
+        </details>
+      </section>
+
+      <!-- 6. Save ------------------------------------------------------------------------- -->
+      <section id="save" class="op-section" aria-labelledby="h-save">
+        <h2 id="h-save"><span class="op-step">6</span>Save</h2>
+        <p id="save-summary" class="op-lede"></p>
+        <div class="op-actions">
+          <button type="button" id="save-btn" class="dcc-btn dcc-btn--primary">Save connection</button>
+        </div>
+        <div id="save-result" class="op-result" aria-live="polite"></div>
+
+        <div id="disconnect" class="op-danger-zone" hidden>
+          <h3>Disconnect</h3>
+          <p class="op-help">Removes the saved cost connection and the session token for this workspace. Workspace colors and other workspaces are not changed.</p>
+          <div class="op-actions">
+            <button type="button" id="disconnect-btn" class="dcc-btn dcc-btn--danger">Disconnect this workspace</button>
+          </div>
+          <div id="disconnect-confirm" class="op-confirm" role="group" aria-labelledby="disconnect-question" hidden>
+            <p id="disconnect-question"></p>
+            <div class="op-actions">
+              <button type="button" id="disconnect-yes" class="dcc-btn dcc-btn--danger-solid">Disconnect</button>
+              <button type="button" id="disconnect-no" class="dcc-btn">Cancel</button>
+            </div>
+          </div>
+          <div id="disconnect-result" class="op-result" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <!-- Local import -------------------------------------------------------------------- -->
+      <section id="import" class="op-section" aria-labelledby="h-import">
+        <h2 id="h-import">Local import</h2>
+        <p class="op-lede">Load per-workspace, per-resource summaries from a <code>costs.json</code> file for Local import mode. The file is validated and stored in this browser; imported summaries contain only what you import — no query history or run detail.</p>
+        <p id="import-status" class="op-status"></p>
+        <div class="op-field">
+          <label for="import-file" class="op-label">costs.json file</label>
+          <input id="import-file" class="op-file" type="file" accept=".json,application/json" aria-describedby="import-help">
+          <p id="import-help" class="op-help">Fields per entry: workspace, type, id, periodDays (7, 30 or 90), currency, total, previous, basis, owner, allocation, updatedAt, coverageEnd, daily [{date, cost}]. See <code>costs.example.json</code> in the project folder for the format.</p>
+        </div>
+        <div id="import-result" class="op-result" aria-live="polite"></div>
+        <div class="op-actions">
+          <button type="button" id="import-use-mode" class="dcc-btn" hidden>Switch to Local import mode</button>
+          <button type="button" id="import-clear" class="dcc-btn dcc-btn--small">Clear import</button>
+          <button type="button" class="dcc-link" data-guide="local-import">About imported data</button>
+        </div>
+      </section>
+
+      <!-- Diagnostics --------------------------------------------------------------------- -->
+      <section id="diagnostics" class="op-section" aria-labelledby="h-diag">
+        <h2 id="h-diag">Diagnostics</h2>
+        <p class="op-lede">The last errors, with secrets removed. No SQL text, query results, or tokens are recorded.</p>
+        <ul id="diag-list" class="op-diag-list"></ul>
+        <div class="op-actions">
+          <button type="button" id="diag-clear" class="dcc-btn dcc-btn--small">Clear diagnostics</button>
+          <button type="button" class="dcc-link" data-guide="helper-troubleshooting">Troubleshooting guide</button>
+        </div>
+      </section>
+
+      <!-- Storage and reset --------------------------------------------------------------- -->
+      <section id="storage" class="op-section" aria-labelledby="h-storage">
+        <h2 id="h-storage">Stored data and safe reset</h2>
+        <div class="op-table-wrap">
+          <table class="dcc-table op-store-table">
+            <caption class="dcc-visually-hidden">What the extension stores and where</caption>
+            <thead>
+              <tr><th scope="col">Where</th><th scope="col">What</th><th scope="col">Cleared by</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">Browser local storage</th>
+                <td>Settings (mode, period, show costs, monitor preferences); one connection per workspace (URL, workspace ID, sign-in type, price table, currency, data sources, warehouse choice — never tokens); workspace IDs seen in tabs; your imported summaries; recent sanitized errors.</td>
+                <td>Disconnect, Clear import, Clear diagnostics, or removing the extension.</td>
+              </tr>
+              <tr>
+                <th scope="row">Browser local storage (separate)</th>
+                <td>Workspace colors, kept apart from billing so connecting or disconnecting never changes them.</td>
+                <td>Reset in the popup's Workspace colors panel, or removing the extension.</td>
+              </tr>
+              <tr>
+                <th scope="row">Session storage (memory only)</th>
+                <td>Personal access tokens, the helper pairing key, and the popup's one-time "connect this workspace" hand-off.</td>
+                <td>Closing the browser, Remove token, Forget helper pairing.</td>
+              </tr>
+              <tr>
+                <th scope="row">Databricks CLI (outside the extension)</th>
+                <td>The helper's browser sign-in, in dedicated CLI profiles. The extension never sees these credentials.</td>
+                <td>The Databricks CLI: remove those dedicated profiles there if you no longer need them.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="op-help op-gap">To reset completely: disconnect each workspace, clear the import and diagnostics, remove site access (here or in the browser's extension details), and close the browser to drop session secrets. Removing the extension deletes everything it stored.</p>
+      </section>
+    </main>
+  </div>
+
+  <script src="../src/core/validate.js"></script>
+  <script src="../src/core/ids.js"></script>
+  <script src="../src/core/labels.js"></script>
+  <script src="../src/errors.js"></script>
+  <script src="../src/databricks/pricing.js"></script>
+  <script src="../src/databricks/config.js"></script>
+  <script src="../src/databricks/warehouses.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>
