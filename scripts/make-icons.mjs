@@ -2,6 +2,7 @@
 // white and the tallest in the accent blue. Geometry sits on a 16-unit grid, so every size that is
 // a multiple of 16 has pixel-aligned bar edges (crisp at 16px).
 // Usage: node scripts/make-icons.mjs  → extension/icons/icon-{16,32,48,128}.png
+//        node scripts/make-icons.mjs --store-logo  → also store/assets/store-logo-300.png (Edge Add-ons)
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
 
@@ -66,4 +67,9 @@ function png(size) {
 const dir = new URL('../extension/icons/', import.meta.url);
 mkdirSync(dir, { recursive: true });
 for (const s of [16, 32, 48, 128]) writeFileSync(new URL(`icon-${s}.png`, dir), png(s));
+if (process.argv.includes('--store-logo')) {
+  const assets = new URL('../store/assets/', import.meta.url);
+  mkdirSync(assets, { recursive: true });
+  writeFileSync(new URL('store-logo-300.png', assets), png(300));
+}
 console.log('icons written');
