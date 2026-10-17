@@ -118,15 +118,19 @@ function sectionStats(L, R, s) {
   }
   const n = b - a;
   const lufs = s.end - s.start >= 0.5 ? loudness(L.subarray(a, b), R.subarray(a, b)) : -Infinity;
+  const rmsDb = db(ss / n);
+  const peakDb = 20 * Math.log10(Math.max(pk, 1e-10));
   return {
-    rmsDb: +db(ss / n).toFixed(1),
-    peakDb: +(20 * Math.log10(Math.max(pk, 1e-10))).toFixed(1),
+    rmsDb: +rmsDb.toFixed(1),
+    peakDb: +peakDb.toFixed(1),
+    crestDb: +(peakDb - rmsDb).toFixed(1),
     lufs: Number.isFinite(lufs) ? +lufs.toFixed(1) : null,
     corr: ll > 0 && rr > 0 ? +(lr / Math.sqrt(ll * rr)).toFixed(2) : null,
   };
 }
 
-export function check({ wav, markers, outDir, loudnorm = null }) {
+export function check({ wav, markers, outDir, loudnorm = null, name = '' }) {
+  const suffix = name ? `-${name}` : '';
   const failures = [];
   const { sr, bits, channels } = decodeWav(fs.readFileSync(wav));
   const [L, R] = channels;
@@ -196,8 +200,8 @@ export function check({ wav, markers, outDir, loudnorm = null }) {
   if (get('low-mid') - get('mid') > 8) failures.push('low-mids dominate (muddy)');
 
   // Images for a visual check
-  const spec = path.join(outDir, 'spectrum.png');
-  const wave = path.join(outDir, 'waveform.png');
+  const spec = path.join(outDir, `spectrum${suffix}.png`);
+  const wave = path.join(outDir, `waveform${suffix}.png`);
   ff(['-y', '-i', wav, '-lavfi', 'showspectrumpic=s=1600x600:legend=1:scale=log:fscale=log:color=intensity:stop=20000', spec]);
   ff(['-y', '-i', wav, '-lavfi', 'showwavespic=s=1600x300:split_channels=1:colors=0x4f8cff|0xf5a524', '-frames:v', '1', wave]);
 
@@ -218,15 +222,15 @@ export function check({ wav, markers, outDir, loudnorm = null }) {
     pass: failures.length === 0,
     failures,
   };
-  fs.writeFileSync(path.join(outDir, 'qc.json'), JSON.stringify(qc, null, 2) + '\n');
+  fs.writeFileSync(path.join(outDir, `qc${suffix}.json`), JSON.stringify(qc, null, 2) + '\n');
 
   console.log(`\nEBU R128: I ${ebu.I} LUFS, LRA ${ebu.LRA} LU, true peak ${ebu.truePeak} dBTP`);
   console.log(`astats: sample peak ${astats.peakDb} dBFS, RMS ${astats.rmsDb} dBFS, DC ${astats.dcOffset}; clipped samples ${clipped}`);
   console.log(`L/R correlation (overall) ${overall.corr}`);
-  console.log('\nsection     start   end    RMS dBFS  LUFS   peak   corr  plan(LUFS)  ok');
+  console.log('\nsection     start   end    RMS dBFS  LUFS   peak  crest   corr  plan(LUFS)  ok');
   for (const s of sections) {
     console.log(
-      `${s.id.padEnd(10)} ${String(s.start).padStart(6)} ${String(s.end).padStart(6)} ${String(s.rmsDb).padStart(8)} ${String(s.lufs).padStart(6)} ${String(s.peakDb).padStart(6)} ${String(s.corr).padStart(6)}  ${s.plan.padEnd(10)} ${s.ok ? 'yes' : 'NO'}`,
+      `${s.id.padEnd(10)} ${String(s.start).padStart(6)} ${String(s.end).padStart(6)} ${String(s.rmsDb).padStart(8)} ${String(s.lufs).padStart(6)} ${String(s.peakDb).padStart(6)} ${String(s.crestDb).padStart(6)} ${String(s.corr).padStart(6)}  ${s.plan.padEnd(10)} ${s.ok ? 'yes' : 'NO'}`,
     );
   }
   console.log('\ntransitions (RMS dBFS, 1 s before -> 1 s after each mark):');
@@ -239,7 +243,9 @@ export function check({ wav, markers, outDir, loudnorm = null }) {
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const dir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../dist/video/music');
+  // node video/music/check.mjs [file.wav] [name]   (defaults: the music master)
   const markers = JSON.parse(fs.readFileSync(path.join(dir, 'markers.json'), 'utf8'));
-  const qc = check({ wav: path.join(dir, 'lakeline-theme.wav'), markers, outDir: dir });
+  const wav = process.argv[2] ? path.resolve(process.argv[2]) : path.join(dir, 'lakeline-theme.wav');
+  const qc = check({ wav, markers, outDir: dir, name: process.argv[3] ?? '' });
   if (!qc.pass) process.exitCode = 1;
 }

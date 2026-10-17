@@ -45,6 +45,8 @@ const PLAN = [
 ];
 const MUSIC_END = PLAN[PLAN.length - 1].end;
 const LENGTH = MUSIC_END + 2.5; // reverb tail fades to silence by ~MUSIC_END + 2.3 s
+/** A breath of silence right before the drop (seconds), so the impact lands harder. */
+const DROP_GAP = 0.25;
 export const SECTIONS = [...PLAN, { id: 'tail', start: MUSIC_END, end: LENGTH, scene: 'Tail', plan: 'Reverb tail fading to silence.' }];
 
 /** The "small lift" inside the Genie section (doc paste). */
@@ -64,6 +66,8 @@ for (const s of PLAN) {
 }
 const NBARS = MUSIC_END / BAR;
 const st = (id) => SEC[id].start;
+/** Timing facts other scripts (sfx.mjs) need. */
+export const TIMING = { BPM, BEAT, BAR, LENGTH, MUSIC_END, DROP_GAP, start: (id) => SEC[id].start };
 const at = (bar, step = 0) => bar * BAR + step * STEP;
 /** Section id and bar index within it, for an absolute bar. */
 const where = (bar) => {
@@ -371,7 +375,7 @@ export function render() {
   const N = Math.ceil(LENGTH * SR);
   const bus = () => new S.Bus(N);
   const B = {
-    kick: bus(), clap: bus(), hats: bus(), bass: bus(), pad: bus(), air: bus(), arp: bus(),
+    kick: bus(), clap: bus(), snare: bus(), hats: bus(), bass: bus(), pad: bus(), air: bus(), arp: bus(),
     bell: bus(), hint: bus(), lead: bus(), fx: bus(),
   };
   const kickTimes = [];
@@ -385,13 +389,15 @@ export function render() {
       for (const s of d.kick) {
         const t = at(b, s);
         const vel = (d.kickVel ?? 1) * (s === 0 ? 1 : s % 4 === 0 ? 0.92 : 0.8);
-        S.kick(B.kick, t, { gain: 0.47, vel, decay: 0.18, f1: 49 }, r);
+        S.kick(B.kick, t, { gain: 0.5, vel }, r);
         kickTimes.push(t);
       }
       d.clap.forEach((s, k) => {
         const roll = k >= 2 && d.clap.length > 3;
         const vel = (roll ? 0.3 + 0.12 * (k - 2) : k >= 2 ? 0.45 : 1) * (d.clapVel ?? 1);
-        S.clap(B.clap, at(b, s), { gain: 0.54, vel, tail: roll ? 0.07 : 0.12 }, r);
+        S.clap(B.clap, at(b, s), { gain: 0.5, vel, tail: roll ? 0.07 : 0.12 }, r);
+        // Backbeat body: a snare layer under the clap on 2 and 4 (not on ghosts or rolls).
+        if (k < 2 && (s === 4 || s === 12)) S.snare(B.snare, at(b, s), { gain: 0.3, vel: d.clapVel ?? 1 }, r);
       });
       for (const [s, vel, open] of hatHits(b, d.hats, d.until ?? 16)) {
         const t = at(b, s) + (s % 2 ? 0.006 : 0) + (r() - 0.5) * 0.002;
@@ -495,9 +501,12 @@ export function render() {
     const fall = (t, len, gain, f0 = 9000) => S.noiseSweep(B.fx, t, t + len, { gain, f0, f1: 300, type: 'lp', mode: 'fall', shape: 1.6, q: 0.8 }, r);
     // Intro riser into the drop, then impact and downlifter.
     const drop = st('drop');
-    S.noiseSweep(B.fx, 1.5, drop - 0.04, { gain: 0.2, f0: 220, f1: 6500, q: 1.3, shape: 2.6 }, r);
-    S.toneRiser(B.fx, drop - 3, drop - 0.04, { gain: 0.045, m0: nm('A2'), m1: nm('A4'), cut0: 300, cut1: 4000 }, r);
-    S.boom(B.fx, drop, { gain: 0.3 }, r);
+    // The riser peaks at the start of the silent gap; the impact lands on the drop.
+    const gap = drop - DROP_GAP;
+    S.noiseSweep(B.fx, 1.5, gap, { gain: 0.22, f0: 220, f1: 7000, q: 1.3, shape: 2.6 }, r);
+    S.toneRiser(B.fx, drop - 3, gap, { gain: 0.05, m0: nm('A2'), m1: nm('A4'), cut0: 300, cut1: 4500 }, r);
+    S.boom(B.fx, drop, { gain: 0.45, decay: 0.9 }, r);
+    S.noiseSweep(B.fx, drop, drop + 2.2, { gain: 0.1, f0: 9000, f1: 4000, type: 'hp', mode: 'fall', shape: 2, q: 0.7 }, r);
     fall(drop, 3, 0.11);
     // Reverse swells into the main-groove phrase changes, into bar-aligned scene
     // cuts (not section starts, which have their own transitions), and the lift.
@@ -556,23 +565,27 @@ export function render() {
   S.eqBus(B.pad, 'highpass', 120, 0.7);
   S.eqBus(B.pad, 'peak', 320, 1.0, -2);
   S.chorus(B.pad, { rate: 0.21, depth: 0.0022, base: 0.011, mix: 0.45 });
-  S.applyGain(B.pad, duck(0.3, 0.18));
+  S.applyGain(B.pad, duck(0.5, 0.2));
 
   S.filterBus(B.air, padCut, 0.7);
   S.eqBus(B.air, 'highpass', 500, 0.7);
   S.chorus(B.air, { rate: 0.33, depth: 0.003, base: 0.014, mix: 0.6 });
-  S.applyGain(B.air, duck(0.22, 0.18));
+  S.applyGain(B.air, duck(0.4, 0.2));
 
   S.filterBus(B.arp, arpCut, 0.8);
   S.eqBus(B.arp, 'highpass', 160, 0.7);
-  S.applyGain(B.arp, duck(0.12, 0.12));
+  S.applyGain(B.arp, duck(0.2, 0.12));
 
   S.filterBus(B.hint, hintCut, 0.7);
   S.chorus(B.lead, { rate: 0.27, depth: 0.0025, base: 0.012, mix: 0.4 });
 
   S.eqBus(B.bass, 'highpass', 30, 0.7);
-  S.applyGain(B.bass, duck(0.5, 0.11, 0.003));
+  S.applyGain(B.bass, duck(0.65, 0.12, 0.003));
   S.eqBus(B.kick, 'highpass', 30, 0.7);
+  // Drum group (kick, clap, snare) with parallel compression and saturation for punch.
+  B.drums = bus();
+  for (const k of ['kick', 'clap', 'snare']) B[k].mixInto(B.drums);
+  S.parallelCompress(B.drums, { threshold: -24, ratio: 6, attack: 0.002, release: 0.07, drive: 2.2, mix: 0.4 });
   S.eqBus(B.hats, 'highshelf', 9000, 0.7, -2);
 
   // ---- Sends: ping-pong delay (dotted 8th) and a Freeverb-style hall
@@ -580,7 +593,7 @@ export function render() {
   const dlyIn = bus();
   const SENDS = {
     pad: [0.3, 0], air: [0.35, 0], arp: [0.16, 0.14], bell: [0.28, 0.22], hint: [0.45, 0.55],
-    lead: [0.42, 0.16], clap: [0.14, 0], hats: [0.04, 0], fx: [0.35, 0],
+    lead: [0.42, 0.16], clap: [0.14, 0], snare: [0.1, 0], hats: [0.04, 0], fx: [0.35, 0],
   };
   for (const [k, [rv, dl]] of Object.entries(SENDS)) {
     if (rv) B[k].mixInto(revIn, rv);
@@ -591,14 +604,31 @@ export function render() {
   const rev = S.freeverb(revIn, { room: 0.86, damp: 0.45, width: 1, predelay: 0.022, hp: 240, lp: 7500 });
 
   if (process.env.MUSIC_DEBUG) debugLevels({ ...B, dly, rev });
+  delete B.kick;
+  delete B.clap;
+  delete B.snare;
 
   // ---- Mix
-  const FADERS = { kick: 1, clap: 1, hats: 1, bass: 1, pad: 1, air: 1, arp: 1, bell: 1, hint: 1, lead: 1, fx: 1 };
+  const FADERS = { drums: 1, hats: 1, bass: 1, pad: 1, air: 1, arp: 1, bell: 1, hint: 1, lead: 1, fx: 1 };
   const mix = bus();
   for (const [k, g] of Object.entries(FADERS)) B[k].mixInto(mix, g);
   dly.mixInto(mix, 0.55);
   rev.mixInto(mix, 1.0);
+  dropGap(mix);
   return { mix, kickTimes };
+}
+
+/** Silence everything (reverb tails too) for DROP_GAP seconds before the drop. */
+export function dropGap(bus) {
+  const a = Math.round((st('drop') - DROP_GAP) * SR);
+  const b = Math.round(st('drop') * SR);
+  const fo = Math.round(0.015 * SR);
+  const fi = Math.round(0.002 * SR);
+  for (let i = a - fo; i < b + fi; i++) {
+    const g = i < a ? (a - i) / fo : i < b ? 0 : (i - b) / fi;
+    bus.L[i] *= g;
+    bus.R[i] *= g;
+  }
 }
 
 /** MUSIC_DEBUG=1: per-bus RMS (dBFS, pre-master) for each section, to balance the mix. */
@@ -623,26 +653,38 @@ function debugLevels(buses) {
 // loudness pre-gain and a look-ahead true-peak limiter. ffmpeg loudnorm then does
 // the final two-pass normalisation (master.mjs).
 
-export function masterBus(mix, { targetLufs = -14, ceilingDb = -2.0 } = {}) {
+/** Fade the tail to digital silence by MUSIC_END + 2.3 s. */
+export function tailFade(bus) {
+  const f0 = Math.round((MUSIC_END + 0.8) * SR);
+  const f1 = Math.round((MUSIC_END + 2.3) * SR);
+  for (let i = f0; i < bus.n; i++) {
+    const g = i >= f1 ? 0 : Math.cos(((i - f0) / (f1 - f0)) * (Math.PI / 2)) ** 2;
+    bus.L[i] *= g;
+    bus.R[i] *= g;
+  }
+}
+
+/** Music bus chain: fixed headroom, EQ, glue compression, soft saturation, tail fade. In place. */
+export function musicChain(mix) {
   let peak0 = 0;
   for (let i = 0; i < mix.n; i++) peak0 = Math.max(peak0, Math.abs(mix.L[i]), Math.abs(mix.R[i]));
   mix.scale(S.dbToGain(-6) / peak0); // known headroom before the dynamics
   S.eqBus(mix, 'highpass', 28, 0.7);
   S.eqBus(mix, 'highpass', 28, 0.7);
   S.eqBus(mix, 'lowshelf', 70, 0.7, -1.5);
-  const comp = S.compressor(mix, { threshold: -18, ratio: 1.8, attack: 0.015, release: 0.2, knee: 6 });
-  S.saturate(mix, 1.15);
+  const comp = S.compressor(mix, { threshold: -18, ratio: 1.6, attack: 0.02, release: 0.2, knee: 6 });
+  S.saturate(mix, 1.1);
+  tailFade(mix);
+  return { comp };
+}
 
-  // Fade the tail to digital silence.
-  const f0 = Math.round((MUSIC_END + 0.8) * SR);
-  const f1 = Math.round((MUSIC_END + 2.3) * SR);
-  for (let i = f0; i < mix.n; i++) {
-    const g = i >= f1 ? 0 : Math.cos(((i - f0) / (f1 - f0)) * (Math.PI / 2)) ** 2;
-    mix.L[i] *= g;
-    mix.R[i] *= g;
-  }
+export function masterBus(mix, opts) {
+  const { comp } = musicChain(mix);
+  return { ...finalize(mix, opts), comp };
+}
 
-  // Loudness pre-gain + limiter, iterated so the limited result lands on target.
+/** Loudness pre-gain + look-ahead true-peak limiter, iterated so the limited result lands on target. */
+export function finalize(mix, { targetLufs = -14, ceilingDb = -1.3 } = {}) {
   let gainDb = targetLufs - S.loudness(mix.L, mix.R);
   const peakEnv = S.truePeakEnvelope(mix);
   let out;
@@ -658,7 +700,7 @@ export function masterBus(mix, { targetLufs = -14, ceilingDb = -2.0 } = {}) {
     if (Math.abs(targetLufs - lufs) < 0.05) break;
     gainDb += targetLufs - lufs;
   }
-  return { out, comp, lim, lufs, gainDb };
+  return { out, lim, lufs, gainDb };
 }
 
 export function markers() {
@@ -672,6 +714,7 @@ export function markers() {
     durationSeconds: LENGTH,
     musicEndSeconds: MUSIC_END,
     drop: st('drop'),
+    dropGap: [st('drop') - DROP_GAP, st('drop')],
     sections: SECTIONS.map((s) => ({ id: s.id, start: s.start, end: s.end, bar: s.start / BAR, scene: s.scene, plan: s.plan })),
     phrases: [0, 16, 32, 48]
       .map((d) => st('groove') + d)

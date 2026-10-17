@@ -482,25 +482,31 @@ export function bassNote(bus, t0, gate, midi, o, rng) {
 // ---------------------------------------------------------------------------
 // Drums
 
-/** Soft, round kick: pitch-swept sine with a tiny filtered click, saturated. */
+/**
+ * Tight, punchy kick: a fast pitch-swept sine body (short punch decay plus a
+ * controlled sub tail), a crisp high-passed click and blip on the transient,
+ * then saturation for density.
+ */
 export function kick(bus, t0, o, rng) {
   const {
     gain = 0.8,
     vel = 1,
-    f0 = 118,
-    f1 = 47,
-    pitchTau = 0.038,
-    decay = 0.25,
-    click = 0.1,
-    drive = 1.6,
-    len = 0.55,
+    f0 = 165,
+    f1 = 50,
+    pitchTau = 0.028,
+    decay = 0.12,
+    sub = 0.4,
+    subDecay = 0.2,
+    click = 0.32,
+    drive = 2.0,
+    len = 0.42,
   } = o;
   const i0 = startIndex(t0);
   const n = Math.ceil(len * SR);
-  const c = onePole(3200);
+  const c = onePole(1800);
   const norm = 1 / Math.tanh(drive);
   let ph = 0;
-  let cl = 0;
+  let lp = 0;
   for (let i = 0; i < n; i++) {
     const idx = i0 + i;
     if (idx >= bus.n) break;
@@ -508,9 +514,42 @@ export function kick(bus, t0, o, rng) {
     const f = f1 + (f0 - f1) * Math.exp(-t / pitchTau);
     ph += f / SR;
     const body = Math.sin(TAU * ph);
-    const amp = Math.min(1, t / 0.0012) * Math.exp(-t / decay) * Math.min(1, (len - t) / 0.03);
-    cl += c * ((rng() * 2 - 1) * Math.exp(-t / 0.002) - cl);
-    const y = Math.tanh(drive * (body * amp + cl * click * 4)) * norm * gain * vel;
+    const env =
+      Math.min(1, t / 0.0005) *
+      (Math.exp(-t / decay) * (1 - sub) + Math.exp(-t / subDecay) * sub) *
+      Math.min(1, (len - t) / 0.03);
+    const nz = rng() * 2 - 1;
+    lp += c * (nz - lp);
+    const cl = ((nz - lp) * 0.7 + Math.sin(TAU * 3100 * t) * 0.5) * Math.exp(-t / 0.0018) * click;
+    const y = Math.tanh(drive * (body * env + cl)) * norm * gain * vel;
+    if (idx < 0) continue;
+    bus.L[idx] += y;
+    bus.R[idx] += y;
+  }
+}
+
+/** Snare body layer: two pitched partials with a quick drop plus high-passed noise "wires". */
+export function snare(bus, t0, o, rng) {
+  const { gain = 0.3, vel = 1, tone = 190, body = 0.7, wires = 0.55, decay = 0.12, len = 0.45, drive = 1.5 } = o;
+  const hp = new SVF(1400, 0.7);
+  const lp = new SVF(7000, 0.7);
+  const i0 = startIndex(t0);
+  const n = Math.ceil(len * SR);
+  const norm = 1 / Math.tanh(drive);
+  let p1 = 0;
+  let p2 = 0;
+  for (let i = 0; i < n; i++) {
+    const idx = i0 + i;
+    if (idx >= bus.n) break;
+    const t = i / SR;
+    const drop = 1 + 0.3 * Math.exp(-t / 0.012);
+    p1 += (tone * drop) / SR;
+    p2 += (tone * 1.78 * drop) / SR;
+    const b = (Math.sin(TAU * p1) + 0.5 * Math.sin(TAU * p2)) * Math.exp(-t / 0.05) * body;
+    hp.tick(rng() * 2 - 1);
+    const w = lp.tick(hp.hp) * Math.exp(-t / decay) * wires * 1.6;
+    const env = Math.min(1, t / 0.0007) * Math.min(1, (len - t) / 0.05);
+    const y = Math.tanh(drive * (b + w) * env) * norm * gain * vel;
     if (idx < 0) continue;
     bus.L[idx] += y;
     bus.R[idx] += y;
@@ -901,6 +940,32 @@ export function saturate(bus, drive = 1.2) {
     bus.R[i] = Math.tanh(bus.R[i] * drive) / drive;
   }
   return bus;
+}
+
+/**
+ * Parallel ("New York") compression: a heavily compressed and saturated copy,
+ * level-matched to the dry signal by RMS, blended underneath it. Adds density
+ * and sustain to drums while the dry transients stay intact.
+ */
+export function parallelCompress(bus, { threshold = -30, ratio = 6, attack = 0.003, release = 0.08, drive = 2, mix = 0.35 } = {}) {
+  const wet = new Bus(bus.n);
+  wet.L.set(bus.L);
+  wet.R.set(bus.R);
+  let dry = 0;
+  for (let i = 0; i < bus.n; i++) dry += bus.L[i] * bus.L[i] + bus.R[i] * bus.R[i];
+  // Threshold relative to the bus peak, so the amount of squash does not depend on gain staging.
+  let pk = 0;
+  for (let i = 0; i < bus.n; i++) pk = Math.max(pk, Math.abs(bus.L[i]), Math.abs(bus.R[i]));
+  const res = compressor(wet, { threshold: gainToDb(pk) + threshold, ratio, attack, release, knee: 6 });
+  saturate(wet.scale(1 / Math.max(pk, 1e-9)), drive);
+  let w = 0;
+  for (let i = 0; i < bus.n; i++) w += wet.L[i] * wet.L[i] + wet.R[i] * wet.R[i];
+  const g = Math.sqrt(dry / Math.max(w, 1e-20)) * mix;
+  for (let i = 0; i < bus.n; i++) {
+    bus.L[i] += wet.L[i] * g;
+    bus.R[i] += wet.R[i] * g;
+  }
+  return res;
 }
 
 /**

@@ -7,14 +7,16 @@ recordings, and no melodies from existing works.
 ## Run
 
 ```sh
-node video/music/compose.mjs              # render, master, check (about 15 s)
+node video/music/compose.mjs              # music: render, master, check (about 15 s)
+node video/music/sfx.mjs [--wait]         # SFX from events.json + music, mixed and mastered (about 25 s)
 node video/music/compose.mjs --raw-only   # render the raw WAV and markers.json only
 node video/music/master.mjs [input.wav]   # re-run the ffmpeg mastering (optionally on another file)
 node video/music/check.mjs                # re-run the quality checks on the master
 MUSIC_DEBUG=1 node video/music/compose.mjs --raw-only   # print per-bus levels per section
 ```
 
-Proposed package script: `"video:music": "node video/music/compose.mjs"`.
+Proposed package scripts: `"video:music": "node video/music/compose.mjs"` and
+`"video:sfx": "node video/music/sfx.mjs --wait"`.
 
 Needs Node 20+ and ffmpeg with `loudnorm`, `ebur128` and `libmp3lame`. It uses
 `/opt/homebrew/bin/ffmpeg` if it exists, otherwise `ffmpeg` on `PATH`. Set
@@ -28,7 +30,12 @@ Needs Node 20+ and ffmpeg with `loudnorm`, `ebur128` and `libmp3lame`. It uses
 | `lakeline-theme-raw.wav` | Pre-loudnorm render from the JS master bus (24-bit, TPDF-dithered). |
 | `lakeline-theme-preview.mp3` | 320 kb/s preview for review. |
 | `markers.json` | BPM, bar length, section starts and ends, phrase starts and scene cues. |
-| `qc.json`, `spectrum.png`, `waveform.png` | Quality-check results and images. |
+| `qc.json`, `spectrum.png`, `waveform.png` | Quality-check results and images (music). |
+| `sfx.wav` | The SFX stem alone, at the level it has in the mix (48 kHz, 24-bit). |
+| `mix.wav` | Music + SFX, -14 LUFS integrated, true peak <= -1 dBTP (48 kHz, 24-bit). |
+| `mix-raw.wav`, `mix-preview.mp3` | The mix before loudnorm, and a 320 kb/s preview. |
+| `sfx-placed.json` | Every placed SFX (time, kind, source event, level), counts per kind, skipped events with reasons. |
+| `qc-mix.json`, `spectrum-mix.png`, `waveform-mix.png` | Quality checks on the mix. |
 
 ## Files
 
@@ -41,6 +48,21 @@ Needs Node 20+ and ffmpeg with `loudnorm`, `ebur128` and `libmp3lame`. It uses
   - Bus effects: stereo chorus, ping-pong delay, a Freeverb-topology reverb and sidechain ducking.
   - Master: a glue compressor, tanh saturation, a look-ahead true-peak limiter (4x windowed-sinc inter-sample peak estimate) and a BS.1770-4 loudness meter.
   - WAV: a reader and a writer.
+- `sfx.mjs`: the sound-effects layer. It reads the composer's `dist/video/music/events.json` and maps event kinds to synthesized SFX. Each SFX is levelled against the music around it (3-6 dB above the music's RMS at the SFX's loudest 10 or 50 ms; camera swishes stay below the music). The music ducks 3-4 dB under impacts, chimes and the alert, and 1.5 dB under whooshes. The script renders the stem, the mix and the mix QC. Kinds without a sound are listed in `sfx-placed.json`.
+
+  | SFX | Events | Sound |
+  |---|---|---|
+  | click | `click` | Soft, crisp UI click: high-passed noise transient plus a 2.3/1.15 kHz "tock". |
+  | tick | `step`, `copy` (double tick), `logo-bar` (rising pitch) | Tiny 3.4 kHz ping. |
+  | whoosh | `cut`, `transition`, `tab`, `workspace-switch`, `theme-flip` | Airy band-passed noise sweep, 0.35-0.9 s. Pans left to right for cuts, follows the tab direction for tab switches, and stays centred for vertical transitions. Peaks 40 ms before the cut. |
+  | swish | `push-in`, `pull-back`, `pan` | Very quiet low noise sweep (rising for push-ins, falling for pull-backs), scaled by the zoom amount. |
+  | impact | `cut` at the drop (6.0), `cta-button` | Sub drop (85 to 30 Hz), body thud, noise burst and crack, with a large reverb. |
+  | land | `wordmark-land` | Soft low thump. |
+  | chime | `answer-land` | Bright two-note bell: A5, then E6. |
+  | paste | `paste` | Paper flutter plus a short rising blip. |
+  | alert | `notification` | Two falling notes a minor third apart (E5 to C#5). |
+  | shimmer | `point` | Staggered high partials (D6 to A7) with tremolo and reverb. |
+  | riser | fixed: into 6.0 (ends at the silent gap) and into 80 | Noise sweep plus gliding saws. |
 - `master.mjs`: two-pass ffmpeg `loudnorm`. Pass 1 measures; pass 2 applies the measured values with `linear=true`, so the result is a pure gain change. Then the MP3 export.
 - `check.mjs`: QC. It checks:
   - ffmpeg `ebur128` (integrated loudness and true peak) and `astats`;
@@ -65,7 +87,15 @@ Needs Node 20+ and ffmpeg with `loudnorm`, `ebur128` and `libmp3lame`. It uses
 | 150-154 | 75-76 | resolve | Final Dmaj9 swell with a soft impact and a callback to the opening of the motif. |
 | 154-156.5 | | tail | Reverb tail, faded to digital silence by about 156.3 s. |
 
-The sidechain pumping comes from the kick schedule: pads duck by about 30 %, bass by about 50 %, and the arp and air pad slightly.
+The sidechain pumping comes from the kick schedule: pads duck by about 50 %, the bass by 65 %, the air pad by 40 % and the arp by 20 %.
+
+**Punch.**
+- **Kick:** a tight pitch-swept kick (165 to 50 Hz) with a crisp click, a short punch decay and a controlled sub tail.
+- **Snare:** a body layer under the clap on 2 and 4.
+- **Drum bus:** parallel compression and saturation on the kick, clap and snare.
+- **Drop:** a 0.25 s silent gap (5.75-6.0 s), then a bigger impact at 6.0 with a soft crash.
+
+The calm section has no drums. Loudness stays at -14 LUFS; the punch comes from transients. The checks report the crest factor (peak minus RMS) per section.
 
 ## Why it is original
 
