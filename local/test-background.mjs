@@ -238,7 +238,7 @@ test('connected mode without a token reports expired sign-in, not a generic erro
 
 /* ------------------------------------------------------------------ router */
 
-const EXT_ID = 'jfhjmnhnmkgknkjhmchcjddonpngcgna';
+const EXT_ID = 'gcadffgngihfjameoafjagofiompdngo';
 const EXT_ORIGIN = 'chrome-extension://' + EXT_ID;
 
 async function routerEnv() {

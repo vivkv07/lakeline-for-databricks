@@ -98,7 +98,7 @@ Show estimated Databricks costs, job run status and Genie answers for the user's
 | scripting | Registers the in-page cost banner and badges only for Databricks workspaces the user has granted access to, and loads them into tabs that were already open when access was granted. |
 | alarms | Refreshes the opt-in run monitor on a schedule (60 to 300 seconds) and resumes Genie questions that were in flight when the background worker restarted. |
 | identity | "Sign in with Databricks": OAuth authorization code with PKCE through chrome.identity.launchWebAuthFlow against the user's own workspace. |
-| sidePanel | The "Ask Genie" side panel. |
+| sidePanel | The "Ask Genie" side panel, where the user picks a Genie Agent in their own workspace, asks a question and reads the answer while they keep working in other tabs. |
 | notifications (optional) | Requested only when the user turns on notifications for failed job runs or for Genie answers that are ready. Notifications never contain query data. |
 | Host permissions (optional): https://*.cloud.databricks.com/*, https://*.azuredatabricks.net/*, https://*.gcp.databricks.com/* | Requested at runtime for the one workspace the user chooses to connect, never for all sites. Used to show costs inside that workspace and to call that workspace's Databricks APIs (SQL Statement Execution, SQL warehouses, Jobs, Pipelines, Clusters and Genie). Account console hosts are excluded. |
 | externally_connectable: http://127.0.0.1:8766/* | Lets the optional local helper program, running on the user's own computer, pair with the extension from its setup page. Nothing on the internet can use this. |
@@ -115,7 +115,13 @@ Show estimated Databricks costs, job run status and Genie answers for the user's
 
 ---
 
-## Notes for reviewers (Distribution or "Test instructions" field)
+## Notes for reviewers (Test instructions tab)
+
+The dashboard's "Additional instructions" box takes at most 500 characters. This is the text that was submitted:
+
+> No test account needed. Click the toolbar icon and set Data source to Demo: synthetic data, no network requests. Click Ask Genie to open the side panel; demo Genie Agents return synthetic answers with tables and charts. The in-page banner and badges need a Databricks workspace with system.billing access: open it, click the icon, choose Connect this workspace, allow that one site, then add a personal access token in Connection preferences. Only read-only SQL and API calls are made.
+
+The longer version, for a support reply or the README:
 
 Lakeline needs a Databricks workspace for its in-page features. The fastest way to review it:
 1. Install it, click the toolbar icon, and choose **Demo** as the data source. Demo mode uses synthetic data and makes no network requests.
@@ -126,9 +132,13 @@ The extension runs only read-only SQL and read-only API calls. Asking Genie a qu
 
 ---
 
-## After the first upload (before publishing)
+## Submission record
 
-1. In the dashboard, open the **Package** tab, choose **View public key**, and put that key into `extension/manifest.json` as `"key"` (one line, no BEGIN/END markers). Local builds then share the store ID.
-2. Update `extension/EXTENSION_ID` and the constant in `local/setup.js` to the store ID.
-3. The OAuth redirect URL becomes `https://<store-id>.chromiumapp.org/`. Add it to the Databricks App connection (account console, Settings, App connections).
-4. Publish as **Unlisted** first, test with a few people, then switch to **Public**.
+- Item ID: `gcadffgngihfjameoafjagofiompdngo`. Publisher: Vivek Kovvuru (non-trader). Visibility: Unlisted.
+- Submitted for review on 16 October 2026, with "publish automatically after review" ticked.
+- Done after the first upload:
+  1. The item's public key is in `extension/manifest.json` as `"key"`, so unpacked builds share the store ID. The store ZIP still strips it.
+  2. `extension/EXTENSION_ID` and the constant in `local/setup.js` hold the store ID.
+- Still to do after approval:
+  1. Add `https://gcadffgngihfjameoafjagofiompdngo.chromiumapp.org/` as a redirect URL in the Databricks App connection (account console, Settings, App connections).
+  2. Install from the Unlisted link, test with a few people, then switch Visibility to **Public**.
