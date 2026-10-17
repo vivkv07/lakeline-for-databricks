@@ -126,6 +126,28 @@ async function boot() {
   window.__composer = Object.assign(window.__composer || {}, {
     seek,
     info: () => ({ duration: DURATION, fps: FPS, timeline: TIMELINE, placeholders, sources: manifests.sources, warnings }),
+    /** Every timed event (scene cuts, transitions, scene events) for the sound-effects layer. */
+    events: () => {
+      const ev = [];
+      for (const d of TIMELINE) if (d.t0 > 0) ev.push({ t: d.t0, kind: 'cut', scene: d.n, label: `scene ${d.n} ${d.key}` });
+      ev.push({ t: 0.5, kind: 'waves-rise', scene: 1, label: 'navy panel and wave lines rise', dur: 5.45 });
+      ev.push({ t: T[3].t0 - 0.6, kind: 'transition', scene: 3, label: 'navy panel recedes, white stage', dur: 1.0 });
+      ev.push({ t: T[11].t0 - 0.6, kind: 'transition', scene: 11, label: 'white sheet rises (dark to light)', dur: 0.95 });
+      ev.push({ t: CURTAIN.t0, kind: 'transition', scene: 12, label: 'navy curtain rises', dur: CURTAIN.t1 - CURTAIN.t0 });
+      ev.push({ t: T[13].t0 - 0.05, kind: 'transition', scene: 13, label: 'navy panel lowers to the CTA', dur: 1.0 });
+      ev.push({ t: FADE_OUT.t0, kind: 'fade-out', scene: 13, label: 'final fade to black', dur: FADE_OUT.t1 - FADE_OUT.t0 });
+      for (const b of built) if (typeof b.events === 'function') ev.push(...b.events());
+      const r = (x) => Math.round(x * 1000) / 1000;
+      return ev
+        .filter((e) => Number.isFinite(e.t) && e.t >= 0 && e.t <= DURATION)
+        .map((e) => {
+          const o = { t: r(e.t), kind: e.kind, scene: e.scene, label: e.label || '' };
+          if (e.dur != null && Number.isFinite(e.dur)) o.dur = r(e.dur);
+          if (e.zoom != null) o.zoom = e.zoom;
+          return o;
+        })
+        .sort((a, b) => a.t - b.t || a.scene - b.scene || a.kind.localeCompare(b.kind));
+    },
     /** Camera moves, captions, clicks and UI changes per product scene, for the pacing check. */
     pacing: () => built.filter((b) => typeof b.pacing === 'function').map((b) => b.pacing()),
   });

@@ -38,20 +38,24 @@ export default function build(ctx, { n, t0, t1 }) {
   const pageAt = (t, st, tab, kind) => { if (!st) return; pages.push(st); sched.push({ t, i: pages.length - 1, kind }); tabs.push({ t, tab }); };
   const cur = [];
   const tabRect = (i) => { const c = win.tabCenter(i); return { x: c.x - 40, y: c.y - 8, w: 80, h: 16 }; };
-  const click = (t, p) => { if (p) cur.push({ t, x: p.x, y: p.y, click: true }); return t + PACE.click; };
+  const click = (t, p, label = '') => {
+    if (p) cur.push({ t, x: p.x, y: p.y, click: true, label });
+    else sc.warn(`scene 11: no target for the "${label}" click`);
+    return t + PACE.click;
+  };
   const mid = (r, fx = 0.5, fy = 0.5) => (r ? { x: r.x + r.w * fx, y: r.y + r.h * fy } : null);
   const iconPt = { x: win.icon.x, y: win.icon.y };
 
   // (a) identical default top bars: dev → stage → prod.
   pageAt(-1e9, D.dev, 0);
   cur.push({ t: L(0.5), x: mid(tabRect(0)).x + 60, y: 200 });
-  pageAt(click(L(1.2), mid(tabRect(1))), D.stage, 1, 'tab');
-  pageAt(click(L(2.3), mid(tabRect(2))), D.prod, 2, 'tab');
+  pageAt(click(L(1.2), mid(tabRect(1)), 'northpeak-stage tab'), D.stage, 1, 'tab');
+  pageAt(click(L(2.3), mid(tabRect(2)), 'northpeak-prod tab'), D.prod, 2, 'tab');
   // (b) prod: open the popup's Workspace colors, pick the Red preset, save; then stage: custom hex.
   const popStates = [], popSched = [];
   const popAt = (t, st) => { if (!st) return; popStates.push(st); popSched.push({ t: popStates.length === 1 ? -1e9 : t, i: popStates.length - 1, d: PACE.hover }); };
   const span = union(...WS.flatMap((w) => POP[w]).filter(Boolean).map((st) => union(sc.Bq(st, ['url'], []), sc.Bq(st, ['status'], []), sc.Bq(st, ['save'], []))));
-  const tOpenProd = click(L(3.4), iconPt);
+  const tOpenProd = click(L(3.4), iconPt, 'Lakeline toolbar icon');
   popAt(tOpenProd, POP.prod[0]);
   // Swatch centers on the real preset row: named boxes when the manifest has them, otherwise six
   // 38.5 px steps from 31 px (red, amber, green, blue, violet, slate) measured on the capture.
@@ -79,19 +83,21 @@ export default function build(ctx, { n, t0, t1 }) {
   const opts = (open, close) => ({ open, close, maxH: span ? Math.min(600, span.h + 24) : 600, focusFor: () => span });
   pop = prodPart[0].length ? popup(sc, win, prodPart[0], prodPart[1], opts(tOpenProd, closeProd)) : null;
   const popStage = stagePart && stagePart[0].length ? popup(sc, win, stagePart[0], stagePart[1], opts(tOpenStage + PACE.click, closeStage)) : null;
-  click(tRed, swatch(POP.prod[0], 'red', 0));
-  const saveProd = click(tSaveProd, mid(P(POP.prod[1], 'save')));
+  click(tRed, swatch(POP.prod[0], 'red', 0), 'Red preset');
+  const saveProd = click(tSaveProd, mid(P(POP.prod[1], 'save')), 'Save');
   pageAt(saveProd, C.prod, 2); // open tabs on this workspace update automatically
-  pageAt(click(tStageTab, mid(tabRect(1))), D.stage, 1, 'tab');
-  click(tOpenStage, iconPt);
+  pageAt(click(tStageTab, mid(tabRect(1)), 'northpeak-stage tab'), D.stage, 1, 'tab');
+  click(tOpenStage, iconPt, 'Lakeline toolbar icon');
   const PS = (st, key) => (popStage && st ? popStage.at(st, sc.Bq(st, [key], [])) : null);
-  click(tHex, mid(PS(POP.stage[0] || POP.stage[1], 'hex'), 0.6));
-  const saveStage = click(tSaveStage, mid(PS(POP.stage[1], 'save')));
+  click(tHex, mid(PS(POP.stage[0] || POP.stage[1], 'hex'), 0.6), 'Hex field (custom color)');
+  const saveStage = click(tSaveStage, mid(PS(POP.stage[1], 'save')), 'Save');
   pageAt(saveStage, C.stage, 1);
   // (c) switch tabs: each top bar in its own color.
-  const tDev = click(L(11.1), mid(tabRect(0)));
+  const tDev = click(L(11.1), mid(tabRect(0)), 'northpeak-dev tab');
   pageAt(tDev, C.dev, 0, 'tab');
-  pageAt(click(L(12.2), mid(tabRect(2))), C.prod, 2, 'tab');
+  pageAt(click(L(12.2), mid(tabRect(2)), 'northpeak-prod tab'), C.prod, 2, 'tab');
+  sc.event(saveProd, 'top-bar-color', `prod top bar turns ${sc.Tq(POP.prod[2], ['hex'], []) || 'red'}`);
+  sc.event(saveStage, 'top-bar-color', `stage top bar turns ${sc.Tq(POP.stage[2], ['hex'], []) || 'amber'}`);
   cur.push({ t: L(13.3), x: mid(tabRect(2)).x + 90, y: 240 });
 
   const stack = crossStack(win.content, pages, sched, { log: sc, label: 'page' });

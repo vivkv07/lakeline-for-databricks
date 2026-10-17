@@ -21,7 +21,12 @@
 //   --placeholder-root DIR (env LAKELINE_PLACEHOLDER_ROOT), --keep (keep the video-only file),
 //   --review (stills only: placeholder tag without the full-frame watermark grid, for layout review),
 //   --allow-pacing / --allow-markers (render finals despite pacing-rule or music-marker failures),
-//   --no-share (skip the 720p share copy).
+//   --no-share (skip the 720p share copy),
+//   --events [--out FILE] (write every timed event for the sound-effects layer as JSON, default
+//   dist/video/music/events.json, then exit), --allow-audio-duration (render finals even when the
+//   audio's length does not match the timeline).
+// Audio: dist/video/music/mix.wav (music + SFX premix) when present, else lakeline-theme.wav. Its
+// duration must be within AUDIO_TOL of the timeline (DURATION -1 frame to +3 s) for final renders.
 // --info also runs the pacing check (notes/VIDEO.md, Pacing v2): it lists every camera move with
 // start, duration, zoom and hold-after, and exits non-zero when any rule is violated. Final
 // renders refuse to start on a pacing violation or a music-marker mismatch.
@@ -40,6 +45,9 @@ const REPO = path.resolve(HERE, '../..');
 const OUT = path.join(REPO, 'dist/video');
 const CAPTURES = path.join(OUT, 'captures');
 const MUSIC = path.join(OUT, 'music/lakeline-theme.wav');
+/** Music plus sound effects, premixed by the music agent; used instead of MUSIC when present. */
+const MIX = path.join(OUT, 'music/mix.wav');
+const EVENTS = path.join(OUT, 'music/events.json');
 const MARKERS = path.join(OUT, 'music/markers.json');
 const FONTS = path.join(REPO, 'extension/fonts');
 const DEFAULT_PH = '/private/tmp/claude-501/-Users-vivekkv-dbx-ext/1ec54e49-6a51-4764-b576-143b4dfd1ee2/scratchpad';
@@ -71,6 +79,9 @@ function parseArgs(argv) {
       case '--allow-pacing': a.allowPacing = true; break;
       case '--allow-markers': a.allowMarkers = true; break;
       case '--no-share': a.noShare = true; break;
+      case '--events': a.events = true; break;
+      case '--out': a.out = path.resolve(v()); break;
+      case '--allow-audio-duration': a.allowAudioDuration = true; break;
       case '-h': case '--help': a.help = true; break;
       default: throw new Error('unknown option ' + k);
     }
@@ -215,6 +226,22 @@ function describe(file) {
   return lines.join('\n');
 }
 
+/* ------------------------------------------------------------------ audio */
+
+/** Audio duration tolerance against the timeline: at least DURATION - 1 frame, at most +3 s tail. */
+const AUDIO_TOL = { under: 1 / 30, over: 3 };
+
+/** The audio to mux: the premix when present, else the music; with its duration check. */
+function audioSource(duration) {
+  const file = fs.existsSync(MIX) ? MIX : fs.existsSync(MUSIC) ? MUSIC : null;
+  if (!file) return { file: null, ok: false, note: 'no audio (' + path.relative(REPO, MIX) + ' or ' + path.relative(REPO, MUSIC) + ')' };
+  let secs = NaN;
+  try { secs = +ffprobe(file).format.duration; } catch (_) { /* reported below */ }
+  const ok = Number.isFinite(secs) && secs >= duration - AUDIO_TOL.under && secs <= duration + AUDIO_TOL.over;
+  const kind = file === MIX ? 'mix (music + SFX)' : 'music only';
+  return { file, secs, ok, note: `${path.relative(REPO, file)} · ${kind} · ${Number.isFinite(secs) ? secs.toFixed(3) + ' s' : 'unreadable'} vs timeline ${duration.toFixed(3)} s (allowed ${(duration - AUDIO_TOL.under).toFixed(3)}–${(duration + AUDIO_TOL.over).toFixed(3)} s) ${ok ? 'ok' : 'MISMATCH'}` };
+}
+
 /* ---------------------------------------------------------------- markers */
 
 function checkMarkers(timeline) {
@@ -311,7 +338,7 @@ async function main() {
     console.log(`composer: ${base}/index.html?dev=1   (seek with &t=SECONDS)`);
     return; // keep serving
   }
-  const dsf = a.preview ? 1 : 2;
+  const dsf = a.preview || a.events ? 1 : 2; // events only need CSS geometry
   const browser = await chromium.launch({
     channel: 'chromium', headless: true,
     args: ['--force-color-profile=srgb', '--hide-scrollbars', '--disable-lcd-text', '--font-render-hinting=none', '--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows'],
@@ -328,6 +355,27 @@ async function main() {
     const markersOk = checkMarkers(info.timeline);
     const pacing = await first.page.evaluate(() => window.__composer.pacing());
     const violations = checkPacing(pacing);
+    const audio = audioSource(info.duration);
+    console.log('audio: ' + audio.note);
+    if (a.events) {
+      const events = await first.page.evaluate(() => window.__composer.events());
+      const out = a.out || EVENTS;
+      const doc = {
+        title: 'Lakeline launch video: timed events for the sound-effects layer',
+        units: 'seconds from the start of the video (t = frame / 30)',
+        fps: info.fps, duration: info.duration,
+        timeline: info.timeline.map(({ n, key, t0, t1 }) => ({ scene: n, key, t0, t1 })),
+        count: events.length,
+        events,
+      };
+      fs.mkdirSync(path.dirname(out), { recursive: true });
+      fs.writeFileSync(out, JSON.stringify(doc, null, 2) + '\n');
+      const byKind = {};
+      for (const e of events) byKind[e.kind] = (byKind[e.kind] || 0) + 1;
+      console.log(`events: ${events.length} written to ${path.relative(REPO, out)}`);
+      console.log('  ' + Object.entries(byKind).sort((x, y) => y[1] - x[1]).map(([k, c]) => `${k} ${c}`).join(' · '));
+      return;
+    }
     if (a.info) { if (violations.length) process.exitCode = 1; return; }
 
     if (a.stills) {
@@ -351,8 +399,9 @@ async function main() {
     for (let f = f0; f < f1; f += step) frames.push(f);
     const outFps = fps / step;
     const spot = a.from != null || a.to != null;
-    const hasMusic = fs.existsSync(MUSIC) && !a.noMusic;
-    if (!a.preview && !spot && !hasMusic && !a.noMusic) throw new Error('music missing: ' + MUSIC + ' (use --no-music to render without it)');
+    const hasMusic = !!audio.file && !a.noMusic;
+    if (!a.preview && !spot && !hasMusic && !a.noMusic) throw new Error('audio missing: ' + audio.note + ' (use --no-music to render without it)');
+    if (!a.preview && !spot && hasMusic && !audio.ok && !a.allowAudioDuration) throw new Error('audio duration does not match the timeline: ' + audio.note + ' (or pass --allow-audio-duration)');
     if (!a.preview && !spot && info.placeholders.length && !a.allowPlaceholder) throw new Error('placeholders in use for scenes ' + info.placeholders.join(', ') + '; final deliverables need real captures (or pass --allow-placeholder)');
     if (!a.preview && !spot && violations.length && !a.allowPacing) throw new Error(`pacing check failed (${violations.length}); fix the choreography or pass --allow-pacing`);
     if (!a.preview && !spot && hasMusic && !markersOk && !a.allowMarkers) throw new Error('music markers do not match the timeline; wait for the re-composed music or pass --allow-markers');
@@ -410,12 +459,13 @@ async function main() {
     if (code !== 0) throw new Error('ffmpeg encode failed: ' + code);
     const secs = frames.length / outFps;
 
-    // Mux music (AAC 320 kb/s, 48 kHz) with a short fade-out, trimmed or padded to the video length.
+    // Mux the audio (mix.wav when present, else the music; AAC 320 kb/s, 48 kHz) with a short
+    // fade-out, trimmed or padded to the video length.
     const final = path.join(OUT, finalName);
     if (hasMusic) {
       const startS = (f0 / fps).toFixed(3);
       const fade = Math.min(1.2, secs / 4);
-      run('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-i', videoOnly, '-ss', startS, '-i', MUSIC, '-map', '0:v:0', '-map', '1:a:0', '-c:v', 'copy',
+      run('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-i', videoOnly, '-ss', startS, '-i', audio.file, '-map', '0:v:0', '-map', '1:a:0', '-c:v', 'copy',
         '-af', `atrim=0:${secs.toFixed(3)},afade=t=out:st=${(secs - fade).toFixed(3)}:d=${fade.toFixed(3)},apad=whole_dur=${secs.toFixed(3)}`,
         '-c:a', 'aac', '-b:a', '320k', '-ar', '48000', '-ac', '2', '-t', secs.toFixed(3), '-movflags', '+faststart', final], 'mux');
     } else {

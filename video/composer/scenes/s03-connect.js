@@ -38,14 +38,16 @@ export default function build(ctx, { n, t0, t1 }) {
   if (head) sc.move(L(2.1), sc.focus(grow(head, 40, 40)));
   sc.move(L(8.1), sc.full());
 
+  const btnText = sc.Tq(popA, ['connect-button'], []) || 'Connect this workspace';
   sc.cursor([
     { t: L(0.3), x: win.W * 0.62, y: win.H * 0.6 },
-    { t: tIcon, x: win.icon.x, y: win.icon.y, click: true },
-    btn ? { t: tHover, x: btn.x + btn.w * 0.42, y: btn.y + btn.h / 2 } : null,
-    btn ? { t: tClick, x: btn.x + btn.w * 0.42, y: btn.y + btn.h / 2, click: true } : null,
-    btn ? { t: L(6.6), x: btn.x + btn.w * 0.75, y: btn.y + btn.h * 4 } : null,
+    { t: tIcon, x: win.icon.x, y: win.icon.y, click: true, label: 'Lakeline toolbar icon' },
+    btn ? { t: tHover, x: btn.x + btn.w * 0.42, y: btn.y + btn.h / 2, label: btnText } : null,
+    btn ? { t: tClick, x: btn.x + btn.w * 0.42, y: btn.y + btn.h / 2, click: true, label: btnText } : null,
+    btn ? { t: L(6.6), x: btn.x + btn.w * 0.75, y: btn.y + btn.h * 4, label: 'rest' } : null,
   ].filter(Boolean), { appear: L(0.1), vanish: L(7.6) });
-  if (status) sc.ring(status, { t0: tDone + 0.6, t1: L(7.9) });
+  if (status) sc.ring(status, { t0: tDone + 0.6, t1: L(7.9), label: 'Connected line' });
+  sc.event(tDone, 'connected', sc.Tq(popB, ['connected-line'], []) || 'Connected');
 
   sc.caps.add({ t0: L(0.3), t1: t1 - 0.05, eyebrow: '01 · Connect', head: 'Connect in one click. Read-only.' });
   return sc;

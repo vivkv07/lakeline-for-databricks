@@ -36,8 +36,9 @@ export default function build(ctx, { n, t0, t1 }) {
   if (title && k) sc.move(L(7.0), sc.focus(grow(title, 40, 60), { k }));
   sc.move(L(12.0), sc.full());
 
-  if (spikeBadge || spike) sc.ring(spikeBadge || spike, { t0: L(3.3), t1: L(6.8), warm: true });
-  if (titleBadge && !focusSt) sc.ring(titleBadge, { t0: tFocus, t1: L(11.9) });
+  if (spikeBadge || spike) sc.ring(spikeBadge || spike, { t0: L(3.3), t1: L(6.8), warm: true, label: 'backfill run badge' });
+  if (titleBadge && !focusSt) sc.ring(titleBadge, { t0: tFocus, t1: L(11.9), label: 'job total badge' });
+  if (focusSt) sc.event(tFocus, 'focus-ring', 'job total badge (keyboard focus)');
 
   const spikeAmt = sc.T(runs, ['spike-run-badge', 'spike-badge', 'spike-run-cost'], []);
   const spikeDay = sc.T(runs, ['spike-run-start', 'spike-start', 'spike-date'], []);

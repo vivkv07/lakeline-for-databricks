@@ -41,6 +41,7 @@ export default function build(ctx, { n, t0, t1 }) {
       A.sc.layer.style.display = r < FLIP.rMax ? '' : 'none';
     },
     pacing: () => A.sc.pacing(),
+    events: () => A.sc.events().concat([{ t: FLIP.t0, kind: 'theme-flip', scene: n, label: 'light to dark (radial crossfade)', dur: FLIP.d }]),
     async ready() { await A.sc.ready(); await B.sc.ready(); },
   };
 }

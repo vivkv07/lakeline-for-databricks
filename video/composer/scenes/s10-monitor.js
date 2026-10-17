@@ -85,7 +85,10 @@ export default function build(ctx, { n, t0, t1 }) {
   const y1 = failed ? failed.y + failed.h : mRect.y + mRect.h * 0.7;
   sc.move(L(1.5), sc.focus({ x: mRect.x, y: y0, w: mRect.w, h: y1 - y0 }));
   sc.move(L(8.2), sc.full());
-  if (failed) sc.ring(failed, { t0: tFail + 0.6, t1: tCompute - 0.2 });
+  if (failed) sc.ring(failed, { t0: tFail + 0.6, t1: tCompute - 0.2, label: 'failed run' });
+  sc.event(L(0.55), 'window-open', 'run monitor (Float on top)', { dur: 0.5 });
+  sc.event(tFail, 'failure', 'customer_360_refresh failed in the monitor');
+  if (card) sc.event(nIn, 'notification', [title, message].filter(Boolean).join(' · '), { dur: nOut + 0.4 - nIn });
 
   sc.caps.add({ t0: L(0.25), t1: t1 - 0.05, eyebrow: '08 · Run monitor', head: 'A run fails, you know.' });
   return sc;
