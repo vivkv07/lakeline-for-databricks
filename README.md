@@ -74,15 +74,16 @@ names or real IDs.
   - A Unity Catalog-enabled workspace with system tables available.
   - A SQL warehouse you can use.
   - The grants listed under [Databricks permissions](#databricks-permissions).
-- **Browser sign-in through the local helper:** [Node.js](https://nodejs.org) 20 or newer and the
-  [Databricks CLI](https://docs.databricks.com/aws/en/dev-tools/cli/install) v1.12 or newer. Check
-  the CLI version with `databricks -v`.
-- **Or:** a Databricks personal access token (PAT). This needs no helper and no CLI.
+- **Sign-in:** nothing to install or register. **Sign in with Databricks** uses Databricks'
+  built-in sign-in app, the one the Databricks CLI uses. If an admin turned that app off, paste a
+  personal access token (PAT), or have an account admin register an app connection once.
+- **Optional local helper:** [Node.js](https://nodejs.org) 20 or newer and the
+  [Databricks CLI](https://docs.databricks.com/aws/en/dev-tools/cli/install) v1.12 or newer.
 - **Development and tests:** Node.js 20 or newer and npm.
 
 ## Install
 
-The extension isn't published in a store. Load it unpacked:
+Lakeline is in review on the Chrome Web Store. Until it is listed, load it unpacked:
 
 **Chrome**
 
@@ -122,9 +123,27 @@ Query History estimates, compute previews and the Explorer's detail queries need
 
 ## Connect a workspace
 
-Open a Databricks workspace tab, open the popup, and select **Connect Databricks**. This opens
-**Connection preferences**, the options page, for that workspace. If several workspaces are open,
-you choose one. The extension never switches workspace silently.
+Open a Databricks workspace tab, open the popup, and select **Connect this workspace**.
+
+1. Chrome asks once for access to that workspace and to `localhost:8020`.
+2. A tab opens on your workspace's own sign-in page. If you're already signed in, it closes by
+   itself after a moment.
+3. Lakeline reads the workspace ID, picks a SQL warehouse and shows costs on the page.
+
+Why `localhost:8020`: Databricks' built-in sign-in app (`databricks-cli`) only sends you back to
+that address. Nothing runs there; Lakeline reads the one-time code from its own sign-in tab and
+closes it. Tokens stay in browser session storage.
+
+**Other ways to sign in** (in the popup):
+
+- **Personal access token.** Select **Create a token in Databricks** (Settings, Developer, Access
+  tokens), paste it, and optionally tick **Remember on this computer**. Lakeline checks the token
+  with Databricks before saving it.
+- **Your organization's app connection.** If an account admin registered Lakeline under App
+  connections, paste its client ID. The sign-in screen then names your app.
+
+**Connection preferences** (the options page) covers everything else, including the local helper.
+If several workspaces are open, you choose one. The extension never switches workspace silently.
 
 1. **Workspace.** Confirm the workspace URL and its numeric workspace ID. The ID is read from the
    page URL (`?o=…`), from documented host names, or from tabs the extension has already seen.

@@ -6,6 +6,14 @@
  *   redirect:  chrome.identity.getRedirectURL()  → https://<extension-id>.chromiumapp.org/
  *   client_id: a public custom app connection registered once per Databricks account
  *
+ * Without a registered app, Lakeline signs in through Databricks' built-in public client
+ * `databricks-cli` (the one the Databricks CLI and SDKs use, enabled in every account unless an
+ * admin turned it off). Its only redirect is http://localhost:8020, which launchWebAuthFlow cannot
+ * complete, so the authorize page opens in a normal tab, the redirect is read from that tab's URL
+ * (optional host permission http://localhost:8020/*) and the tab is closed. Nothing listens on that
+ * port; the code is useless without the PKCE verifier kept here. Its all-apis token is stored once,
+ * under 'apis', and also serves cost queries.
+ *
  * Scopes per purpose: costs use `sql offline_access`. Everything that needs other REST APIs (the
  * run monitor and the Genie side panel) shares ONE broader consent, `all-apis offline_access`,
  * under the canonical purpose 'apis'; 'monitor' and 'genie' are aliases of it, so a user grants
@@ -30,10 +38,27 @@
     return Object.prototype.hasOwnProperty.call(SCOPES, p) ? p : null;
   }
   const KEY = 'dcc.secrets.oauth';
+  const BUILTIN = Object.freeze({ clientId: 'databricks-cli', redirectUri: 'http://localhost:8020', redirectPattern: 'http://localhost:8020/*', scope: 'all-apis offline_access' });
+  const SIGNIN_TIMEOUT_MS = 5 * 60 * 1000;
   const CLIENT_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{5,127}$/;
   const SKEW_MS = 60 * 1000;
 
   const isClientId = (v) => typeof v === 'string' && CLIENT_ID.test(v);
+  const isBuiltin = (v) => v === BUILTIN.clientId;
+
+  /** The client to sign in with: a connection's or the account's registered app, else the built-in one. */
+  function effectiveClientId(conn, settings) {
+    const own = (conn && conn.oauthClientId) || (settings && settings.oauth && settings.oauth.clientId);
+    return isClientId(own) ? own : BUILTIN.clientId;
+  }
+
+  /** The stored entry that serves a purpose: its own, or a built-in all-apis sign-in for costs. */
+  function slotFor(entries, purpose) {
+    if (!entries) return null;
+    if (entries[purpose]) return purpose;
+    if (purpose === 'cost' && entries.apis && isBuiltin(entries.apis.clientId)) return 'apis';
+    return null;
+  }
 
   function b64url(bytes) {
     let s = '';
@@ -125,16 +150,96 @@
     }
 
     /**
+     * Built-in client: open the authorize page in a tab and resolve with the redirect URL once the
+     * tab heads to http://localhost:8020. Rejects when the tab is closed or after five minutes.
+     * Extension API calls keep the service worker alive while the user signs in.
+     */
+    async function captureInTab(authUrl) {
+      const allowed = await chromeApi.permissions.contains({ origins: [BUILTIN.redirectPattern] });
+      if (!allowed) throw new errors.DccError({ code: 'PERMISSION_NOT_GRANTED', message: 'Sign-in needs permission to read its redirect on localhost:8020' });
+      const isRedirect = (u) => {
+        try {
+          return new URL(u).origin === BUILTIN.redirectUri;
+        } catch (_) {
+          return false;
+        }
+      };
+      return new Promise((resolve, reject) => {
+        let tabId = null;
+        let done = false;
+        let keepAlive = null;
+        let timer = null;
+        const early = [];
+        const finish = (fn, value) => {
+          if (done) return;
+          done = true;
+          clearInterval(keepAlive);
+          clearTimeout(timer);
+          try {
+            chromeApi.tabs.onUpdated.removeListener(onUpdated);
+            chromeApi.tabs.onRemoved.removeListener(onRemoved);
+          } catch (_) {
+            /* listeners were never attached */
+          }
+          fn(value);
+        };
+        const take = (id, url) => {
+          if (!isRedirect(url)) return;
+          Promise.resolve(chromeApi.tabs.remove(id)).catch(() => {});
+          finish(resolve, url);
+        };
+        function onUpdated(id, info, t) {
+          const u = (info && info.url) || (t && t.url);
+          if (!u) return;
+          if (tabId === null) early.push([id, u]);
+          else if (id === tabId) take(id, u);
+        }
+        function onRemoved(id) {
+          if (id === tabId) finish(reject, new errors.DccError({ code: 'AUTH_CANCELLED', message: 'Sign-in tab was closed' }));
+        }
+        try {
+          chromeApi.tabs.onUpdated.addListener(onUpdated);
+          chromeApi.tabs.onRemoved.addListener(onRemoved);
+        } catch (e) {
+          finish(reject, new errors.DccError({ code: 'AUTH_INVALID', message: 'Sign-in tabs are unavailable here' }));
+          return;
+        }
+        keepAlive = setInterval(() => {
+          try {
+            chromeApi.runtime.getPlatformInfo(() => {});
+          } catch (_) {
+            /* best effort */
+          }
+        }, 20 * 1000);
+        timer = setTimeout(() => {
+          if (tabId !== null) Promise.resolve(chromeApi.tabs.remove(tabId)).catch(() => {});
+          finish(reject, new errors.DccError({ code: 'AUTH_CANCELLED', message: 'Sign-in timed out' }));
+        }, SIGNIN_TIMEOUT_MS);
+        Promise.resolve()
+          .then(() => chromeApi.tabs.create({ url: authUrl, active: true }))
+          .then((t) => {
+            tabId = t.id;
+            for (const [id, u] of early.splice(0)) if (id === tabId) take(id, u);
+          })
+          .catch((e) => finish(reject, new errors.DccError({ code: 'AUTH_INVALID', message: 'Could not open the sign-in tab: ' + V.safeText(String((e && e.message) || e), 200) })));
+      });
+    }
+
+    /**
      * Run the authorization-code + PKCE flow. With interactive:false it succeeds only when the
      * browser already has a Databricks session (used for silent reconnects).
      */
     async function signIn({ origin, clientId, purpose: requested = 'cost', interactive = true }) {
       const o = workspaceOrigin(origin);
       if (!isClientId(clientId)) throw new errors.DccError({ code: 'OAUTH_CLIENT_MISSING', message: 'No OAuth client ID configured' });
-      const purpose = canonicalPurpose(requested);
-      if (!purpose) throw new errors.DccError({ code: 'UNKNOWN', message: 'Unknown sign-in purpose' });
-      const scope = SCOPES[purpose];
-      const redirectUri = chromeApi.identity.getRedirectURL();
+      const asked = canonicalPurpose(requested);
+      if (!asked) throw new errors.DccError({ code: 'UNKNOWN', message: 'Unknown sign-in purpose' });
+      const builtin = isBuiltin(clientId);
+      // A silent built-in sign-in would need a visible tab; refresh tokens cover that case instead.
+      if (builtin && !interactive) throw new errors.DccError({ code: 'AUTH_EXPIRED', message: 'Sign in with Databricks again' });
+      const purpose = builtin ? 'apis' : asked;
+      const scope = builtin ? BUILTIN.scope : SCOPES[purpose];
+      const redirectUri = builtin ? BUILTIN.redirectUri : chromeApi.identity.getRedirectURL();
       const { verifier, challenge } = await pkcePair(cryptoApi);
       const state = randomState(cryptoApi);
       const url = new URL(o + '/oidc/v1/authorize');
@@ -142,8 +247,9 @@
 
       let responseUrl;
       try {
-        responseUrl = await chromeApi.identity.launchWebAuthFlow({ url: url.toString(), interactive });
+        responseUrl = builtin ? await captureInTab(url.toString()) : await chromeApi.identity.launchWebAuthFlow({ url: url.toString(), interactive });
       } catch (e) {
+        if (e && e.dcc) throw e;
         const msg = String((e && e.message) || e);
         if (/did not approve|canceled|cancelled|closed/i.test(msg)) throw new errors.DccError({ code: 'AUTH_CANCELLED', message: 'Sign-in window was closed' });
         throw new errors.DccError({ code: interactive ? 'AUTH_INVALID' : 'AUTH_EXPIRED', message: 'Sign-in did not complete: ' + V.safeText(msg, 200) });
@@ -154,7 +260,8 @@
       if (p.get('state') !== state) throw new errors.DccError({ code: 'AUTH_INVALID', message: 'Sign-in state did not match' });
       if (p.get('error')) {
         const err = p.get('error');
-        throw new errors.DccError({ code: /invalid_client|unauthorized_client/.test(err) ? 'OAUTH_CLIENT_INVALID' : 'AUTH_INVALID', message: 'Databricks returned ' + V.safeText(err, 60) + (p.get('error_description') ? ': ' + V.safeText(p.get('error_description'), 200) : '') });
+        const clientRefused = /invalid_client|unauthorized_client/.test(err) || (builtin && /access_denied/.test(err));
+        throw new errors.DccError({ code: clientRefused ? (builtin ? 'BUILTIN_SIGNIN_BLOCKED' : 'OAUTH_CLIENT_INVALID') : 'AUTH_INVALID', message: 'Databricks returned ' + V.safeText(err, 60) + (p.get('error_description') ? ': ' + V.safeText(p.get('error_description'), 200) : '') });
       }
       const code = p.get('code');
       if (!code) throw new errors.DccError({ code: 'AUTH_INVALID', message: 'No authorization code returned' });
@@ -169,21 +276,22 @@
       const purpose = canonicalPurpose(requested);
       if (!purpose) throw new errors.DccError({ code: 'UNKNOWN', message: 'Unknown sign-in purpose' });
       const all = await readAll();
-      const entry = all[o] && all[o][purpose];
+      const slot = slotFor(all[o], purpose) || purpose;
+      const entry = all[o] && all[o][slot];
       if (entry && entry.expiresAt - SKEW_MS > now()) return entry.accessToken;
       if (entry && entry.refreshToken) {
         try {
           const json = await tokenRequest(o, { client_id: entry.clientId, grant_type: 'refresh_token', refresh_token: entry.refreshToken });
           const next = entryFrom(json, entry.clientId, entry.scope);
           if (!next.refreshToken) next.refreshToken = entry.refreshToken;
-          await writeEntry(o, purpose, next);
+          await writeEntry(o, slot, next);
           return next.accessToken;
         } catch (_) {
           /* fall through to a silent sign-in */
         }
       }
       const id = (entry && entry.clientId) || clientId;
-      if (isClientId(id)) {
+      if (isClientId(id) && !isBuiltin(id)) {
         try {
           await signIn({ origin: o, clientId: id, purpose, interactive: false });
           const fresh = (await readAll())[o][purpose];
@@ -206,13 +314,13 @@
       const all = await readAll();
       const e = all[origin] || {};
       const apis = Boolean(e.apis);
-      return { cost: Boolean(e.cost), apis, monitor: apis, genie: apis };
+      return { cost: Boolean(slotFor(e, 'cost')), apis, monitor: apis, genie: apis, builtin: Boolean(e.apis && isBuiltin(e.apis.clientId)) };
     }
 
     return { signIn, getAccessToken, signOut, describe };
   }
 
-  const api = Object.freeze({ SCOPES, PURPOSE_ALIASES, KEY, isClientId, pkcePair, canonicalPurpose, create });
+  const api = Object.freeze({ SCOPES, PURPOSE_ALIASES, KEY, BUILTIN, isClientId, isBuiltin, effectiveClientId, pkcePair, canonicalPurpose, create });
   if (NODE) module.exports = api;
   else (root.DCC || (root.DCC = {})).oauth = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

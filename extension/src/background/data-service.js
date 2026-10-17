@@ -11,6 +11,8 @@
   const NODE = typeof module === 'object' && module && module.exports;
   const dep = (name, path) => (NODE ? require(path) : root.DCC[name]);
   const errors = dep('errors', '../errors.js');
+  // Looked up when used: oauth.js may load after this file in the service worker.
+  const DCC_OAUTH = () => (NODE ? require('./oauth.js') : root.DCC.oauth);
   const V = dep('validate', '../core/validate.js');
   const config = dep('config', '../databricks/config.js');
   const http = dep('http', '../databricks/http.js');
@@ -44,7 +46,7 @@
         if (!oauth) throw new errors.DccError({ code: 'AUTH_EXPIRED', message: 'Sign-in unavailable' });
         const settings = await store.getSettings();
         const conn = await store.getConnection(origin);
-        return oauth.getAccessToken(origin, purpose, { clientId: (conn && conn.oauthClientId) || settings.oauth.clientId });
+        return oauth.getAccessToken(origin, purpose, { clientId: DCC_OAUTH().effectiveClientId(conn, settings) });
       }
       const token = await secrets.getPat(origin);
       if (!token) throw new errors.DccError({ code: 'AUTH_EXPIRED', message: 'No access token in this browser session' });

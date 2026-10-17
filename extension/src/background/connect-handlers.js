@@ -1,7 +1,8 @@
 /*
  * One-click connect. From the popup (or options) on a workspace tab:
- *   page grants site access in its click → this handler signs in (Databricks OAuth PKCE, or the
- *   user's existing browser login relayed through the open tab), resolves the workspace ID,
+ *   page grants site access in its click → this handler signs in (Databricks OAuth PKCE through a
+ *   registered app or the built-in databricks-cli client, a personal access token the user pasted,
+ *   or the user's existing browser login relayed through the open tab), resolves the workspace ID,
  *   picks a warehouse automatically, saves the connection with list prices, registers content
  *   scripts and injects into open tabs.
  * Progress is mirrored to chrome.storage.session so a popup that closed while the sign-in window
@@ -37,9 +38,10 @@
     }
 
     /**
-     * @param msg {url|origin, method?: 'oauth'|'session', clientId?}
-     * Without a method: Sign in with Databricks when a client ID is configured; otherwise the
-     * caller gets {needsChoice} so the user can pick their Databricks login, a client ID, or a token.
+     * @param msg {url|origin, method?: 'oauth'|'pat'|'session', clientId?, token?, remember?}
+     * Without a method: Sign in with Databricks, through the account's registered app when one is
+     * configured, otherwise through the built-in client (no setup). 'pat' saves the pasted token
+     * only after Databricks accepted it.
      */
     async function connect(msg) {
       const cls = ids.classifyOrigin(msg.url || msg.origin);
@@ -48,19 +50,24 @@
       if (!(await hasAccess(origin))) throw new errors.DccError({ code: 'PERMISSION_NOT_GRANTED' });
 
       const settings = await store.getSettings();
-      const clientId = msg.clientId !== undefined && msg.clientId !== '' ? String(msg.clientId).trim() : settings.oauth.clientId;
+      const typed = msg.clientId !== undefined && msg.clientId !== '' ? String(msg.clientId).trim() : null;
       const sessionAllowed = !(DCC.flags && DCC.flags.sessionLogin === false);
       if (msg.method === 'session' && !sessionAllowed) throw new errors.DccError({ code: 'UNKNOWN', message: 'This sign-in method is not available in this build' });
-      let method = msg.method === 'session' || msg.method === 'oauth' ? msg.method : null;
-      if (!method) method = DCC.oauth.isClientId(clientId) ? 'oauth' : null;
-      if (!method || (method === 'oauth' && !DCC.oauth.isClientId(clientId))) {
+      const method = ['session', 'pat'].includes(msg.method) ? msg.method : 'oauth';
+      if (typed !== null && !DCC.oauth.isClientId(typed)) {
         return { needsChoice: true, needsClientId: true, redirectUrl: chromeApi.identity.getRedirectURL() };
       }
 
       if (method === 'oauth') {
-        if (clientId !== settings.oauth.clientId) await store.updateSettings({ oauth: { clientId } });
-        await setStatus({ state: 'signing-in', origin });
+        const clientId = typed || DCC.oauth.effectiveClientId(null, settings);
+        if (typed && typed !== settings.oauth.clientId) await store.updateSettings({ oauth: { clientId: typed } });
+        await setStatus({ state: 'signing-in', origin, builtin: DCC.oauth.isBuiltin(clientId) });
         await oauth.signIn({ origin, clientId, purpose: 'cost', interactive: true });
+      } else if (method === 'pat') {
+        const token = String(msg.token || '').trim();
+        if (!V.isPlausiblePat(token)) throw new errors.DccError({ code: 'PAT_FORMAT', message: 'Token format not accepted' });
+        await setStatus({ state: 'checking-token', origin });
+        await deps.secrets.setPat(origin, token, { remember: msg.remember === true });
       } else {
         // Browser login works through the tab: make sure our bridge is loaded there first.
         await setStatus({ state: 'checking-login', origin });
@@ -70,14 +77,24 @@
 
       await setStatus({ state: 'configuring', origin });
       let headerId = null;
-      const list = await data.listWarehouses({
-        origin,
-        authMode: method,
-        onHeaders: (h) => {
-          const v = h.get('x-databricks-org-id');
-          if (V.isWorkspaceId(v)) headerId = v;
-        },
-      });
+      let list;
+      try {
+        list = await data.listWarehouses({
+          origin,
+          authMode: method,
+          onHeaders: (h) => {
+            const v = h.get('x-databricks-org-id');
+            if (V.isWorkspaceId(v)) headerId = v;
+          },
+        });
+      } catch (e) {
+        // A token Databricks refused is not kept, remembered or not.
+        if (method === 'pat') {
+          await deps.secrets.clearPat(origin);
+          if (e && e.dcc && e.dcc.code === 'AUTH_EXPIRED') throw new errors.DccError({ code: 'PAT_REJECTED', httpStatus: e.dcc.httpStatus, message: 'Databricks did not accept the token' });
+        }
+        throw e;
+      }
       const observed = await store.getObserved(origin);
       const workspaceId = resolveId(ids.resolveWorkspaceId(msg.url || origin, {}).id, observed && observed.workspaceId, headerId);
       const auto = DCC.warehouses.autoSelect(list);
@@ -137,7 +154,7 @@
           const conn = cls.ok ? await store.getConnection(cls.origin) : null;
           if (!conn || conn.authMode !== 'oauth') throw new errors.DccError({ code: 'NOT_CONNECTED' });
           const settings = await store.getSettings();
-          await oauth.signIn({ origin: conn.origin, clientId: conn.oauthClientId || settings.oauth.clientId, purpose: 'apis', interactive: true });
+          await oauth.signIn({ origin: conn.origin, clientId: DCC.oauth.effectiveClientId(conn, settings), purpose: 'apis', interactive: true });
           return { signedIn: true };
         },
       },

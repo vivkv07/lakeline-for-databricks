@@ -5,6 +5,21 @@ All notable changes to Lakeline for Databricks are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] (2026-10-16)
+
+### Changed
+
+- **Sign in with Databricks needs no setup.** Without an app connection, Lakeline signs in through
+  Databricks' built-in public client (`databricks-cli`, the one the CLI and SDKs use). The
+  workspace's sign-in page opens in a tab; Lakeline reads the code when the tab reaches
+  `http://localhost:8020` (new optional host permission), closes the tab and uses one all-apis
+  token for costs, Genie and the run monitor. It never opens a tab without a click.
+- **Personal access token in the popup.** Other ways to sign in now starts with a token box, a link
+  to the workspace's Access tokens page and "Remember on this computer". The token is checked with
+  Databricks before it is saved; a refused token is not kept.
+- An organization's app connection (client ID) still works and moved under Other ways to sign in.
+- New messages: quick sign-in blocked by an admin, token refused, token format.
+
 ## [Unreleased]: 0.1.0 (2026-10-15)
 
 First development version. Not yet released. Independent project, not affiliated with Databricks,

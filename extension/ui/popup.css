@@ -303,6 +303,25 @@ body {
   cursor: not-allowed;
 }
 
+.pp-inline-link {
+  font-size: inherit;
+}
+
+.pp-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: var(--dcc-text-sm);
+  color: var(--dcc-text);
+  cursor: pointer;
+}
+
+.pp-check input {
+  margin: 0;
+  accent-color: var(--dcc-accent);
+}
+
 .pp-choice-desc {
   margin-top: 2px;
   font-size: var(--dcc-text-sm);

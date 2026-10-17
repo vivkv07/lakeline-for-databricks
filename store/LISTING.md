@@ -50,8 +50,8 @@ Privacy
 - Sign-in tokens and Genie conversations stay in your browser.
 
 Sign in
-- Sign in with Databricks (OAuth). An account admin registers the app once.
-- Or use a personal access token.
+- Sign in with Databricks in one click. No admin setup: it uses Databricks' built-in sign-in app, the one the Databricks CLI uses.
+- Or paste a personal access token, or use your organization's own app connection.
 
 Lakeline is an independent project and is not affiliated with, endorsed by or sponsored by Databricks, Inc. Databricks and Genie are trademarks of Databricks, Inc.
 
@@ -97,7 +97,8 @@ Show estimated Databricks costs, job run status and Genie answers for the user's
 | activeTab | When the user clicks the toolbar icon, reads the current tab's URL to offer "Connect this workspace" if it is a Databricks workspace. |
 | scripting | Registers the in-page cost banner and badges only for Databricks workspaces the user has granted access to, and loads them into tabs that were already open when access was granted. |
 | alarms | Refreshes the opt-in run monitor on a schedule (60 to 300 seconds) and resumes Genie questions that were in flight when the background worker restarted. |
-| identity | "Sign in with Databricks": OAuth authorization code with PKCE through chrome.identity.launchWebAuthFlow against the user's own workspace. |
+| identity | "Sign in with Databricks" through an organization's own app connection: OAuth authorization code with PKCE through chrome.identity.launchWebAuthFlow against the user's own workspace. |
+| Host permission (optional): http://localhost:8020/* | Requested only when the user clicks "Sign in with Databricks" without an app connection. Databricks' built-in public sign-in client (databricks-cli) only redirects to http://localhost:8020. The extension opens the workspace's own sign-in page in a tab, reads the one-time code from that tab's address when it reaches localhost:8020, and closes the tab. Nothing is served from or sent to localhost, and no content script runs there. |
 | sidePanel | The "Ask Genie" side panel, where the user picks a Genie Agent in their own workspace, asks a question and reads the answer while they keep working in other tabs. |
 | notifications (optional) | Requested only when the user turns on notifications for failed job runs or for Genie answers that are ready. Notifications never contain query data. |
 | Host permissions (optional): https://*.cloud.databricks.com/*, https://*.azuredatabricks.net/*, https://*.gcp.databricks.com/* | Requested at runtime for the one workspace the user chooses to connect, never for all sites. Used to show costs inside that workspace and to call that workspace's Databricks APIs (SQL Statement Execution, SQL warehouses, Jobs, Pipelines, Clusters and Genie). Account console hosts are excluded. |
@@ -126,7 +127,7 @@ The longer version, for a support reply or the README:
 Lakeline needs a Databricks workspace for its in-page features. The fastest way to review it:
 1. Install it, click the toolbar icon, and choose **Demo** as the data source. Demo mode uses synthetic data and makes no network requests.
 2. Click **Ask Genie** to open the side panel. Demo Genie Agents return synthetic answers with tables and charts.
-3. For the in-page banner and badges, use any Databricks workspace (a free trial works), with access to the system.billing tables. Open it, click the toolbar icon, choose **Connect this workspace** and allow access for that one site. Then sign in with a personal access token (Settings, Developer, Access tokens) in Connection preferences.
+3. For the in-page banner and badges, use any Databricks workspace (a free trial works), with access to the system.billing tables. Open it, click the toolbar icon, choose **Connect this workspace** and allow access for that one site. Then either click Sign in with Databricks (a tab opens on the workspace's own sign-in page and closes itself), or open Other ways to sign in and paste a personal access token (Settings, Developer, Access tokens).
 
 The extension runs only read-only SQL and read-only API calls. Asking Genie a question starts a Genie conversation in the user's own workspace, and only because the user explicitly asked it to.
 

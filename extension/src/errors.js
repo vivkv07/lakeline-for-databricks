@@ -107,7 +107,19 @@
     },
     AUTH_CANCELLED: {
       title: 'Sign-in was cancelled',
-      steps: ['Click Connect again and finish signing in to Databricks.'],
+      steps: ['Click Connect again and finish signing in to Databricks. If Databricks showed an error instead of signing you in, use a personal access token: Other ways to sign in, Use a token.'],
+    },
+    BUILTIN_SIGNIN_BLOCKED: {
+      title: 'This Databricks account does not allow quick sign-in',
+      steps: ['An admin may have turned off the built-in sign-in app. Use a personal access token instead: Other ways to sign in, Use a token.', 'Or ask an account admin to register Lakeline once and use that app connection.'],
+    },
+    PAT_REJECTED: {
+      title: 'Databricks did not accept this token',
+      steps: ['Check that you copied the whole token and that it has not expired or been revoked. Create a new one in Databricks: Settings, Developer, Access tokens.', 'If your workspace turned off personal access tokens, use Sign in with Databricks instead.'],
+    },
+    PAT_FORMAT: {
+      title: 'That does not look like a Databricks token',
+      steps: ['Copy the whole token from Databricks: Settings, Developer, Access tokens, Generate new token. It usually starts with dapi.'],
     },
     NETWORK: {
       title: 'Could not reach Databricks',

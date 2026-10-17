@@ -540,7 +540,7 @@ test('Sign in with Databricks: Genie and the run monitor share ONE all-apis cons
   const o = oauthMod.create({ chromeApi: e.chrome, fetch: async () => res(500, {}) });
   assert.equal(await o.getAccessToken(A, 'monitor'), 'at-apis');
   assert.equal(await o.getAccessToken(A, 'apis'), 'at-apis');
-  assert.deepEqual(await o.describe(A), { cost: false, apis: true, monitor: true, genie: true });
+  assert.deepEqual(await o.describe(A), { cost: false, apis: true, monitor: true, genie: true, builtin: false });
   await assert.rejects(o.getAccessToken(A, 'cost'), (err) => err.dcc.code === 'AUTH_EXPIRED', 'cost keeps its own SQL-only sign-in');
   assert.equal(auths.filter((a) => a.interactive).length, 1);
   assert.equal(oauthMod.canonicalPurpose('monitor'), 'apis');
