@@ -308,3 +308,70 @@ test('popup: active workspace tab prefills origin and ID only (simulated)', asyn
   assert.equal(other.el.url.value, '');
   other.close();
 });
+
+test('popup: the sidebar checkbox is saved with the color and restored with the saved entry (simulated)', async () => {
+  const storage = { [KEY]: { version: 1, entries: { [ORIGIN + '|43']: { color: '#067647', savedAt: 1, sidebar: true } } } };
+  const p = await openPopup({ storage, granted: [ORIGIN + '/*'] });
+  const box = p.doc.querySelector('#dcc-ap-sidebar');
+  assert.equal(box.type, 'checkbox');
+  assert.equal(p.doc.querySelector('label[for="dcc-ap-sidebar"]').textContent, 'Also color the sidebar');
+  assert.equal(box.getAttribute('aria-describedby'), 'dcc-ap-sidebar-msg');
+  assert.equal(box.checked, false, 'off by default');
+
+  await p.input(p.el.url, ORIGIN + '/?o=42');
+  await p.input(p.el.hex, '#B42318');
+  box.click();
+  await settle(10);
+  p.el.save.click();
+  await settle(30);
+  assert.deepEqual(p.data[KEY].entries[ORIGIN + '|42'], { color: '#B42318', savedAt: p.data[KEY].entries[ORIGIN + '|42'].savedAt, sidebar: true });
+  assert.match(p.el.status.textContent, /Saved #B42318 for workspace 42 on dbc-1\.cloud\.databricks\.com \(top bar and sidebar\)\./);
+  assert.match(p.el.applies.textContent, /top bar and sidebar/);
+
+  // Unchecked and saved again: the flag is dropped, not stored as false.
+  box.click();
+  await settle(10);
+  p.el.save.click();
+  await settle(30);
+  assert.deepEqual(Object.keys(p.data[KEY].entries[ORIGIN + '|42']).sort(), ['color', 'savedAt']);
+  assert.match(p.el.status.textContent, /\(top bar only\)\./);
+
+  // Choosing a saved entry restores its choice along with its color.
+  await p.select(ORIGIN + '|43');
+  assert.equal(p.el.hex.value, '#067647');
+  assert.equal(box.checked, true);
+  await p.select(ORIGIN + '|42');
+  assert.equal(box.checked, false);
+  p.close();
+});
+
+test('popup: the preview shows the sidebar strip and blended search only from validated tones (simulated)', async () => {
+  const p = await openPopup();
+  const box = p.doc.querySelector('#dcc-ap-sidebar');
+  const side = p.doc.querySelector('.dcc-ap-pv-side');
+  const search = p.doc.querySelector('.dcc-ap-pv-search');
+  await p.input(p.el.hex, '#1D4ED8');
+  const t = p.w.DCC.workspaceColor.themeFor('#1D4ED8');
+  const rgb = (hex) => `rgb(${parseInt(hex.slice(1, 3), 16)}, ${parseInt(hex.slice(3, 5), 16)}, ${parseInt(hex.slice(5, 7), 16)})`;
+  assert.equal(search.style.backgroundColor, rgb(t.surface));
+  assert.equal(search.style.color, rgb(t.muted));
+  assert.equal(side.style.backgroundColor, '', 'sidebar strip stays neutral while the option is off');
+  assert.match(p.el.preview.getAttribute('aria-label'), /top bar only/);
+  assert.match(p.el.contrast.textContent, /darker shade of the same color/);
+
+  box.click();
+  await settle(10);
+  assert.equal(side.style.backgroundColor, 'rgb(29, 78, 216)');
+  assert.equal(p.doc.querySelector('.dcc-ap-pv-item--on').style.backgroundColor, rgb(t.surface));
+  assert.match(p.el.preview.getAttribute('aria-label'), /top bar and sidebar/);
+
+  await p.input(p.el.hex, '#F79009');
+  assert.match(p.el.contrast.textContent, /lighter shade of the same color/);
+
+  // An invalid color clears every inline tone.
+  await p.input(p.el.hex, '#12345');
+  assert.equal(side.style.backgroundColor, '');
+  assert.equal(search.style.backgroundColor, '');
+  assert.equal(search.style.color, '');
+  p.close();
+});

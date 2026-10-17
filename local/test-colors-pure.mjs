@@ -65,25 +65,72 @@ test('colors: WCAG luminance and black/white foreground by contrast', () => {
   }
 });
 
-test('colors: CSS is built only from validated values and scoped to the marked top bar', () => {
+test('colors: surface and muted tones keep the foreground readable and never echo input text', () => {
+  assert.equal(C.mix('#000000', '#FFFFFF', 0.5), '#808080');
+  assert.equal(C.mix('#B42318', '#B42318', 0.3), '#B42318');
+  assert.equal(C.mix('#1d4ed8', '#000000', 0), '#1D4ED8');
+  for (const bad of [['#12345', '#000000', 0.5], ['#000000', 'red', 0.5], ['#000000', '#FFFFFF', 2], ['#000000', '#FFFFFF', NaN]]) assert.equal(C.mix(...bad), null, JSON.stringify(bad));
+  // Light bars get a lighter surface, dark bars a darker one; pure white/black step inward.
+  const light = C.themeFor('#F79009');
+  assert.ok(C.relativeLuminance(light.surface) > C.relativeLuminance(light.bg));
+  const dark = C.themeFor('#1D4ED8');
+  assert.ok(C.relativeLuminance(dark.surface) < C.relativeLuminance(dark.bg));
+  assert.notEqual(C.themeFor('#FFFFFF').surface, '#FFFFFF');
+  assert.notEqual(C.themeFor('#000000').surface, '#000000');
+  // Property check: text stays at least as readable on the surface as on the bar, and muted text
+  // keeps 4.5:1 on the surface.
+  let seed = 11;
+  const rnd = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
+  for (let i = 0; i < 2000; i++) {
+    const hex = '#' + Math.floor(rnd() * 0x1000000).toString(16).padStart(6, '0').toUpperCase();
+    const t = C.themeFor(hex);
+    assert.match(t.surface, /^#[0-9A-F]{6}$/, hex);
+    assert.match(t.muted, /^#[0-9A-F]{6}$/, hex);
+    assert.ok(C.contrastRatio(t.surface, t.fg) >= 4.5, hex + ' surface');
+    assert.ok(C.contrastRatio(t.muted, t.surface) >= 4.5, hex + ' muted');
+  }
+});
+
+test('colors: CSS is built only from validated values and scoped to the marked containers', () => {
   const css = theme.buildCss(C.themeFor('#1d4ed8'));
-  assert.match(css, /\[data-dcc-themed\] \{ background-color: #1D4ED8 !important;/);
+  const t = C.themeFor('#1D4ED8');
+  const BAR = ':is([data-dcc-themed="top"], [data-dcc-themed="side"])';
+  assert.ok(css.includes(BAR + ' { background-color: #1D4ED8 !important;'));
   assert.match(css, /color: #FFFFFF !important/);
   const rules = css.split('\n').filter((l) => !l.startsWith('/*'));
-  for (const r of rules) assert.ok(r.startsWith('[data-dcc-themed]'), r);
-  // Brand graphics: no fill/stroke rules, SVG and images excluded from the color rule.
+  for (const r of rules) assert.ok(r.startsWith(BAR) || r.startsWith('[data-dcc-themed="shell"] {') || r.startsWith('[data-dcc-themed="card"] {'), r);
+  // The shell and the page card get exactly one kind of change each; nothing reaches inside them.
+  assert.equal(rules.find((r) => r.startsWith('[data-dcc-themed="shell"]')), '[data-dcc-themed="shell"] { background-color: #1D4ED8 !important; background-image: none !important; }');
+  assert.equal(rules.find((r) => r.startsWith('[data-dcc-themed="card"]')), '[data-dcc-themed="card"] { border-color: #1D4ED8 !important; }');
+  // Tones are painted with inset shadows from the derived shades; fields are no longer forced white.
+  assert.ok(css.includes('[data-dcc-tone="field"] { box-shadow: inset 0 0 0 100vmax ' + t.surface + ' !important;'));
+  assert.ok(css.includes('[data-dcc-tone="layer"] { box-shadow: inset 0 0 0 100vmax #1D4ED8 !important; }'));
+  assert.ok(css.includes('color: ' + t.muted + ' !important'));
+  assert.doesNotMatch(css, /#FFFFFF !important; color: #1F2933/);
+  // Brand graphics: no fill/stroke rules, SVG, images and kept circles excluded from the color rule.
   assert.doesNotMatch(css, /\bfill\s*:|\bstroke\s*:/);
-  assert.match(css, /:not\([^{]*svg, img, \[class\*="avatar"\], \[data-dcc\], :is\(svg, img, \[class\*="avatar"\], \[data-dcc\]\) \*\)/);
+  assert.ok(css.includes('*:not([role="menu"], [role="listbox"], [role="dialog"], [role="tooltip"], :is([role="menu"], [role="listbox"], [role="dialog"], [role="tooltip"]) *, svg, img, canvas, video, [class*="avatar"], [data-dcc], :is(svg, img, canvas, video, [class*="avatar"], [data-dcc]) *, [data-dcc-tone="keep"], :is([data-dcc-tone="keep"]) *) { color: #FFFFFF'));
+  // Every color literal in the stylesheet is a canonical #RRGGBB or one of the fixed overlays.
+  for (const c of css.match(/#[0-9A-Za-z]+|rgba?\([^)]*\)/g)) assert.match(c, /^#[0-9A-F]{6}$|^rgba\((0, 0, 0|255, 255, 255), 0\.\d+\)$/, c);
   // Forged theme objects never produce CSS.
   assert.equal(theme.buildCss({ bg: '#123456;}body{background:red', fg: '#FFFFFF' }), null);
   assert.equal(theme.buildCss({ bg: '#1D4ED8', fg: '#000000' }), null); // wrong foreground for this bg
   assert.equal(theme.buildCss({ bg: '#1D4ED8', fg: 'red;}' }), null);
   assert.equal(theme.buildCss({ bg: '#1d4ed8', fg: '#FFFFFF' }), null); // non-canonical
+  assert.equal(theme.buildCss({ bg: '#1D4ED8', fg: '#FFFFFF', surface: 'red;}body{' }).includes('red;}'), false); // extra fields ignored
   assert.equal(theme.buildCss(null), null);
   // Light background → black foreground and light-theme constants.
   const light = theme.buildCss(C.themeFor('#F79009'));
   assert.match(light, /color: #000000 !important/);
   assert.match(light, /rgba\(0, 0, 0, 0\.18\)/);
+});
+
+test('colors: computed color alpha parsing for the tone scan', () => {
+  assert.equal(theme.alphaOf('rgba(66, 153, 224, 0.08)'), 0.08);
+  assert.equal(theme.alphaOf('rgb(17, 23, 28)'), 1);
+  assert.equal(theme.alphaOf('rgba(0, 0, 0, 0)'), 0);
+  assert.equal(theme.alphaOf('rgb(1 2 3 / 50%)'), 0.5);
+  for (const v of ['transparent', '', 'red', 'color(srgb 1 0 0)', null, undefined]) assert.equal(theme.alphaOf(v), 0, String(v));
 });
 
 test('colors: storage keys are origin|workspaceId or origin|* and reject anything else', () => {
@@ -138,9 +185,9 @@ test('colors: ID override wins, host default applies otherwise, hosts and IDs st
       ['https://dbc-2.cloud.databricks.com|42']: { color: '#067647', savedAt: 3 },
     },
   };
-  assert.deepEqual(C.resolveColor(app, AWS, '42'), { color: '#B42318', key: AWS + '|42', scope: 'workspace' });
-  assert.deepEqual(C.resolveColor(app, AWS, '43'), { color: '#344054', key: AWS + '|*', scope: 'host' });
-  assert.deepEqual(C.resolveColor(app, AWS, null), { color: '#344054', key: AWS + '|*', scope: 'host' });
+  assert.deepEqual(C.resolveColor(app, AWS, '42'), { color: '#B42318', sidebar: false, key: AWS + '|42', scope: 'workspace' });
+  assert.deepEqual(C.resolveColor(app, AWS, '43'), { color: '#344054', sidebar: false, key: AWS + '|*', scope: 'host' });
+  assert.deepEqual(C.resolveColor(app, AWS, null), { color: '#344054', sidebar: false, key: AWS + '|*', scope: 'host' });
   // Same ID on a different host has its own color; no host default leaks across hosts.
   assert.equal(C.resolveColor(app, 'https://dbc-2.cloud.databricks.com', '42').color, '#067647');
   assert.equal(C.resolveColor(app, 'https://dbc-2.cloud.databricks.com', '43'), null);
@@ -191,6 +238,30 @@ test('colors: stored value is sanitized; entries add, remove and report what rem
   const after = C.withoutEntry(app, AWS + '|42');
   assert.equal(after.entries[AWS + '|42'], undefined);
   assert.equal(C.resolveColor(after, AWS, '42').scope, 'host');
+});
+
+test('colors: the sidebar option is stored only when on and travels with the entry that supplies the color', () => {
+  const raw = {
+    version: 1,
+    entries: {
+      [AWS + '|42']: { color: '#B42318', savedAt: 1, sidebar: true },
+      [AWS + '|43']: { color: '#067647', savedAt: 1, sidebar: 'yes' },
+      [AWS + '|*']: { color: '#344054', savedAt: 1, sidebar: true },
+    },
+  };
+  const clean = C.sanitizeAppearance(raw);
+  assert.deepEqual(clean.entries[AWS + '|42'], { color: '#B42318', savedAt: 1, sidebar: true });
+  assert.deepEqual(clean.entries[AWS + '|43'], { color: '#067647', savedAt: 1 }, 'only strict true is kept');
+  assert.equal(C.resolveColor(raw, AWS, '42').sidebar, true);
+  assert.equal(C.resolveColor(raw, AWS, '43').sidebar, false, 'the ID entry supplies the color, so its own choice applies');
+  assert.deepEqual(C.resolveColor(raw, AWS, '44'), { color: '#344054', sidebar: true, key: AWS + '|*', scope: 'host' });
+
+  let app = C.withEntry(null, AWS + '|42', '#1D4ED8', 5, { sidebar: true });
+  assert.deepEqual(app.entries[AWS + '|42'], { color: '#1D4ED8', savedAt: 5, sidebar: true });
+  app = C.withEntry(app, AWS + '|42', '#1D4ED8', 6, { sidebar: false });
+  assert.deepEqual(app.entries[AWS + '|42'], { color: '#1D4ED8', savedAt: 6 });
+  app = C.withEntry(app, AWS + '|42', '#1D4ED8', 7, { sidebar: 1 });
+  assert.equal('sidebar' in app.entries[AWS + '|42'], false);
 });
 
 test('colors: billing store never reads or writes dcc.appearance', async () => {

@@ -49,8 +49,8 @@ The guide is also linked from the banner (**How costs work**), the popup and Con
   interactive compute options.
 - **Cost Explorer.** Six views: Products, Top drivers, Runs, Calendar, SKUs and Daily detail. It
   offers drilldowns, heuristic flags and CSV export.
-- **Workspace colors.** Tints the Databricks top bar per workspace so you can tell workspaces apart.
-  This works without any billing connection.
+- **Workspace colors.** Tints the Databricks top bar, and optionally the sidebar, per workspace so
+  you can tell workspaces apart. This works without any billing connection.
 - **Monitor widget (optional).** A compact window that shows job runs, pipeline updates, warehouses
   and clusters. It uses read-only REST calls only, and desktop notifications for failed runs are
   opt-in.
@@ -242,8 +242,9 @@ as it has the same columns.
 - **Pause.** Turn off **Show costs inside Databricks** in the popup to stop new cost requests from
   pages. Workspace colors stay on.
 - **Workspace colors.** In the popup, open **Workspace colors**. Choose a workspace or URL, then pick
-  a color, enter `#RRGGBB` or use a preset. Select **Save**. **Reset** removes the color. Colors are
-  stored separately from cost connections and need no sign-in.
+  a color, enter `#RRGGBB` or use a preset. Check **Also color the sidebar** to tint the left
+  navigation too. Select **Save**. **Reset** removes the color. Colors are stored separately from
+  cost connections and need no sign-in.
 
 ## Monitor widget
 
