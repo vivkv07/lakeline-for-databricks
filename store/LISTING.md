@@ -78,8 +78,8 @@ Other assets:
 
 Every screenshot is a real capture of the extension, driven against the synthetic "Northpeak Retail" fixture workspace, so no real customer data appears. To rebuild the images, run `npm run store:assets` (it reads the captures from `npm run video:capture`).
 
-**Official URL / Homepage:** [GitHub repository or GitHub Pages URL]
-**Support URL:** [GitHub issues URL]
+**Official URL / Homepage:** https://vivkv07.github.io/lakeline-for-databricks/
+**Support URL:** https://github.com/vivkv07/lakeline-for-databricks/issues
 
 ---
 
@@ -110,7 +110,7 @@ Show estimated Databricks costs, job run status and Genie answers for the user's
 - Everything else: no. That covers personally identifiable information, health, financial and payment, personal communications, location, web history and user activity.
 - Certify all three: data is not sold to third parties; it is not used or transferred for purposes unrelated to the single purpose; it is not used to determine creditworthiness or for lending.
 
-**Privacy policy URL:** [your GitHub Pages URL]/privacy.html (the source is `docs/privacy.html`)
+**Privacy policy URL:** https://vivkv07.github.io/lakeline-for-databricks/privacy.html (the source is `docs/privacy.html`)
 
 ---
 

@@ -376,11 +376,11 @@ function fakeScriptingChrome(origins) {
 }
 
 test('concurrent registration syncs (grant listener + page request) never fail with a duplicate ID', async () => {
-  const c = fakeScriptingChrome(['https://dbc-00000000-test.cloud.databricks.com/*']);
+  const c = fakeScriptingChrome(['https://dbc-4f2a91c7-0e3b.cloud.databricks.com/*']);
   const results = await Promise.allSettled([registration.sync(c), registration.sync(c), registration.sync(c)]);
   assert.deepEqual(results.map((r) => r.status), ['fulfilled', 'fulfilled', 'fulfilled']);
   assert.equal(c.registered.size, 1);
-  assert.deepEqual(c.registered.get('dcc-main').matches, ['https://dbc-00000000-test.cloud.databricks.com/*']);
+  assert.deepEqual(c.registered.get('dcc-main').matches, ['https://dbc-4f2a91c7-0e3b.cloud.databricks.com/*']);
 });
 
 test('registration recovers when another context registered the script first', async () => {
