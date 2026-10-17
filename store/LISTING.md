@@ -120,7 +120,7 @@ Show estimated Databricks costs, job run status and Genie answers for the user's
 
 The dashboard's "Additional instructions" box takes at most 500 characters. This is the text that was submitted:
 
-> No test account needed. Click the toolbar icon and set Data source to Demo: synthetic data, no network requests. Click Ask Genie to open the side panel; demo Genie Agents return synthetic answers with tables and charts. The in-page banner and badges need a Databricks workspace with system.billing access: open it, click the icon, choose Connect this workspace, allow that one site, then add a personal access token in Connection preferences. Only read-only SQL and API calls are made.
+> No test account needed. Click the toolbar icon and set Data source to Demo: synthetic data, no network requests. Click Ask Genie for the side panel; demo Genie Agents return synthetic answers. For the in-page banner, open a Databricks workspace with system.billing access, click the icon, then Connect this workspace: a tab opens on that workspace's sign-in page and closes itself (redirect read on localhost:8020). Or paste a personal access token under Other ways to sign in. Read-only calls only.
 
 The longer version, for a support reply or the README:
 
@@ -136,10 +136,9 @@ The extension runs only read-only SQL and read-only API calls. Asking Genie a qu
 ## Submission record
 
 - Item ID: `gcadffgngihfjameoafjagofiompdngo`. Publisher: Vivek Kovvuru (non-trader). Visibility: Unlisted.
-- Submitted for review on 16 October 2026, with "publish automatically after review" ticked.
+- 0.1.0 was submitted on 16 October 2026, then withdrawn the same day. 0.1.1 (sign-in with no setup, token box in the popup) was submitted in its place, with "publish automatically after review" ticked.
 - Done after the first upload:
   1. The item's public key is in `extension/manifest.json` as `"key"`, so unpacked builds share the store ID. The store ZIP still strips it.
   2. `extension/EXTENSION_ID` and the constant in `local/setup.js` hold the store ID.
-- Still to do after approval:
-  1. Add `https://gcadffgngihfjameoafjagofiompdngo.chromiumapp.org/` as a redirect URL in the Databricks App connection (account console, Settings, App connections).
-  2. Install from the Unlisted link, test with a few people, then switch Visibility to **Public**.
+- Still to do after approval: install from the Unlisted link, test with a few people, then switch Visibility to **Public**.
+- Only organizations that use their own app connection need to add `https://gcadffgngihfjameoafjagofiompdngo.chromiumapp.org/` as its redirect URL. The default sign-in needs no setup.
