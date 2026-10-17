@@ -96,6 +96,7 @@
       swatch.style.backgroundColor = p.color; // static, validated constant
       return el('button', { type: 'button', class: 'dcc-ap-preset', 'data-color': p.color, 'aria-pressed': 'false', 'aria-label': p.name + ' ' + p.color, title: p.name + ' ' + p.color, onclick: () => setColor(p.color, true) }, swatch);
     });
+    const sidebarBox = el('input', { id: 'dcc-ap-sidebar', type: 'checkbox', 'aria-describedby': 'dcc-ap-sidebar-msg' });
     const previewBar = el('div', { class: 'dcc-ap-preview-bar' }, [
       el('span', { class: 'dcc-ap-pv-mark', 'aria-hidden': 'true' }),
       el('span', { class: 'dcc-ap-pv-name' }, 'Workspace'),
@@ -103,7 +104,17 @@
       el('span', { class: 'dcc-ap-pv-icon', 'aria-hidden': 'true' }, '?'),
     ]);
     const previewName = previewBar.querySelector('.dcc-ap-pv-name');
-    const preview = el('div', { id: 'dcc-ap-preview', class: 'dcc-ap-preview', role: 'img' }, previewBar);
+    const previewSearch = previewBar.querySelector('.dcc-ap-pv-search');
+    const previewSide = el('div', { class: 'dcc-ap-pv-side', 'aria-hidden': 'true' }, [
+      el('span', { class: 'dcc-ap-pv-item dcc-ap-pv-item--on' }),
+      el('span', { class: 'dcc-ap-pv-item' }),
+      el('span', { class: 'dcc-ap-pv-item' }),
+    ]);
+    const previewActive = previewSide.firstChild;
+    const preview = el('div', { id: 'dcc-ap-preview', class: 'dcc-ap-preview', role: 'img' }, [
+      previewBar,
+      el('div', { class: 'dcc-ap-pv-body' }, [previewSide, el('div', { class: 'dcc-ap-pv-page' })]),
+    ]);
     const contrastLine = el('p', { id: 'dcc-ap-contrast', class: 'dcc-ap-hint' });
     const appliesLine = el('p', { id: 'dcc-ap-applies', class: 'dcc-ap-applies' });
     const saveBtn = el('button', { type: 'button', id: 'dcc-ap-save', class: 'dcc-btn dcc-btn--primary', onclick: onSave }, 'Save');
@@ -112,11 +123,11 @@
 
     section.appendChild(
       el('div', { class: 'dcc-ap-body' }, [
-        el('p', { class: 'dcc-ap-intro' }, 'Tint the Databricks top bar per workspace so environments are easy to tell apart. Works without a cost connection.'),
+        el('p', { class: 'dcc-ap-intro' }, 'Tint the Databricks top bar, and optionally the sidebar, per workspace so environments are easy to tell apart. Works without a cost connection.'),
         el('div', { class: 'dcc-ap-field' }, [el('label', { for: 'dcc-ap-saved', class: 'dcc-ap-label' }, 'Saved workspace'), savedSelect]),
         el('div', { class: 'dcc-ap-field' }, [el('label', { for: 'dcc-ap-url', class: 'dcc-ap-label' }, 'Workspace URL'), urlInput, urlMsg]),
         el('fieldset', { class: 'dcc-fieldset dcc-ap-colors' }, [
-          el('legend', { class: 'dcc-ap-label' }, 'Top-bar color'),
+          el('legend', { class: 'dcc-ap-label' }, 'Color'),
           el('div', { class: 'dcc-ap-row' }, [
             picker,
             el('label', { for: 'dcc-ap-picker', class: 'dcc-visually-hidden' }, 'Color picker'),
@@ -125,6 +136,10 @@
           ]),
           hexMsg,
           el('div', { class: 'dcc-ap-presets', role: 'group', 'aria-label': 'Preset colors' }, presetButtons),
+        ]),
+        el('div', { class: 'dcc-ap-field' }, [
+          el('div', { class: 'dcc-ap-check' }, [sidebarBox, el('label', { for: 'dcc-ap-sidebar' }, 'Also color the sidebar')]),
+          el('p', { id: 'dcc-ap-sidebar-msg', class: 'dcc-ap-hint' }, 'The top bar is always colored. Turn this on to tint the left navigation with the same color.'),
         ]),
         el('div', { class: 'dcc-ap-field' }, [el('span', { class: 'dcc-ap-label', id: 'dcc-ap-preview-label' }, 'Preview'), preview, contrastLine]),
         appliesLine,
@@ -152,6 +167,10 @@
     function setStatus(text, kind) {
       statusLine.textContent = text || '';
       statusLine.className = 'dcc-ap-status' + (kind ? ' dcc-ap-' + kind : '');
+    }
+
+    function setSidebar(on) {
+      sidebarBox.checked = on === true;
     }
 
     function setColor(color, fromUser) {
@@ -192,6 +211,13 @@
 
     function renderPreview(theme, t) {
       previewName.textContent = t && t.ok ? (t.workspaceId ? 'Workspace ' + t.workspaceId : t.host) : 'Workspace';
+      const side = Boolean(theme && sidebarBox.checked);
+      // Every value below is a validated #RRGGBB from themeFor, or '' to fall back to the CSS.
+      previewSide.classList.toggle('dcc-ap-pv-side--on', side);
+      previewSide.style.backgroundColor = side ? theme.bg : '';
+      previewActive.style.backgroundColor = side ? theme.surface : '';
+      previewSearch.style.backgroundColor = theme ? theme.surface : '';
+      previewSearch.style.color = theme ? theme.muted : '';
       if (!theme) {
         previewBar.style.backgroundColor = '';
         previewBar.style.color = '';
@@ -204,8 +230,8 @@
       previewBar.style.backgroundColor = theme.bg; // validated #RRGGBB
       previewBar.style.color = theme.fg; // black or white
       const fgLabel = theme.fgName === 'white' ? 'White' : 'Black';
-      preview.setAttribute('aria-label', 'Preview: ' + theme.fgName + ' text on ' + theme.bg + ', contrast ' + theme.contrast.toFixed(2) + ' to 1');
-      contrastLine.textContent = fgLabel + ' text · contrast ' + theme.contrast.toFixed(2) + ':1. Search fields stay light so they remain readable.';
+      preview.setAttribute('aria-label', 'Preview: ' + theme.fgName + ' text on ' + theme.bg + ', contrast ' + theme.contrast.toFixed(2) + ' to 1' + (side ? ', top bar and sidebar' : ', top bar only'));
+      contrastLine.textContent = fgLabel + ' text · contrast ' + theme.contrast.toFixed(2) + ':1. Search and highlights use a ' + (theme.fgName === 'white' ? 'darker' : 'lighter') + ' shade of the same color.';
     }
 
     function describeApplies(t) {
@@ -220,7 +246,7 @@
         if (own) text += ' Saved host default: ' + own.color + '.';
         if (overrides) text += ' ' + overrides + ' workspace-specific color' + (overrides === 1 ? '' : 's') + ' on this host take' + (overrides === 1 ? 's' : '') + ' priority.';
       } else if (own) {
-        text = 'Saved color for workspace ' + t.workspaceId + ': ' + own.color + '.';
+        text = 'Saved color for workspace ' + t.workspaceId + ': ' + own.color + (own.sidebar ? ', top bar and sidebar.' : ', top bar only.');
       } else if (hostDefault) {
         text = 'No color saved for workspace ' + t.workspaceId + '. The host default ' + hostDefault.color + ' applies now.';
       } else {
@@ -292,7 +318,10 @@
       if (!p) return;
       urlInput.value = p.origin + '/' + (p.workspaceId ? '?o=' + p.workspaceId : '');
       const saved = appearance.entries[savedSelect.value];
-      if (saved) setColor(saved.color);
+      if (saved) {
+        setSidebar(saved.sidebar);
+        setColor(saved.color);
+      }
       setStatus('');
       refresh();
       checkAccess(target());
@@ -320,7 +349,7 @@
         access.set(t.origin, granted);
       }
       try {
-        await writeAppearance((app) => C.withEntry(app, t.key, color, now()));
+        await writeAppearance((app) => C.withEntry(app, t.key, color, now(), { sidebar: sidebarBox.checked }));
       } catch (_) {
         busy = false;
         setStatus('The color couldn’t be saved. Try again.', 'error');
@@ -328,7 +357,7 @@
         return;
       }
       const what = t.scope === 'host' ? 'the host default for ' + t.host : 'workspace ' + t.workspaceId + ' on ' + t.host;
-      let text = 'Saved ' + color + ' for ' + what + '.';
+      let text = 'Saved ' + color + ' for ' + what + (sidebarBox.checked ? ' (top bar and sidebar).' : ' (top bar only).');
       let kind = 'ok';
       if (!granted) {
         text += ' Site access for ' + t.host + ' wasn’t allowed, so the color can’t show yet. Select Save again to allow it.';
@@ -377,6 +406,10 @@
     }
 
     urlInput.addEventListener('input', onUrlInput);
+    sidebarBox.addEventListener('change', () => {
+      setStatus('');
+      refresh();
+    });
     savedSelect.addEventListener('change', onSelect);
     picker.addEventListener('input', () => setColor(picker.value, true));
     picker.addEventListener('change', () => setColor(picker.value, true));
@@ -430,13 +463,16 @@
         urlInput.value = canonicalUrl(t);
         if ([...savedSelect.options].some((o) => o.value === t.key)) savedSelect.value = t.key;
         const saved = appearance.entries[t.key];
-        if (saved) setColor(saved.color);
+        if (saved) {
+          setSidebar(saved.sidebar);
+          setColor(saved.color);
+        }
         await checkAccess(t);
       }
       refresh();
     })();
 
-    return { ready, refresh, elements: { savedSelect, urlInput, picker, hexInput, presetButtons, preview, previewBar, contrastLine, appliesLine, saveBtn, resetBtn, statusLine } };
+    return { ready, refresh, elements: { savedSelect, urlInput, picker, hexInput, presetButtons, sidebarBox, preview, previewBar, previewSide, contrastLine, appliesLine, saveBtn, resetBtn, statusLine } };
   }
 
   function init() {
