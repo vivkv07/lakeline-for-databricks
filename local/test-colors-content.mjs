@@ -1,6 +1,7 @@
-// Workspace top-bar colors in the content script. SIMULATED: jsdom with a fake `chrome`
-// (content-harness.mjs) and the synthetic fixture fragment local/fixture/topbar.html. This is
-// not proof of behavior against the live Databricks DOM.
+// Workspace colors in the content script (top bar, optional sidebar and shell). SIMULATED: jsdom
+// with a fake `chrome` (content-harness.mjs) and the synthetic fixture fragment
+// local/fixture/topbar.html. jsdom has no layout, so the tone scan runs without geometry here.
+// This is not proof of behavior against the live Databricks DOM.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -20,7 +21,8 @@ const FIXTURE_STYLE = /<style data-fixture="topbar">[\s\S]*?<\/style>/.exec(FIXT
 const FIXTURE_BODY = FIXTURE.replace(FIXTURE_STYLE, '');
 const FEATURE_FILES = ['src/core/validate.js', 'src/core/ids.js', 'src/content/dom.js', 'src/content/native-adapter.js', 'src/content/workspace-color.js', 'src/content/workspace-theme.js'];
 const appearance = (entries) => ({ [KEY]: { version: 1, entries } });
-const entry = (color) => ({ color, savedAt: 1 });
+const entry = (color, extra) => ({ color, savedAt: 1, ...extra });
+const BAR = ':is([data-dcc-themed="top"], [data-dcc-themed="side"])';
 
 const summary = {
   kind: 'summary', pricingBasis: 'list', priceTable: 'system.billing.list_prices', currency: 'USD',
@@ -61,16 +63,22 @@ const marked = (env) => [...env.document.querySelectorAll('[data-dcc-themed]')];
 const nav = (env) => env.document.querySelector('nav[aria-label="Top Navigation"]');
 const css = (env, el) => env.window.getComputedStyle(el);
 
-test('with the content bootstrap: only the native top nav is marked; header and banner are not (simulated)', async () => {
+test('with the content bootstrap: only the native top nav is marked; sidebar, header and banner are not (simulated)', async () => {
   const env = start({ storage: appearance({ [ORIGIN + '|42']: entry('#B42318') }) });
   await settle(150);
   assert.equal(styles(env).length, 1);
   assert.equal(styles(env)[0].parentNode, env.document.head);
   assert.deepEqual(marked(env), [nav(env)]);
+  assert.equal(nav(env).getAttribute('data-dcc-themed'), 'top');
   const text = styles(env)[0].textContent;
   assert.match(text, /background-color: #B42318 !important/);
   assert.match(text, /color: #FFFFFF !important/);
-  for (const rule of text.split('\n').filter((l) => !l.startsWith('/*'))) assert.ok(rule.startsWith('[data-dcc-themed]'), rule);
+  for (const rule of text.split('\n').filter((l) => !l.startsWith('/*'))) assert.ok(rule.startsWith(BAR) || /^\[data-dcc-themed="(shell|card)"\] \{/.test(rule), rule);
+  // Tones only inside the themed bar; the sidebar option is off, so the side nav is untouched.
+  const toned = [...env.document.querySelectorAll('[data-dcc-tone]')];
+  assert.ok(toned.length > 0);
+  for (const el of toned) assert.ok(nav(env).contains(el), el.className);
+  assert.equal(env.document.querySelector('nav[aria-label="Side Navigation"]').hasAttribute('data-dcc-themed'), false);
   assert.equal(env.document.querySelector('.fx-page-header').hasAttribute('data-dcc-themed'), false);
   const banner = env.document.querySelector('[data-dcc="banner"]');
   assert.ok(banner, 'banner mounted');
@@ -83,15 +91,38 @@ test('with the content bootstrap: only the native top nav is marked; header and 
   env.close();
 });
 
-test('computed cascade: bar tinted, controls follow the foreground, search stays light, others untouched (simulated)', async () => {
-  const badge = '<span data-dcc="badge" style="color: rgb(1, 2, 3)">$1.00</span>';
-  const body = FIXTURE_BODY.replace('</nav>', badge + '</nav>');
-  const env = createContentEnv({ url: ORIGIN + '/jobs?o=42', html: page(body, FIXTURE_STYLE), files: FEATURE_FILES, storage: appearance({ [ORIGIN + '|42']: entry('#B42318') }) });
+/** Drives the feature directly against the fixture with its native-like styles in <head>. */
+function direct(entries, body = FIXTURE_BODY) {
+  const env = createContentEnv({ url: ORIGIN + '/jobs?o=42', html: page(body, FIXTURE_STYLE), files: FEATURE_FILES, storage: appearance(entries) });
   const feature = env.window.DCC.features.find((f) => f.name === 'workspace-theme');
-  feature.onStart({ doc: env.document, origin: ORIGIN, workspaceId: '42', connection: null, settings: { showCosts: true } });
+  const ctx = { doc: env.document, origin: ORIGIN, workspaceId: '42', connection: null, settings: { showCosts: true } };
+  feature.onStart(ctx);
+  return Object.assign(env, { feature, ctx });
+}
+const tones = (env) => [...env.document.querySelectorAll('[data-dcc-tone]')].map((el) => [el.getAttribute('data-dcc-tone'), el.className.split(' ')[0]]);
+
+test('tone scan: the search box is a field, the pill a surface, the account circle is kept (simulated)', async () => {
+  const env = direct({ [ORIGIN + '|42']: entry('#B42318') });
   await settle(30);
-  assert.deepEqual(marked(env), [nav(env)]);
+  assert.deepEqual(tones(env), [
+    ['field', 'fx-field'],
+    ['surface', 'fx-pill'],
+    ['keep', 'fx-initials'],
+  ]);
+  // The combobox around the field and the empty results listbox are left alone.
+  assert.equal(env.document.querySelector('[role="combobox"]').hasAttribute('data-dcc-tone'), false);
+  assert.equal(env.document.querySelector('[role="listbox"]').hasAttribute('data-dcc-tone'), false);
+  env.close();
+});
+
+test('computed cascade: bar tinted, search blends as a darker shade, others untouched (simulated)', async () => {
+  const badge = '<span data-dcc="badge" style="color: rgb(1, 2, 3)">$1.00</span>';
+  const env = direct({ [ORIGIN + '|42']: entry('#B42318') }, FIXTURE_BODY.replace('</nav>', badge + '</nav>'));
+  await settle(30);
+  const t = env.window.DCC.workspaceColor.themeFor('#B42318');
   const q = (sel) => env.document.querySelector(sel);
+  const rgb = (hex) => `rgb(${parseInt(hex.slice(1, 3), 16)}, ${parseInt(hex.slice(3, 5), 16)}, ${parseInt(hex.slice(5, 7), 16)})`;
+  assert.deepEqual(marked(env), [nav(env)]);
   assert.equal(css(env, nav(env)).backgroundColor, 'rgb(180, 35, 24)');
   assert.equal(css(env, nav(env)).color, 'rgb(255, 255, 255)');
   assert.equal(css(env, q('[aria-label="Help"]')).color, 'rgb(255, 255, 255)');
@@ -99,30 +130,82 @@ test('computed cascade: bar tinted, controls follow the foreground, search stays
   assert.equal(css(env, q('.fx-wordmark')).color, 'rgb(255, 255, 255)');
   // Ancestors before descendants: jsdom mis-caches an ancestor's !important declarations when a
   // descendant's inherited property is computed first.
-  assert.equal(css(env, q('.fx-field')).backgroundColor, 'rgb(255, 255, 255)');
-  const input = q('nav input[type="search"]');
-  assert.equal(css(env, input).backgroundColor, 'rgb(255, 255, 255)');
-  assert.equal(css(env, input).color, 'rgb(31, 41, 51)');
-  assert.equal(css(env, q('.fx-kbd')).color, 'rgb(31, 41, 51)');
+  const field = css(env, q('.fx-field'));
+  assert.equal(field.boxShadow.toUpperCase(), ('inset 0 0 0 100vmax ' + t.surface).toUpperCase());
+  assert.equal(field.borderTopColor, 'rgba(0, 0, 0, 0)');
+  assert.equal(field.color, rgb(t.muted));
+  const input = q('nav input');
+  assert.equal(css(env, input).backgroundColor, 'rgba(0, 0, 0, 0)', 'no white box inside the field');
+  assert.equal(css(env, input).color, 'rgb(255, 255, 255)', 'typed text in the foreground');
+  assert.equal(css(env, q('.fx-kbd')).color, rgb(t.muted), 'shortcut hint in the soft tone');
+  assert.equal(css(env, q('.fx-pill')).boxShadow.toUpperCase(), ('inset 0 0 0 100vmax ' + t.surface).toUpperCase());
+  assert.equal(css(env, q('.fx-pill')).color, 'rgb(255, 255, 255)');
   // Extension elements inside the bar keep their own colors.
   assert.equal(css(env, q('[data-dcc="badge"]')).color, 'rgb(1, 2, 3)');
   // Other headers are not tinted.
   assert.equal(css(env, q('.fx-page-header')).backgroundColor, 'rgb(247, 247, 247)');
-
   env.close();
 });
 
-test('computed cascade, light tint: black foreground; the avatar keeps its own colors (simulated)', async () => {
-  const env = createContentEnv({ url: ORIGIN + '/jobs?o=42', html: page(FIXTURE_BODY, FIXTURE_STYLE), files: FEATURE_FILES, storage: appearance({ [ORIGIN + '|42']: entry('#F79009') }) });
-  const feature = env.window.DCC.features.find((f) => f.name === 'workspace-theme');
-  feature.onStart({ doc: env.document, origin: ORIGIN, workspaceId: '42', connection: null, settings: { showCosts: true } });
+test('computed cascade, light tint: black foreground, lighter search; the account circle keeps its colors (simulated)', async () => {
+  const env = direct({ [ORIGIN + '|42']: entry('#F79009') });
   await settle(30);
   const q = (sel) => env.document.querySelector(sel);
   assert.equal(css(env, nav(env)).backgroundColor, 'rgb(247, 144, 9)');
   assert.equal(css(env, q('.fx-switcher')).color, 'rgb(0, 0, 0)');
   assert.equal(css(env, q('[aria-label="Help"]')).color, 'rgb(0, 0, 0)');
-  assert.equal(css(env, q('.fx-avatar')).backgroundColor, 'rgb(34, 114, 180)');
-  assert.equal(css(env, q('.fx-avatar')).color, 'rgb(255, 255, 255)');
+  assert.equal(css(env, q('.fx-field')).boxShadow.toUpperCase(), 'INSET 0 0 0 100VMAX #FABF70');
+  assert.equal(css(env, q('.fx-initials')).backgroundColor, 'rgb(166, 99, 12)');
+  assert.equal(css(env, q('.fx-initials')).color, 'rgb(255, 255, 255)');
+  assert.equal(css(env, q('.fx-initials abbr')).color, 'rgb(255, 255, 255)');
+  env.close();
+});
+
+test('sidebar option: side nav, shell and page card follow the color; the page itself does not (simulated)', async () => {
+  const env = direct({ [ORIGIN + '|42']: entry('#1D4ED8', { sidebar: true }) });
+  await settle(30);
+  const q = (sel) => env.document.querySelector(sel);
+  const side = q('nav[aria-label="Side Navigation"]');
+  assert.deepEqual(
+    marked(env).map((el) => [el.getAttribute('data-dcc-themed'), el.className]),
+    [['top', 'fx-topnav'], ['shell', 'fx-shell'], ['side', 'fx-sidenav'], ['card', 'fx-card']]
+  );
+  // The New button and the selected item become surface shades; plain links stay on the tint.
+  assert.equal(q('[data-testid="NewDropdown"]').getAttribute('data-dcc-tone'), 'surface');
+  assert.equal(q('[data-fx="side-home"]').getAttribute('data-dcc-tone'), 'surface');
+  assert.equal(q('[data-fx="side-jobs"]').hasAttribute('data-dcc-tone'), false);
+  assert.equal(css(env, q('.fx-shell')).backgroundColor, 'rgb(29, 78, 216)');
+  assert.equal(css(env, side).backgroundColor, 'rgb(29, 78, 216)');
+  assert.equal(css(env, side).color, 'rgb(255, 255, 255)');
+  assert.equal(css(env, q('.fx-side-section')).color, 'rgb(255, 255, 255)');
+  assert.equal(css(env, q('[data-fx="side-jobs"]')).color, 'rgb(255, 255, 255)');
+  assert.equal(css(env, q('.fx-card')).borderTopColor, 'rgb(29, 78, 216)');
+  assert.equal(css(env, q('.fx-card')).backgroundColor, 'rgb(255, 255, 255)', 'the page card keeps its own background');
+  assert.equal(css(env, q('.fx-page-header')).backgroundColor, 'rgb(247, 247, 247)');
+  assert.notEqual(css(env, q('.fx-page-header h1')).color, 'rgb(255, 255, 255)', 'page text never follows the bar foreground');
+
+  // Turning the option off returns the sidebar, shell and card to native, tones included.
+  await env.setStorage(appearance({ [ORIGIN + '|42']: entry('#1D4ED8') }));
+  env.feature.onAppearance(env.ctx); // what the content bootstrap does on a storage change
+  await settle(50);
+  assert.deepEqual(marked(env), [nav(env)]);
+  assert.equal(side.querySelectorAll('[data-dcc-tone]').length, 0);
+  assert.equal(css(env, q('.fx-shell')).backgroundColor, 'rgb(246, 247, 249)');
+  env.close();
+});
+
+test('sidebar option without an opaque page card: the shell keeps its native color (simulated)', async () => {
+  const body = FIXTURE_BODY.replace('class="fx-card"', 'class="fx-card" style="background: transparent"');
+  const env = direct({ [ORIGIN + '|42']: entry('#1D4ED8', { sidebar: true }) }, body);
+  await settle(30);
+  assert.deepEqual(marked(env).map((el) => el.getAttribute('data-dcc-themed')), ['top', 'side']);
+  env.close();
+});
+
+test('a host default with the sidebar option applies to workspaces without their own color (simulated)', async () => {
+  const env = direct({ [ORIGIN + '|*']: entry('#067647', { sidebar: true }), [ORIGIN + '|43']: entry('#B42318') });
+  await settle(30);
+  assert.deepEqual(marked(env).map((el) => el.getAttribute('data-dcc-themed')), ['top', 'shell', 'side', 'card']);
   env.close();
 });
 
@@ -154,6 +237,35 @@ test('nav replacement re-marks the new bar once; no duplicate style and no write
   env.document.body.appendChild(env.document.createElement('span')); // unrelated page mutation
   await settle(700);
   assert.deepEqual(records.filter((r) => r.type === 'attributes' || r.target === style), []);
+  mo.disconnect();
+  env.close();
+});
+
+test('sidebar on: a re-rendered side nav is toned once and steady ticks write nothing (simulated)', async () => {
+  const env = start({ storage: appearance({ [ORIGIN + '|42']: entry('#6941C6', { sidebar: true }) }) });
+  await settle(150);
+  const sideNav = () => env.document.querySelector('nav[aria-label="Side Navigation"]');
+  assert.deepEqual(marked(env).map((el) => el.getAttribute('data-dcc-themed')), ['top', 'shell', 'side', 'card']);
+  const records = [];
+  const mo = new env.window.MutationObserver((list) => records.push(...list));
+  mo.observe(env.document.documentElement, { subtree: true, childList: true, attributes: true, characterData: true });
+
+  // The SPA re-renders the sidebar without our attributes.
+  const fresh = sideNav().cloneNode(true);
+  fresh.removeAttribute('data-dcc-themed');
+  for (const el of fresh.querySelectorAll('[data-dcc-tone]')) el.removeAttribute('data-dcc-tone');
+  sideNav().replaceWith(fresh);
+  await settle(600);
+  assert.equal(fresh.getAttribute('data-dcc-themed'), 'side');
+  assert.deepEqual([...fresh.querySelectorAll('[data-dcc-tone]')].map((el) => el.getAttribute('data-dcc-tone')), ['surface', 'surface']);
+  const toneWrites = records.filter((r) => r.type === 'attributes' && r.attributeName === 'data-dcc-tone');
+  assert.equal(toneWrites.length, 2, 'each tone written once');
+
+  records.length = 0;
+  env.window.__dccTest.scheduler.request();
+  env.document.body.appendChild(env.document.createElement('span'));
+  await settle(700);
+  assert.deepEqual(records.filter((r) => r.type === 'attributes'), []);
   mo.disconnect();
   env.close();
 });
@@ -203,7 +315,8 @@ test('storage changes apply, recolor and reset without duplicates (simulated)', 
   await settle(50);
   assert.equal(styles(env).length, 0);
   assert.deepEqual(marked(env), []);
-  assert.equal(css(env, nav(env)).backgroundColor, 'rgb(255, 255, 255)');
+  assert.equal(css(env, nav(env)).backgroundColor, 'rgb(246, 247, 249)');
+  assert.equal(env.document.querySelectorAll('[data-dcc-tone]').length, 0, 'tones removed too');
   env.close();
 });
 

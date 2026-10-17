@@ -9,6 +9,7 @@
   const dom = NODE ? require('./dom.js') : root.DCC.dom;
 
   const TOP_NAV = ['nav[aria-label="Top Navigation"]', '[data-testid="top-bar"]', '[data-testid="topbar"]', '[data-testid="app-topbar"]'];
+  const SIDE_NAV = ['nav[aria-label="Side Navigation"]', '[data-testid="UnifiedSideNav"]'];
   const MAIN = ['[data-testid="main-content"]', 'main', '[role="main"]', '#content'];
   // A main-like region inside a modal is never the banner's home.
   const MODAL = 'dialog, [role="dialog"], [role="alertdialog"], [aria-modal="true"]';
@@ -27,6 +28,12 @@
 
   function findTopNav(doc) {
     return firstVisible(doc, TOP_NAV);
+  }
+
+  /** Native left navigation; never the top bar itself or anything nested with it. */
+  function findSideNav(doc, topNav) {
+    const top = topNav === undefined ? findTopNav(doc) : topNav;
+    return firstVisible(doc, SIDE_NAV, (el) => !top || (!el.contains(top) && !top.contains(el)));
   }
 
   function rectOf(el) {
@@ -91,7 +98,7 @@
     return null;
   }
 
-  const api = Object.freeze({ TOP_NAV, MAIN, firstVisible, findTopNav, findBannerContainer, findPageTitle });
+  const api = Object.freeze({ TOP_NAV, SIDE_NAV, MAIN, firstVisible, findTopNav, findSideNav, findBannerContainer, findPageTitle });
   if (NODE) module.exports = api;
   else (root.DCC || (root.DCC = {})).native = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
