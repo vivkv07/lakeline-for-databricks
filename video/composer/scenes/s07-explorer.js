@@ -51,15 +51,17 @@ export default function build(ctx, { n, t0, t1 }) {
   }
   sc.move(L(12.6), sc.full(), 1.2);
 
-  if (inspectC) sc.ring(inspectC, { t0: T.calHover + 0.4, t1: L(12.5), warm: true });
+  if (inspectC) sc.ring(inspectC, { t0: T.calHover + 0.4, t1: L(12.5), warm: true, label: 'spike inspect line' });
+  if (prodHover) sc.event(T.hover, 'tooltip', 'tallest day tooltip');
+  if (calHover) sc.event(T.calHover, 'tooltip', 'spike day tooltip');
   const ptOf = (r, fx = 0.5, fy = 0.5) => (r ? { x: r.x + r.w * fx, y: r.y + r.h * fy } : null);
   const path = [];
-  const add = (t, r, click, fx, fy) => { const p = ptOf(r, fx, fy); if (p) path.push({ t, x: p.x, y: p.y, click }); };
-  add(L(2.6), markP ? { x: markP.x + 160, y: markP.y + 120, w: 1, h: 1 } : null, false);
-  add(T.hover, markP, false, 0.5, 0.35);
-  add(T.drvClick, W(tabD), true);
-  add(T.calClick, W(tabC), true);
-  add(T.calHover, markC, false, 0.55, 0.5);
+  const add = (t, r, click, label, fx, fy) => { const p = ptOf(r, fx, fy); if (p) path.push({ t, x: p.x, y: p.y, click, label }); };
+  add(L(2.6), markP ? { x: markP.x + 160, y: markP.y + 120, w: 1, h: 1 } : null, false, '');
+  add(T.hover, markP, false, 'tallest day bar', 0.5, 0.35);
+  add(T.drvClick, W(tabD), true, 'Top drivers tab');
+  add(T.calClick, W(tabC), true, 'Calendar tab');
+  add(T.calHover, markC, false, 'spike day cell', 0.55, 0.5);
   if (path.length) sc.cursor(path, { appear: L(2.3), vanish: L(12.0) });
 
   const spikeLine = sc.Tq(calHover, ['inspect'], []);

@@ -5,6 +5,13 @@ import { E, clamp, prog, env, ep, lerp } from '../lib/ease.js';
 import { el, op, show, kinetic, iconMark, svg, LINE_ICONS } from '../lib/kit.js';
 
 const ACCENT = '#5B8CFF';
+
+/** Time at which an eased entrance starting at t (duration d) reaches 95 %: the "lands" moment. */
+function landsAt(t, d, ease = E.enter) {
+  let p = 0;
+  while (p < 1 && ease(p) < 0.95) p += 0.001;
+  return t + p * d;
+}
 const SUB = '#C7D5FF';
 
 /* ---------------------------------------------------------------- 1 · hook */
@@ -21,6 +28,14 @@ export function hook(ctx, { t0, t1 }) {
   ], { size: 84, stagger: 0.085, dur: 0.95, style: { left: '150px', top: '300px' } });
   return {
     t0, t1, pre: 0, post: 0.1, layer,
+    events: () => [
+      { t: t0 + 0.35, kind: 'title', scene: 1, label: "Your Databricks bill shouldn't be a mystery.", dur: 0.075 * 7 + 1.0 },
+      { t: landsAt(t0 + 0.35 + 0.075 * 7, 1.0), kind: 'title-land', scene: 1, label: 'mystery.' },
+      { t: t0 + 2.55, kind: 'title-out', scene: 1, label: 'line 1 leaves', dur: 0.4 },
+      { t: t0 + 3.0, kind: 'title', scene: 1, label: 'Spend hides across jobs, warehouses, queries and Genie.', dur: 0.085 * 8 + 0.95 },
+      { t: landsAt(t0 + 3.0 + 0.085 * 8, 0.95), kind: 'title-land', scene: 1, label: 'Genie.' },
+      { t: t1 - 0.55, kind: 'title-out', scene: 1, label: 'line 2 leaves', dur: 0.45 },
+    ],
     update(t) {
       const ta = t0 + 0.35;
       a.update(t, ta);
@@ -56,6 +71,15 @@ export function reveal(ctx, { t0, t1 }) {
   const tag = el('div', 'abs', layer, { fontSize: '36px', fontWeight: 500, color: SUB, letterSpacing: '-0.01em', whiteSpace: 'nowrap' });
   tag.textContent = 'Costs, runs and Genie answers, right where you work.';
   let geo = null;
+  const revealEvents = () => [
+    { t: t0 + 0.02, kind: 'logo-build', scene: 2, label: 'icon mark: rounded square lands', dur: 0.7 },
+    ...[0, 1, 2].map((i) => ({ t: t0 + 0.42 + i * 0.13, kind: 'logo-bar', scene: 2, label: i === 2 ? 'tallest bar (blue)' : `bar ${i + 1}`, dur: 0.6 })),
+    { t: t0 + 1.35, kind: 'logo-move', scene: 2, label: 'icon slides left', dur: 0.9 },
+    { t: t0 + 1.75, kind: 'wordmark', scene: 2, label: 'Lakeline for Databricks', dur: 0.18 + 1.0 },
+    { t: landsAt(t0 + 1.75 + 2 * 0.09, 1.0), kind: 'wordmark-land', scene: 2, label: 'wordmark lands' },
+    { t: t0 + 2.55, kind: 'tagline', scene: 2, label: 'Costs, runs and Genie answers, right where you work.', dur: 1.0 },
+    { t: t1 - 0.65, kind: 'title-out', scene: 2, label: 'reveal leaves', dur: 0.55 },
+  ];
   function measure() {
     const ww = word.offsetWidth, wh = word.offsetHeight;
     const gap = 40;
@@ -66,6 +90,7 @@ export function reveal(ctx, { t0, t1 }) {
   }
   return {
     t0, t1, pre: 0, post: 0.2, layer,
+    events: revealEvents,
     update(t) {
       if (!geo) measure();
       const fadeOut = E.exit(prog(t, t1 - 0.65, t1 - 0.1));
@@ -133,6 +158,12 @@ export function security(ctx, { t0, t1 }) {
   });
   return {
     t0, t1, pre: 0, post: 0.05, layer,
+    events: () => [
+      { t: t0 + 0.25, kind: 'eyebrow', scene: 12, label: 'Security and privacy', dur: 0.8 },
+      { t: t0 + 0.35, kind: 'title', scene: 12, label: 'Nothing leaves your Databricks and your browser.', dur: 0.05 * 7 + 0.9 },
+      ...SECURITY_POINTS.map(([, text], i) => ({ t: t0 + 1.6 + i * 0.95, kind: 'point', scene: 12, label: text, dur: 0.9 })),
+      { t: t1 - 0.45, kind: 'title-out', scene: 12, label: 'security panel leaves', dur: 0.45 },
+    ],
     update(t) {
       const out = E.exit(prog(t, t1 - 0.45, t1));
       layer.style.opacity = (1 - out).toFixed(4);
@@ -169,6 +200,14 @@ export function cta(ctx, { t0, t1, end }) {
   let geo = null;
   return {
     t0, t1: end, pre: 0, post: 0, layer,
+    events: () => [
+      { t: t0 + 0.15, kind: 'logo-build', scene: 13, label: 'icon mark', dur: 0.65 },
+      ...[0, 1, 2].map((i) => ({ t: t0 + 0.35 + i * 0.1, kind: 'logo-bar', scene: 13, label: i === 2 ? 'tallest bar (blue)' : `bar ${i + 1}`, dur: 0.55 })),
+      { t: t0 + 0.45, kind: 'wordmark', scene: 13, label: 'Lakeline for Databricks', dur: 0.16 + 0.9 },
+      { t: landsAt(t0 + 0.45 + 2 * 0.08, 0.9), kind: 'wordmark-land', scene: 13, label: 'wordmark lands' },
+      { t: t0 + 0.95, kind: 'cta-button', scene: 13, label: 'Add to Chrome', dur: 0.65 },
+      { t: t0 + 1.3, kind: 'fine-print', scene: 13, label: 'Independent project; not affiliated with Databricks, Inc.', dur: 0.9 },
+    ],
     update(t) {
       if (!geo) {
         geo = { ww: word.el.offsetWidth, bw: btn.offsetWidth, fw: fine.offsetWidth };

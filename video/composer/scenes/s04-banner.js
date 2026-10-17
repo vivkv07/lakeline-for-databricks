@@ -29,16 +29,19 @@ export default function build(ctx, { n, t0, t1 }) {
   if (row) sc.move(L(1.5), sc.focus(grow(row, 30, 30)));
   sc.move(L(10.3), sc.full());
 
+  const label = (st, fb) => sc.Tx(st, 'periodPressed') || fb;
   [[s7, L(3.2), c30 - 0.3], [s30, at30 + 0.6, c90 - 0.3], [s90, at90 + 0.6, L(10.2)]].forEach(([st, a, b]) => {
     const k = keyOf(st);
-    if (k) sc.ring(k, { t0: a, t1: b });
+    if (k) sc.ring(k, { t0: a, t1: b, label: `banner amount and change (${label(st, '')})` });
   });
   sc.cursor([
     b30 && { t: L(3.4), x: b30.x + b30.w / 2 + 40, y: b30.y + 150 },
-    b30 && { t: c30, x: b30.x + b30.w / 2, y: b30.y + b30.h / 2, click: true },
-    b90 && { t: c90, x: b90.x + b90.w / 2, y: b90.y + b90.h / 2, click: true },
-    b90 && { t: L(9.6), x: b90.x + b90.w / 2 + 30, y: b90.y + 150 },
+    b30 && { t: c30, x: b30.x + b30.w / 2, y: b30.y + b30.h / 2, click: true, label: `period ${label(s30, '30d')}` },
+    b90 && { t: c90, x: b90.x + b90.w / 2, y: b90.y + b90.h / 2, click: true, label: `period ${label(s90, '90d')}` },
+    b90 && { t: L(9.6), x: b90.x + b90.w / 2 + 30, y: b90.y + 150, label: 'rest' },
   ].filter(Boolean), { appear: L(3.0), vanish: L(10.0) });
+  sc.event(at30, 'number-change', `banner amount ${sc.Tq(s30, ['amount'], ['badge']) || ''}`.trim());
+  sc.event(at90, 'number-change', `banner amount ${sc.Tq(s90, ['amount'], ['badge']) || ''}`.trim());
 
   const detail = (st) => {
     const meta = sc.Tq(st, ['meta-source'], []) || sc.T(st, ['meta', 'change'], ['source']);
@@ -48,7 +51,6 @@ export default function build(ctx, { n, t0, t1 }) {
       '·', { num: rx(meta, /^([^·]+?)\s*·/) },
     ];
   };
-  const label = (st, fb) => sc.Tx(st, 'periodPressed') || fb;
   sc.caps.add({
     t0: L(0.3), t1: t1 - 0.05, head: 'Your spend and its trend, on every page.',
     steps: { labels: [label(s7, '7d'), label(s30, '30d'), label(s90, '90d')], times: [t0, at30, at90] },

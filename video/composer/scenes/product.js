@@ -34,6 +34,7 @@ export function productScene(ctx, { n, t0, t1, theme, enter = 'rise', exit = 'si
   const parts = [];
   const rings = [];
   const states = []; // logged UI changes {t, d, kind, label} for the pacing check
+  const named = []; // explicit events (answer lands, paste, notification, ...)
   const cursors = [];
   let win = null;
   const sc = {
@@ -42,6 +43,8 @@ export function productScene(ctx, { n, t0, t1, theme, enter = 'rise', exit = 'si
     beats: (T[n] && T[n].beats) || [['intro', 0]],
     /** Absolute time of a named camera beat. */
     beat(name) { const b = sc.beats.find(([nm]) => nm === name); return b ? t0 + b[1] : null; },
+    /** Record a named timed event for the sound-effects layer ({t, kind, label, dur?, zoom?}). */
+    event(t, kind, label = '', extra = {}) { if (Number.isFinite(t) && t > -1e8) named.push(Object.assign({ t, kind, label }, extra)); },
     /** Log a UI change (crossfade 'state', 'tab' switch, or 'open' for popups and panels). */
     log(t, d, kind = 'state', label = '') { if (t > -1e8) states.push({ t, d, kind, label }); },
     /** One camera move: ease-in-out cubic, no overshoot (default 1.5 s). */
@@ -82,7 +85,7 @@ export function productScene(ctx, { n, t0, t1, theme, enter = 'rise', exit = 'si
     add(fn) { parts.push(fn); return fn; },
     ring(rect, opts) {
       const r = ring(fxLayer, rect, opts);
-      rings.push({ rect: r.rect, t0: opts.t0, t1: opts.t1 });
+      rings.push({ rect: r.rect, t0: opts.t0, t1: opts.t1, label: opts.label || '' });
       parts.push((t, s) => r.update(t, s));
       return r;
     },
@@ -93,6 +96,44 @@ export function productScene(ctx, { n, t0, t1, theme, enter = 'rise', exit = 'si
       cursors.push(c);
       parts.push((t, s) => c.update(t, s));
       return c;
+    },
+    /**
+     * Every timed event of this scene for the sound-effects layer: camera moves, captions and
+     * step-label advances, cursor moves and clicks, crossfades, tab switches, popups and panels,
+     * highlight rings and the scene's named events. Shape: {t, kind, scene, label, dur?, zoom?}.
+     */
+    events() {
+      const out = [];
+      const add = (t, kind, label, extra = {}) => { if (Number.isFinite(t) && t > -1e8) out.push(Object.assign({ t, kind, scene: n, label }, extra)); };
+      const full = win ? sc.full().s : 1;
+      for (const mv of cam.moves) {
+        const k0 = cam.at(mv.t0).s / full, k1 = mv.v.s / full;
+        const kind = k1 > k0 + 0.01 ? 'push-in' : k1 < k0 - 0.01 ? 'pull-back' : 'pan';
+        add(mv.t0, kind, `camera ${k0.toFixed(2)}→${k1.toFixed(2)}×`, { dur: mv.dur, zoom: +k1.toFixed(3) });
+      }
+      const stepSeen = new Set();
+      for (const r of caps.items) {
+        add(r.item.t0, 'caption', r.item.head, { dur: r.item.t1 - r.item.t0 });
+        const st = r.item.steps;
+        if (st) st.times.forEach((ts, i) => {
+          const key = ts.toFixed(3) + st.labels[i];
+          if (i > 0 && ts >= r.item.t0 - 1e-6 && ts <= r.item.t1 && !stepSeen.has(key)) { stepSeen.add(key); add(ts, 'step', `${i + 1} ${st.labels[i]}`); }
+        });
+      }
+      for (const c of cursors) {
+        for (const g of c.segments) if (g.dist > 4) {
+          add(g.start, 'cursor-move', g.label ? 'to ' + g.label : 'cursor move', { dur: g.end - g.start });
+          add(g.end, 'cursor-stop', g.label || 'cursor stop');
+        }
+        for (const ck of c.clickEvents) add(ck.t, 'click', ck.label || 'click');
+      }
+      for (const st of states) {
+        const kind = st.kind === 'tab' ? 'tab' : st.kind === 'open' ? (/close/.test(st.label) ? 'popup-close' : /panel/.test(st.label) ? 'panel-open' : 'popup-open') : 'crossfade';
+        add(st.t, kind, st.label, { dur: st.d });
+      }
+      for (const r of rings) add(r.t0, 'highlight', r.label || 'highlight ring', { dur: (Number.isFinite(r.t1) ? r.t1 : t1) - r.t0 });
+      for (const e of named) out.push(Object.assign({ scene: n }, e));
+      return out;
     },
     /** Pacing data for render.mjs --info (camera moves, captions, clicks, UI changes). */
     pacing() {

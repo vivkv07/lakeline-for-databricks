@@ -456,7 +456,7 @@ export function cursor(parent, path, { size = 1, appear, vanish } = {}) {
     const dist = Math.hypot(b.x - a.x, b.y - a.y);
     const dur = clamp(CURSOR.minMove + dist / 1800, CURSOR.minMove, CURSOR.maxMove);
     const start = b.from != null ? b.from : Math.max(a.t + (a.click ? CURSOR.afterClick : 0.05), b.t - dur);
-    segs.push({ a, b, start, end: b.t, dist });
+    segs.push({ a, b, start, end: b.t, dist, label: b.label || '' });
   }
   function pos(t) {
     if (t <= path[0].t) return [path[0].x, path[0].y];
@@ -480,6 +480,8 @@ export function cursor(parent, path, { size = 1, appear, vanish } = {}) {
     el: c,
     segments: segs,
     clicks: path.filter((p) => p.click).map((p) => p.t),
+    /** Clicks with the target label given on the waypoint ({t, label}). */
+    clickEvents: path.filter((p) => p.click).map((p) => ({ t: p.t, label: p.label || '' })),
     update(t, camS = 1) {
       const vis = env(t, t0, t1, 0.3, 0.3);
       op(c, vis);

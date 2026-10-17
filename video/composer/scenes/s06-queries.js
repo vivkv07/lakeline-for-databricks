@@ -25,15 +25,15 @@ export default function build(ctx, { n, t0, t1 }) {
   if (qf) sc.move(L(1.5), sc.focus(grow(qf, 10, 20)));
   sc.move(L(5.6), sc.full());
 
-  if (heavy) sc.ring(heavy, { t0: L(3.7), t1: L(5.5), warm: true });
-  if (optXL) sc.ring(optXL, { t0: L(8.9), t1: L(11.7) });
+  if (heavy) sc.ring(heavy, { t0: L(3.7), t1: L(5.5), warm: true, label: 'heavy BI query row' });
+  if (optXL) sc.ring(optXL, { t0: L(8.9), t1: L(11.7), label: 'X-Large size option' });
   if (heavyEst) sc.cursor([
     { t: L(2.2), x: heavyEst.x + 260, y: heavyEst.y + 150 },
-    { t: L(3.5), x: heavyEst.x + heavyEst.w * 0.5, y: heavyEst.y + heavyEst.h * 0.6 },
+    { t: L(3.5), x: heavyEst.x + heavyEst.w * 0.5, y: heavyEst.y + heavyEst.h * 0.6, label: 'heavy BI query estimate' },
   ], { appear: L(1.9), vanish: L(5.4) });
   if (optXL) sc.cursor([
     { t: L(7.9), x: optXL.x + optXL.w + 120, y: optXL.y + 140 },
-    { t: L(8.7), x: optXL.x + optXL.w * 0.8, y: optXL.y + optXL.h * 0.55 },
+    { t: L(8.7), x: optXL.x + optXL.w * 0.8, y: optXL.y + optXL.h * 0.55, label: 'X-Large size option' },
   ], { appear: L(7.6), vanish: L(11.6) });
 
   // Caption numbers: the heavy query's estimate, then the current and next size from the open list.
