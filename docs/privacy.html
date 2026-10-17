@@ -14,7 +14,7 @@
 <main>
   <p class="label">Privacy policy</p>
   <h1>Your data stays between your browser and your Databricks workspace.</h1>
-  <p class="meta">Effective 15 October 2026 · applies to the Lakeline for Databricks browser extension and its optional local helper.</p>
+  <p class="meta">Effective 16 October 2026 · applies to the Lakeline for Databricks browser extension and its optional local helper.</p>
 
   <h2>Summary</h2>
   <ul>
@@ -40,13 +40,13 @@
   <h2>What the extension sends, and to whom</h2>
   <ul>
     <li><strong>Your Databricks workspace:</strong> read-only SQL queries against Databricks system tables (billing, query history, job and pipeline timelines), and read-only API calls for SQL warehouses, job runs, pipelines and clusters. If you ask Genie a question, the question text goes to the Genie Agent you selected in your own workspace. Requests carry your sign-in token, which goes only to that workspace.</li>
-    <li><strong>Databricks sign-in:</strong> "Sign in with Databricks" uses your workspace's own OAuth endpoints.</li>
+    <li><strong>Databricks sign-in:</strong> "Sign in with Databricks" uses your workspace's own OAuth endpoints, through Databricks' built-in sign-in app (the one the Databricks CLI uses) or your organization's app connection. With the built-in app, the sign-in ends at <code>http://localhost:8020</code>: the extension reads the one-time code from the address of the sign-in tab it opened, then closes that tab. Nothing is sent to, or served from, your computer.</li>
     <li><strong>The optional local helper</strong> (if you choose to run it): it runs on your computer at 127.0.0.1, and its Databricks credentials stay in the Databricks CLI on your computer.</li>
   </ul>
   <p>The extension does not read the text of your SQL queries or the result rows of your queries in Query History. Cost estimates use only timestamps, durations, warehouse IDs and billing records.</p>
 
   <h2>Permissions</h2>
-  <p>Site access is requested one workspace at a time, only when you connect it. The extension never asks for access to all websites. Desktop notifications are optional and contain no query data. See the <a href="https://developer.chrome.com/docs/extensions/develop/concepts/declare-permissions">Chrome permissions documentation</a> for what each permission means.</p>
+  <p>Site access is requested one workspace at a time, only when you connect it. The extension never asks for access to all websites. To finish "Sign in with Databricks", it also asks once for <code>localhost:8020</code>, used only to read the address of its own sign-in tab. Desktop notifications are optional and contain no query data. See the <a href="https://developer.chrome.com/docs/extensions/develop/concepts/declare-permissions">Chrome permissions documentation</a> for what each permission means.</p>
 
   <h2>Your choices</h2>
   <ul>

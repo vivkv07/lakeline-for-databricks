@@ -25,6 +25,8 @@
   const NODE = typeof module === 'object' && module && module.exports;
   const dep = (name, path) => (NODE ? require(path) : root.DCC[name]);
   const errors = dep('errors', '../errors.js');
+  // Looked up when used: oauth.js may load after this file in the service worker.
+  const OAUTH_API = { effectiveClientId: (conn, settings) => (NODE ? require('./oauth.js') : root.DCC.oauth).effectiveClientId(conn, settings) };
   const V = dep('validate', '../core/validate.js');
   const ids = dep('ids', '../core/ids.js');
   const http = dep('http', '../databricks/http.js');
@@ -212,7 +214,7 @@
       if (conn.authMode === 'oauth') {
         if (!deps.oauth) throw fail('GENIE_SIGNIN');
         try {
-          token = await deps.oauth.getAccessToken(origin, 'genie', { clientId: conn.oauthClientId || settings.oauth.clientId });
+          token = await deps.oauth.getAccessToken(origin, 'genie', { clientId: OAUTH_API.effectiveClientId(conn, settings) });
         } catch (e) {
           if (e && e.dcc && (e.dcc.code === 'AUTH_EXPIRED' || e.dcc.code === 'OAUTH_CLIENT_MISSING')) throw fail('GENIE_SIGNIN');
           throw e;
@@ -773,7 +775,7 @@
       if (!conn) throw fail('NOT_CONNECTED');
       if (conn.authMode !== 'oauth') throw fail(conn.authMode === 'helper' ? 'GENIE_HELPER_MODE' : 'UNKNOWN', 'Only Sign in with Databricks connections sign in here');
       const settings = await settingsNow();
-      await deps.oauth.signIn({ origin: conn.origin, clientId: conn.oauthClientId || settings.oauth.clientId, purpose: 'genie', interactive: true });
+      await deps.oauth.signIn({ origin: conn.origin, clientId: OAUTH_API.effectiveClientId(conn, settings), purpose: 'genie', interactive: true });
       spacesCache.delete(conn.origin);
       return { signedIn: true };
     }

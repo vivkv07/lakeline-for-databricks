@@ -223,6 +223,17 @@
   /* ---------------------------------------------------------------- one-click connect */
 
   const CLIENT_ID_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{5,127}$/;
+  /** The built-in sign-in reads its redirect from the sign-in tab, so it also needs this origin. */
+  const SIGNIN_REDIRECT_PATTERN = 'http://localhost:8020/*';
+  /** Where Databricks lists a user's tokens (Settings, Developer, Access tokens). */
+  const TOKEN_PAGE_PATH = '/settings/user/developer/access-tokens';
+  /** Codes after which the token box is the natural next step. */
+  const OFFER_TOKEN = ['BUILTIN_SIGNIN_BLOCKED', 'AUTH_CANCELLED'];
+
+  const customClientId = () => {
+    const id = state && state.settings && state.settings.oauth && state.settings.oauth.clientId;
+    return CLIENT_ID_RE.test(id || '') ? id : null;
+  };
 
   function setTabLine(kind, text) {
     const box = $('tab-status');
@@ -230,8 +241,8 @@
     if (text) box.appendChild(h('p', { class: 'pp-line' + (kind ? ' pp-line--' + kind : ''), 'data-connect-line': '' }, text));
   }
 
-  /** Open the sign-in chooser. `moveFocus: false` keeps focus on the toggle that opened it. */
-  async function showSetup(redirectUrl, { moveFocus = true } = {}) {
+  /** Open the other sign-in ways. `moveFocus: false` keeps focus on the toggle that opened it. */
+  async function showSetup(redirectUrl, { moveFocus = true, focus = 'pat-input' } = {}) {
     const panel = $('oauth-setup');
     panel.hidden = false;
     syncSetupToggle();
@@ -243,7 +254,7 @@
     $('oauth-redirect').textContent = url || '';
     const saved = state && state.settings && state.settings.oauth && state.settings.oauth.clientId;
     if (saved && !$('oauth-client-id').value) $('oauth-client-id').value = saved;
-    if (moveFocus) $('oauth-client-id').focus();
+    if (moveFocus) $(focus).focus();
   }
 
   function onToggleSetup() {
@@ -259,8 +270,8 @@
    * Site access must be requested synchronously inside the click (user gesture), before any
    * other await; everything after it runs in the background service worker.
    */
-  function requestAccessThen(next) {
-    const pending = tab.granted === true ? Promise.resolve(true) : chromeApi.permissions.request({ origins: [tab.origin + '/*'] });
+  function requestAccessThen(next, extra = []) {
+    const pending = tab.granted === true && !extra.length ? Promise.resolve(true) : chromeApi.permissions.request({ origins: [tab.origin + '/*'].concat(extra) });
     pending
       .then((granted) => {
         if (!granted) {
@@ -273,24 +284,32 @@
       .catch((e) => showAlert(backgroundError(e && e.message)));
   }
 
-  async function oneClick(clientId, method) {
-    const btn = $('connect-btn');
-    btn.disabled = true;
-    $('oauth-save-connect').disabled = true;
+  const PROGRESS = {
+    session: 'Checking your Databricks login in the open tab…',
+    pat: 'Checking the token with Databricks…',
+    builtin: 'Signing in with Databricks… finish in the tab that opens.',
+    oauth: 'Signing in with Databricks… finish in the window that opens.',
+  };
+
+  async function oneClick(clientId, method, extra = {}) {
+    const busy = [$('connect-btn'), $('oauth-save-connect'), $('pat-connect')];
+    for (const b of busy) b.disabled = true;
     showAlert(null);
-    setTabLine(null, method === 'session' ? 'Checking your Databricks login in the open tab…' : 'Signing in with Databricks… finish in the window that opens.');
-    const msg = { type: 'connect:oneClick', url: tab.url };
+    setTabLine(null, PROGRESS[method] || (clientId || customClientId() ? PROGRESS.oauth : PROGRESS.builtin));
+    const msg = Object.assign({ type: 'connect:oneClick', url: tab.url }, extra);
     if (clientId) msg.clientId = clientId;
     if (method) msg.method = method;
     const r = await send(msg);
-    btn.disabled = false;
-    $('oauth-save-connect').disabled = false;
+    for (const b of busy) b.disabled = false;
     if (!r.ok) {
       setTabLine(null, '');
       showAlert(r.error);
-      if (r.error && /^OAUTH_CLIENT_/.test(r.error.code)) showSetup();
+      const code = r.error && r.error.code;
+      if (/^OAUTH_CLIENT_/.test(code || '')) showSetup(undefined, { focus: 'oauth-client-id' });
+      else if (OFFER_TOKEN.includes(code) || (method === 'pat' && code !== 'PERMISSION_NOT_GRANTED')) showSetup();
       return;
     }
+    if (method === 'pat') $('pat-input').value = '';
     if (r.data && (r.data.needsChoice || r.data.needsClientId)) {
       setTabLine(null, '');
       showSetup(r.data.redirectUrl);
@@ -306,7 +325,8 @@
     if (fresh.ok && fresh.data) state = fresh.data;
     renderSettings();
     renderTab();
-    setTabLine('ok', 'Connected · workspace ' + r.data.workspaceId + (r.data.warehouseName ? ' · ' + r.data.warehouseName : '') + (r.data.method === 'session' ? ' · your Databricks login' : '') + '. Costs now show on the page.');
+    const how = { session: ' · your Databricks login', pat: ' · access token' }[r.data.method] || '';
+    setTabLine('ok', 'Connected · workspace ' + r.data.workspaceId + (r.data.warehouseName ? ' · ' + r.data.warehouseName : '') + how + '. Costs now show on the page.');
   }
 
   function onConnect() {
@@ -315,7 +335,9 @@
     const mismatch = conn && tab.workspaceId && tab.workspaceId !== conn.workspaceId;
     // One click on real workspaces; the local fixture and edits use Connection preferences.
     if (tab && tab.supported && tab.kind === 'workspace' && !mismatch && (!conn || conn.authMode === 'oauth')) {
-      requestAccessThen(() => oneClick());
+      // Without a registered app, sign-in goes through Databricks' built-in client, whose redirect
+      // the extension reads on localhost:8020; both accesses are asked for in this one click.
+      requestAccessThen(() => oneClick(), customClientId() ? [] : [SIGNIN_REDIRECT_PATTERN]);
       return;
     }
     openOptionsForConnect();
@@ -329,6 +351,23 @@
     }
     if (!tab || !tab.supported || tab.kind !== 'workspace') return;
     requestAccessThen(() => oneClick(value));
+  }
+
+  function onPatConnect() {
+    const token = $('pat-input').value.trim();
+    if (token.length < 20 || /\s/.test(token)) {
+      showAlert({ code: 'PAT_FORMAT', title: 'Paste the whole access token', steps: ['Copy it from Databricks: Settings, Developer, Access tokens, Generate new token. It usually starts with dapi.'] });
+      $('pat-input').focus();
+      return;
+    }
+    if (!tab || !tab.supported || tab.kind !== 'workspace') return;
+    const remember = $('pat-remember').checked;
+    requestAccessThen(() => oneClick(undefined, 'pat', { token, remember }));
+  }
+
+  function onCreateToken() {
+    if (!tab || !tab.supported || tab.kind !== 'workspace') return;
+    chromeApi.tabs.create({ url: tab.origin + TOKEN_PAGE_PATH });
   }
 
   async function onCopyRedirect() {
@@ -612,7 +651,11 @@
         if (tab && tab.supported && tab.kind === 'workspace') requestAccessThen(() => oneClick(undefined, 'session'));
       });
     }
-    $('use-token').addEventListener('click', () => openOptionsForConnect());
+    $('pat-connect').addEventListener('click', onPatConnect);
+    $('pat-input').addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter') onPatConnect();
+    });
+    $('token-create').addEventListener('click', onCreateToken);
     $('oauth-copy').addEventListener('click', onCopyRedirect);
     $('oauth-guide').addEventListener('click', () => openPage('guide', 'sign-in'));
     $('open-options').addEventListener('click', () => openPage('options'));

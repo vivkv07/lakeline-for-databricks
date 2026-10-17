@@ -609,7 +609,6 @@
     p.append(h('span', { class: 'op-dot' + (on ? ' op-dot--ok' : ''), 'aria-hidden': 'true' }), on ? 'Connected with Databricks sign-in. Sign in again any time it asks.' : 'Not signed in yet.');
     const saved = S.page && S.page.settings && S.page.settings.oauth && S.page.settings.oauth.clientId;
     if (saved && !$('oauth-client-id-opt').value) $('oauth-client-id-opt').value = saved;
-    if (!saved) $('oauth-setup-opt').open = true;
   }
 
   async function fillRedirectUrl() {
@@ -623,7 +622,12 @@
     if (!S.sel || S.sel.kind !== 'workspace') return;
     const sel = S.sel;
     const gen = S.selGen;
-    const pending = S.access === true ? Promise.resolve(true) : chromeApi.permissions.request({ origins: [sel.origin + '/*'] });
+    // Without a client ID, sign-in uses Databricks' built-in client, whose redirect the extension
+    // reads on localhost:8020; ask for that together with the workspace, inside this click.
+    const saved = S.page && S.page.settings && S.page.settings.oauth && S.page.settings.oauth.clientId;
+    const builtin = !$('oauth-client-id-opt').value.trim() && !saved;
+    const origins = [sel.origin + '/*'].concat(builtin ? ['http://localhost:8020/*'] : []);
+    const pending = S.access === true && !builtin ? Promise.resolve(true) : chromeApi.permissions.request({ origins });
     pending.then(async (granted) => {
       const out = $('oauth-result');
       if (!granted) return show(out, messageBox('error', 'Site access was not allowed', ['Allow access to ' + sel.host + ' so the extension can show costs there.']));
@@ -632,7 +636,7 @@
       const msg = { type: 'connect:oneClick', url: sel.origin + (V.isWorkspaceId(typedId) ? '/?o=' + typedId : '/') };
       if (clientId) msg.clientId = clientId;
       setBusy($('oauth-signin'), true);
-      show(out, busyLine('Signing in with Databricks… finish in the window that opens.'));
+      show(out, busyLine(builtin ? 'Signing in with Databricks… finish in the tab that opens.' : 'Signing in with Databricks… finish in the window that opens.'));
       const res = await send(msg);
       setBusy($('oauth-signin'), false);
       await refreshState();

@@ -130,15 +130,15 @@
           <div class="op-actions">
             <button type="button" id="oauth-signin" class="dcc-btn dcc-btn--primary">Sign in with Databricks</button>
           </div>
-          <p class="op-help">Cost queries use a SQL-only sign-in.</p>
+          <p class="op-help">No setup needed: Lakeline signs in through Databricks' built-in sign-in app, the one the Databricks CLI uses, in a tab that closes itself. If an admin turned that app off, use a personal access token or your organization's app connection.</p>
           <div id="oauth-result" class="op-result" aria-live="polite"></div>
           <details id="oauth-setup-opt" class="dcc-disclosure op-inline-disclosure">
-            <summary>One-time setup by an account admin</summary>
+            <summary>Optional: use your organization's app connection</summary>
             <ol class="op-steps">
               <li>In the Databricks account console: Settings, App connections, Add connection.</li>
               <li>Redirect URL: <code id="oauth-redirect-opt" class="dcc-input--mono"></code></li>
               <li>Scopes: SQL and All APIs. Leave "Generate a client secret" off.</li>
-              <li>Paste the client ID here. One registration covers every workspace in the account. New connections can take about 30 minutes to activate.</li>
+              <li>Paste the client ID here. One registration covers every workspace in the account, and the sign-in screen then names your app. New connections can take about 30 minutes to activate. Leave it empty to use the built-in sign-in.</li>
             </ol>
             <div class="op-field">
               <label for="oauth-client-id-opt" class="op-label">OAuth client ID</label>

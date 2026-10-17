@@ -48,7 +48,13 @@ function openPage(name, { onMessage, tabs = [], granted = [], permissionAnswer =
       },
       getURL: (p) => 'chrome-extension://testextensionid/' + p,
     },
-    tabs: { query: async () => structuredClone(tabs) },
+    tabs: {
+      query: async () => structuredClone(tabs),
+      async create(props) {
+        events.push({ kind: 'tab', url: props.url });
+        return { id: 99 };
+      },
+    },
     permissions: {
       request(req) {
         perms.requests.push(structuredClone(req));
@@ -328,7 +334,8 @@ test('popup: "Connect this workspace" is one click: site access in the gesture, 
   await settle();
   // Permission is the first thing the click does, for exactly this origin.
   assert.equal(env.events[0].kind === 'permission' || env.events.find((e) => e.kind === 'permission') !== undefined, true);
-  assert.deepEqual(env.perms.requests, [{ origins: [A + '/*'] }]);
+  // Without a registered app, the built-in sign-in also needs its redirect origin: one prompt.
+  assert.deepEqual(env.perms.requests, [{ origins: [A + '/*', 'http://localhost:8020/*'] }]);
   const firstPermIdx = env.events.findIndex((e) => e.kind === 'permission');
   const connectIdx = env.events.findIndex((e) => e.kind === 'message' && e.msg.type === 'connect:oneClick');
   assert.ok(firstPermIdx !== -1 && connectIdx > firstPermIdx, 'site access requested before sign-in');
@@ -338,17 +345,53 @@ test('popup: "Connect this workspace" is one click: site access in the gesture, 
   env.close();
 });
 
-test('popup: first connect shows the one-time client ID setup with the redirect URL, then connects', async () => {
-  let calls = 0;
+test('popup: when quick sign-in is blocked, the token box opens; a pasted token connects and is never shown', async () => {
+  const TOKEN = 'dapi' + 'cafe'.repeat(8);
   const sw = popupWorker({
     hooks: {
-      'connect:oneClick': async (msg) => (++calls === 1 ? ok({ needsClientId: true, redirectUrl: 'https://testextensionid.chromiumapp.org/' }) : ok({ connected: true, origin: A, workspaceId: '42', warehouseName: null })),
+      'connect:oneClick': async (msg) => (msg.method === 'pat'
+        ? ok({ connected: true, method: 'pat', origin: A, workspaceId: '42', warehouseName: 'Starter' })
+        : { ok: false, error: { code: 'BUILTIN_SIGNIN_BLOCKED', title: 'This Databricks account does not allow quick sign-in', steps: ['Use a personal access token instead.'] } }),
       'connect:status': async () => ok(null),
     },
   });
   const env = openPage('popup', { onMessage: sw.fn, tabs: [{ id: 7, url: A + '/jobs?o=42' }], granted: [A + '/*'] });
   await env.window.DCC.popupPage.ready;
   env.$('connect-btn').click();
+  await settle();
+  assert.match(env.text('page-alert'), /does not allow quick sign-in/);
+  assert.equal(env.$('oauth-setup').hidden, false, 'the other ways open');
+  assert.equal(env.document.activeElement, env.$('pat-input'), 'focus lands on the token box');
+  env.$('token-create').click();
+  await settle();
+  assert.equal(env.events.filter((e) => e.kind === 'tab').at(-1).url, A + '/settings/user/developer/access-tokens');
+  env.$('pat-input').value = 'short';
+  env.$('pat-connect').click();
+  await settle();
+  assert.match(env.text('page-alert'), /whole access token/);
+  assert.equal(env.messages.filter((m) => m.method === 'pat').length, 0, 'nothing sent for a malformed token');
+  env.$('pat-input').value = '  ' + TOKEN + '  ';
+  env.$('pat-remember').checked = true;
+  env.$('pat-connect').click();
+  await settle();
+  assert.deepEqual(env.messages.filter((m) => m.type === 'connect:oneClick').at(-1), { type: 'connect:oneClick', url: A + '/jobs?o=42', token: TOKEN, remember: true, method: 'pat' });
+  assert.match(env.text('tab-status'), /Connected · workspace 42 · Starter · access token/);
+  assert.equal(env.$('pat-input').value, '', 'the field is cleared');
+  assert.ok(!env.text().includes(TOKEN), 'the token never shows on the page');
+  env.close();
+});
+
+test('popup: a registered client ID still connects from the other ways, without asking for localhost', async () => {
+  const sw = popupWorker({
+    hooks: {
+      'connect:oneClick': async (msg) => (msg.clientId ? ok({ connected: true, origin: A, workspaceId: '42', warehouseName: null }) : ok({ needsChoice: true, needsClientId: true, redirectUrl: 'https://testextensionid.chromiumapp.org/' })),
+      'connect:status': async () => ok(null),
+      'connect:redirectUrl': async () => ok({ redirectUrl: 'https://testextensionid.chromiumapp.org/' }),
+    },
+  });
+  const env = openPage('popup', { onMessage: sw.fn, tabs: [{ id: 7, url: A + '/jobs?o=42' }], granted: [A + '/*'] });
+  await env.window.DCC.popupPage.ready;
+  env.$('signin-alt').click();
   await settle();
   assert.equal(env.$('oauth-setup').hidden, false);
   assert.equal(env.$('oauth-redirect').textContent, 'https://testextensionid.chromiumapp.org/');
@@ -364,7 +407,6 @@ test('popup: first connect shows the one-time client ID setup with the redirect 
   assert.deepEqual(env.perms.requests, [], 'already-granted access is not requested again');
   env.close();
 });
-
 test('popup: the local test workspace still hands off to Connection preferences (token sign-in)', async () => {
   const sw = popupWorker();
   const env = openPage('popup', { onMessage: sw.fn, tabs: [{ id: 7, url: 'http://127.0.0.1:8765/jobs?o=1234567890' }] });
@@ -895,23 +937,25 @@ test('options: Sign in with Databricks is the default; it requests access in the
     pending: { origin: A, workspaceId: '42', conflict: false },
     hooks: {
       'connect:redirectUrl': async () => ok({ redirectUrl: 'https://testextensionid.chromiumapp.org/' }),
-      'connect:oneClick': async () => (++n === 1 ? ok({ needsClientId: true, redirectUrl: 'https://testextensionid.chromiumapp.org/' }) : ok({ connected: true, origin: A, workspaceId: '42', warehouseName: 'Starter' })),
+      'connect:oneClick': async () => (++n, ok({ connected: true, origin: A, workspaceId: '42', warehouseName: 'Starter' })),
     },
   });
   assert.equal(env.document.querySelector('input[name="auth"]:checked').value, 'oauth');
   assert.equal(env.$('auth-oauth').hidden, false);
   assert.equal(env.$('auth-helper').hidden, true, 'the CLI-based helper is not shown unless chosen');
+  assert.equal(env.$('oauth-setup-opt').open, false, 'no admin setup up front');
   env.$('oauth-signin').click();
-  await settle();
-  assert.deepEqual(env.perms.requests.at(-1), { origins: [A + '/*'] });
-  assert.equal(env.$('oauth-setup-opt').open, true, 'first time: the one-time setup opens');
-  assert.equal(env.$('oauth-redirect-opt').textContent, 'https://testextensionid.chromiumapp.org/');
+  await settle(60);
+  assert.deepEqual(env.perms.requests.at(-1), { origins: [A + '/*', 'http://localhost:8020/*'] }, 'built-in sign-in: workspace and redirect in one prompt');
+  assert.equal(env.sent('connect:oneClick').at(-1).clientId, undefined);
+  assert.match(env.text('oauth-result'), /Connected/);
+  // With the organization's app connection, only the workspace is asked for.
+  env.$('oauth-setup-opt').open = true;
   env.$('oauth-client-id-opt').value = 'lakeline-client-0001';
   env.$('oauth-signin').click();
   await settle(60);
-  const last = env.sent('connect:oneClick').at(-1);
-  assert.equal(last.clientId, 'lakeline-client-0001');
-  assert.match(env.text('oauth-result'), /Connected/);
+  assert.equal(env.sent('connect:oneClick').at(-1).clientId, 'lakeline-client-0001');
+  assert.equal(n, 2);
   env.close();
 });
 
@@ -987,7 +1031,7 @@ test('popup: the store build (flags.sessionLogin false) removes "Use my Databric
   env.$('connect-btn').click();
   await settle();
   assert.equal(env.$('oauth-setup').hidden, false, 'the chooser still opens');
-  assert.ok(env.$('use-token'), 'token and client ID choices remain');
+  assert.ok(env.$('pat-input') && env.$('oauth-client-id'), 'token and client ID choices remain');
   env.$('oauth-client-id').value = 'lakeline-client-0001';
   env.$('oauth-save-connect').click();
   await settle();

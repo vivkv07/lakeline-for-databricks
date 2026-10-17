@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Lakeline for Databricks",
   "short_name": "Lakeline",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Databricks cost estimates, run monitoring and a Genie side panel. Independent project; not affiliated with Databricks, Inc.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxd60Off8uax8ofTQhWVjEL5Y5NcWPJ8ClFHKnPc9teiYqITLzXgHZrm1tPmnDEUFXew7IgBcsFzct+qRli7n+TOMEz43pB+QzNGjZrL0pzpVWgbWtLWdfNwKDgL+2QzO8y6RYFSZup9mdUP+Fz3TP3bQ4NZw4BHKik9cCpnFAtKfrsFlPJ343WAXHAL75fPS2z0X+6DP+d89C1iXy86cRfWDh0df9V/JQCmAQ3uhe+rg/G08KlEc/m5v45y5CtdfFc3A07rsSZztZlbufuXctdDDaX1Njujjl1ZW9Ef1nuVjv6t2UMyrGblfRTl3m13jiBDqhtGqX3lXgIM6QCkd0wIDAQAB",
   "minimum_chrome_version": "116",
@@ -27,6 +27,7 @@
     "https://*.cloud.databricks.com/*",
     "https://*.azuredatabricks.net/*",
     "https://*.gcp.databricks.com/*",
+    "http://localhost:8020/*",
     "http://127.0.0.1:8765/*"
   ],
   "background": {

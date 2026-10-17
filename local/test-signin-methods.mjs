@@ -111,7 +111,7 @@ const storeMod = load('background/store.js');
 const dataService = load('background/data-service.js');
 const helperClient = load('background/helper-client.js');
 
-async function sessionConnectEnv(reply) {
+async function sessionConnectEnv(reply, oauth = null) {
   globalThis.DCC = {};
   const map = { 'core/validate.js': 'validate', 'core/ids.js': 'ids', 'errors.js': 'errors', 'databricks/pricing.js': 'pricing', 'databricks/warehouses.js': 'warehouses', 'background/registration.js': 'registration', 'background/oauth.js': 'oauth' };
   for (const [f, ns] of Object.entries(map)) globalThis.DCC[ns] = load(f);
@@ -135,7 +135,7 @@ async function sessionConnectEnv(reply) {
   const store = storeMod.create(fakeArea());
   await store.migrate();
   const data = dataService.create({ store, secrets: secretsMod.create(fakeArea()), helper: helperClient.create({ fetch: async () => { throw new Error('no'); }, getBridge: async () => null }), sessionTransport: transportMod.create({ chromeApi: chrome }), fetch: async () => { throw new Error('direct fetch must not be used in browser-login mode'); } });
-  const handlers = globalThis.DCC.handlerFactories.at(-1)({ store, data, chromeApi: chrome, oauth: null });
+  const handlers = globalThis.DCC.handlerFactories.at(-1)({ store, data, chromeApi: chrome, oauth });
   return { handlers, store, sent, injected, registered };
 }
 
@@ -156,11 +156,13 @@ test('connect with my Databricks login reports a refusing workspace instead of c
   assert.equal(await env.store.getConnection(ORIGIN), null, 'nothing saved');
 });
 
-test('no method and no client ID asks the user to choose instead of failing', async () => {
-  const env = await sessionConnectEnv({});
-  const out = await env.handlers['connect:oneClick'].handle({ url: ORIGIN + '/jobs' });
-  assert.equal(out.needsChoice, true);
-  assert.equal(env.sent.length, 0);
+test('no method and no client ID signs in with Databricks through the built-in client, never the browser login', async () => {
+  const signIns = [];
+  const oauth = { signIn: async (a) => { signIns.push(a); throw new globalThis.DCC.errors.DccError({ code: 'AUTH_CANCELLED', message: 'closed' }); } };
+  const env = await sessionConnectEnv({}, oauth);
+  await assert.rejects(env.handlers['connect:oneClick'].handle({ url: ORIGIN + '/jobs' }), (e) => e.dcc.code === 'AUTH_CANCELLED');
+  assert.deepEqual(signIns.map((a) => [a.clientId, a.purpose, a.interactive]), [['databricks-cli', 'cost', true]]);
+  assert.equal(env.sent.length, 0, 'nothing went through the open tab');
 });
 
 test('Genie over browser login: only requests tagged with the Genie scope reach Genie paths', async () => {

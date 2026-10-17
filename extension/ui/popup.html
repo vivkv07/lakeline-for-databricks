@@ -40,17 +40,28 @@
     </div>
     <div id="genie-status" class="pp-alert-slot" role="status"></div>
 
-    <!-- Sign-in chooser: shown only when Databricks sign-in isn't set up yet (or on request). -->
+    <!-- Other ways to sign in: shown on request, or when quick sign-in is not available. -->
     <div id="oauth-setup" class="pp-chooser" role="group" aria-labelledby="oauth-setup-title" hidden>
-      <p class="dcc-section-title" id="oauth-setup-title">Choose how to sign in</p>
+      <p class="dcc-section-title" id="oauth-setup-title">Other ways to sign in</p>
+
+      <div class="pp-choice" id="token-choice">
+        <p class="pp-choice-title">Use a personal access token</p>
+        <p class="pp-choice-desc">No admin needed. <button type="button" class="dcc-link pp-inline-link" id="token-create">Create a token in Databricks</button>, then paste it here.</p>
+        <label class="pp-label" for="pat-input">Access token</label>
+        <input type="password" class="dcc-input dcc-input--mono" id="pat-input" autocomplete="off" spellcheck="false" placeholder="dapi…">
+        <label class="pp-check" for="pat-remember"><input type="checkbox" id="pat-remember"> Remember on this computer</label>
+        <div class="pp-choice-actions">
+          <button type="button" class="dcc-btn dcc-btn--primary" id="pat-connect">Connect with token</button>
+        </div>
+      </div>
 
       <div class="pp-choice">
-        <p class="pp-choice-title">Sign in with Databricks <span class="pp-tag">Recommended</span></p>
-        <p class="pp-choice-desc">Paste the client ID your account admin registered. One setup covers every workspace in the account.</p>
+        <p class="pp-choice-title">Use your organization's app connection</p>
+        <p class="pp-choice-desc">If an account admin registered Lakeline, paste its client ID. One setup covers every workspace in the account.</p>
         <label class="pp-label" for="oauth-client-id">OAuth client ID</label>
         <input type="text" class="dcc-input dcc-input--mono" id="oauth-client-id" autocomplete="off" spellcheck="false" placeholder="From App connections">
         <div class="pp-choice-actions">
-          <button type="button" class="dcc-btn dcc-btn--primary" id="oauth-save-connect">Save and connect</button>
+          <button type="button" class="dcc-btn" id="oauth-save-connect">Save and connect</button>
         </div>
         <details class="pp-setup" id="oauth-admin">
           <summary>Admin setup, one time</summary>
@@ -62,11 +73,6 @@
           </ol>
           <button type="button" class="dcc-link pp-small-link" id="oauth-guide">Step-by-step guide</button>
         </details>
-      </div>
-
-      <div class="pp-choice">
-        <button type="button" class="pp-choice-btn" id="use-token" aria-describedby="use-token-desc">Use a token</button>
-        <p class="pp-choice-desc" id="use-token-desc">Paste a personal access token in Connection preferences.</p>
       </div>
 
       <div class="pp-choice" data-feature="session-login">
