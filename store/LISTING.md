@@ -54,9 +54,29 @@ Sign in
 
 Lakeline is an independent project and is not affiliated with, endorsed by or sponsored by Databricks, Inc. Databricks and Genie are trademarks of Databricks, Inc.
 
-**Screenshots:** 1280×800 PNG in `store/assets/` (Demo mode, synthetic data only).
-**Small promo tile:** 440×280 PNG in `store/assets/`.
-**Icon:** `extension/icons/icon-128.png`.
+**Graphic assets** (all in `store/assets/`, 24-bit PNG without alpha, as the store requires)
+
+The store takes up to five screenshots. Upload these five, in this order:
+1. `screenshot-light-1.png`: Cost banner, "Your Databricks spend, right where you work."
+2. `screenshot-dark-1.png`: Ask Genie in the side panel, with an answer and a bar chart.
+3. `screenshot-light-2.png`: Every job run priced; the Oct 9 backfill spike stands out.
+4. `screenshot-dark-4.png`: Run monitor floating over the workspace, with a failed run.
+5. `screenshot-light-5.png`: Workspace colors for dev, stage and prod.
+
+Alternates, if you would rather show these features:
+- `screenshot-light-3.png`: Warehouse size picker.
+- `screenshot-light-4.png`: Cost Explorer, top drivers.
+- `screenshot-dark-2.png`: Copy a Genie answer into a doc.
+- `screenshot-dark-3.png`: Calendar spike.
+- `screenshot-dark-5.png`: Security and privacy.
+
+Other assets:
+- **Small promo tile:** `promo-small-440x280.png`.
+- **Marquee promo tile** (optional, used if the store features the extension): `promo-marquee-1400x560.png`.
+- **Icon:** `extension/icons/icon-128.png`.
+- **Promo video** (optional): upload `dist/video/lakeline-launch-1080p.mp4` to YouTube and paste its URL.
+
+Every screenshot is a real capture of the extension, driven against the synthetic "Northpeak Retail" fixture workspace, so no real customer data appears. To rebuild the images, run `npm run store:assets` (it reads the captures from `npm run video:capture`).
 
 **Official URL / Homepage:** [GitHub repository or GitHub Pages URL]
 **Support URL:** [GitHub issues URL]

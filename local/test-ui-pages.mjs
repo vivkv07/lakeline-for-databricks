@@ -927,6 +927,7 @@ test('popup: one primary action: Connect until this tab is connected, then Ask G
   assert.equal(env.$('genie-open').closest('#ws-actions') !== null, true, 'Ask Genie stays visible as a secondary button');
   assert.equal(env.$('signin-alt').hidden, false, 'alternatives are offered on a workspace tab');
   assert.equal(env.$('mode-summary').getAttribute('data-state'), 'warn', 'connected mode with no workspace needs attention');
+  assert.match(env.text('mode-summary'), /^Not connected · 30 days$/, 'a fresh install never claims to be connected');
   env.close();
 
   const sw2 = popupWorker({ connections: { [A]: savedConn(A, { authMode: 'oauth' }) } });

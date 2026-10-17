@@ -405,7 +405,9 @@
     const parts = [MODE_NAMES[s.mode] || 'Mode unknown'];
     if (s.mode === 'connected') {
       const n = Object.keys(connections()).length;
-      parts.push(n === 1 ? '1 workspace' : n + ' workspaces');
+      // A fresh install starts in connected mode with nothing connected yet; say so plainly.
+      if (n === 0) parts[0] = 'Not connected';
+      else parts.push(n === 1 ? '1 workspace' : n + ' workspaces');
     }
     if (V.isPeriodDays(s.periodDays)) parts.push(s.periodDays + ' days');
     if (s.showCosts === false) parts.push('Paused');

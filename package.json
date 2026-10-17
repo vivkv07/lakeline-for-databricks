@@ -15,7 +15,8 @@
     "package": "node scripts/package.mjs",
     "video:capture": "node local/video/capture.mjs",
     "video:music": "node video/music/compose.mjs",
-    "video:render": "node video/composer/render.mjs"
+    "video:render": "node video/composer/render.mjs",
+    "store:assets": "node store/assets/build.mjs"
   },
   "devDependencies": {
     "@duckdb/node-api": "^1.5.6-r.1",
