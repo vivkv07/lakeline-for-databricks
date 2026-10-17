@@ -8,7 +8,7 @@ import { createContentEnv, settle } from './support/content-harness.mjs';
 const transportMod = load('background/session-transport.js');
 const secretsMod = load('background/secrets.js');
 const http = load('databricks/http.js');
-const ORIGIN = 'https://dbc-66f420e5-6b1d.cloud.databricks.com';
+const ORIGIN = 'https://dbc-4f2a91c7-0e3b.cloud.databricks.com';
 const EXT = 'testextensionid';
 
 function chromeWithTab(reply, tabs = [{ id: 3, active: true, status: 'complete' }]) {
