@@ -94,7 +94,9 @@ describe('browser e2e: Genie side panel in real Chromium against the SIMULATED f
   async function launch(variant, dir) {
     const profile = fs.mkdtempSync(path.join(tmp, 'profile-'));
     const opts = { headless: true, viewport: { width: 1280, height: 900 }, colorScheme: 'light', args: ['--disable-extensions-except=' + dir, '--load-extension=' + dir] };
-    if (variant === 'chromium') opts.channel = 'chromium';
+    // E2E_CHANNEL=msedge (npm run test:edge) runs the same suite in an installed Microsoft Edge.
+    if (process.env.E2E_CHANNEL) opts.channel = process.env.E2E_CHANNEL;
+    else if (variant === 'chromium') opts.channel = 'chromium';
     const c = await chromium.launchPersistentContext(profile, opts);
     let worker = c.serviceWorkers().find((w) => w.url().startsWith('chrome-extension://'));
     if (!worker) worker = await c.waitForEvent('serviceworker', { timeout: variant === 'chromium' ? 20000 : 8000 }).catch(() => null);

@@ -207,7 +207,9 @@ describe('browser e2e: real Chromium + extension against the SIMULATED fixture b
       colorScheme: 'light',
       args: ['--disable-extensions-except=' + path.join(tmp, 'ext'), '--load-extension=' + path.join(tmp, 'ext')],
     };
-    if (variant === 'chromium') opts.channel = 'chromium';
+    // E2E_CHANNEL=msedge (npm run test:edge) runs the same suite in an installed Microsoft Edge.
+    if (process.env.E2E_CHANNEL) opts.channel = process.env.E2E_CHANNEL;
+    else if (variant === 'chromium') opts.channel = 'chromium';
     const c = await chromium.launchPersistentContext(profile, opts);
     let sw = c.serviceWorkers().find((w) => w.url().startsWith('chrome-extension://'));
     // The default headless build (headless shell) may not load extensions; that attempt gives up fast.
@@ -262,7 +264,7 @@ describe('browser e2e: real Chromium + extension against the SIMULATED fixture b
     ctx = got.c;
     extId = new URL(got.sw.url()).host;
     const ua = await got.sw.evaluate(() => navigator.userAgent).catch(() => '');
-    notes.push('launch: ' + launchVariant + '; ' + ((/(HeadlessChrome|Chrome)\/[\d.]+/.exec(ua) || ['unknown browser'])[0]));
+    notes.push('launch: ' + (process.env.E2E_CHANNEL ? "channel '" + process.env.E2E_CHANNEL + "'" : launchVariant) + '; ' + ((/Edg\/[\d.]+/.exec(ua) || /(HeadlessChrome|Chrome)\/[\d.]+/.exec(ua) || ['unknown browser'])[0]));
   });
 
   after(async () => {

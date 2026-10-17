@@ -97,6 +97,10 @@ Lakeline is in review on the Chrome Web Store. Until it is listed, load it unpac
 2. Turn on **Developer mode**.
 3. Click **Load unpacked** and select the `extension/` folder.
 
+Once Lakeline is listed on the Chrome Web Store, Edge users can install it from there too: open the
+listing in Edge, select **Allow extensions from other stores**, then **Get**. Ask Genie opens in
+Edge's sidebar, and the run monitor's Float on top works the same as in Chrome.
+
 Pin the toolbar icon so the popup is one click away.
 
 **Stable extension ID.** `manifest.json` carries the Chrome Web Store item's public `key`, so an
@@ -379,6 +383,8 @@ npm test            # node --test local/test-*.mjs
 - `npm run test:browser` runs the disposable-profile browser tests (Playwright) one file at a
   time, because each starts the fixture on port 8765. `local/browser/test-genie-e2e.mjs` drives the
   Genie panel page in a tab against the fixture's simulated Genie API.
+- `npm run test:edge` runs the same browser tests in an installed Microsoft Edge (Playwright
+  channel `msedge`). Last run: Edge 155, 24 of 24 passed.
 - Live SQL against a real workspace is never part of the automated tests.
 - `npm run package` builds a sanitized ZIP in `dist/` from an explicit allowlist. It refuses files
   that look like tokens, keys, CLI config or real workspace hosts.
