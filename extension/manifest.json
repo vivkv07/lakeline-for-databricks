@@ -4,7 +4,7 @@
   "short_name": "Lakeline",
   "version": "0.1.0",
   "description": "Databricks cost estimates, run monitoring and a Genie side panel. Independent project; not affiliated with Databricks, Inc.",
-  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtu2uY9w62r0J+1KgQUUhpAHSHRQ3gI6rYneqby8wx5cSo5FRolBJZIpqier8Vi6d9pFhQywTLIes1PNhG8vxh7iYtMRHmhxIXa4l76ZINWT2+wgzR2WPXl7bBfPny5DggrI+pprUep9pgOgnqc28PoBaSKujAg8YNHfE3fSmPb9MK98VKzO0+JQTq8r4RCbyVWlsNOGLG8/ctowrrWLY8YPzj/9xv3lKjekkeQHqZRFx6EItJT4c79JQs5ELtGyJ2eqsALyK2Xb1IjZZtJN80+wqcdZunj196EhxVg+KTl3fR5nD4hFElaSxe6fuisstIv9ctE6VrSr9BA/SDQLfoQIDAQAB",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxd60Off8uax8ofTQhWVjEL5Y5NcWPJ8ClFHKnPc9teiYqITLzXgHZrm1tPmnDEUFXew7IgBcsFzct+qRli7n+TOMEz43pB+QzNGjZrL0pzpVWgbWtLWdfNwKDgL+2QzO8y6RYFSZup9mdUP+Fz3TP3bQ4NZw4BHKik9cCpnFAtKfrsFlPJ343WAXHAL75fPS2z0X+6DP+d89C1iXy86cRfWDh0df9V/JQCmAQ3uhe+rg/G08KlEc/m5v45y5CtdfFc3A07rsSZztZlbufuXctdDDaX1Njujjl1ZW9Ef1nuVjv6t2UMyrGblfRTl3m13jiBDqhtGqX3lXgIM6QCkd0wIDAQAB",
   "minimum_chrome_version": "116",
   "icons": {
     "16": "icons/icon-16.png",

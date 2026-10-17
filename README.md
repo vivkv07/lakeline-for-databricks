@@ -98,9 +98,11 @@ The extension isn't published in a store. Load it unpacked:
 
 Pin the toolbar icon so the popup is one click away.
 
-**Stable extension ID.** `manifest.json` carries a public `key`, so the extension always loads with
-the same ID: `jfhjmnhnmkgknkjhmchcjddonpngcgna`. The ID is also stored in `extension/EXTENSION_ID`.
-The local helper accepts requests only from this extension ID, so keep the `key` in the manifest.
+**Stable extension ID.** `manifest.json` carries the Chrome Web Store item's public `key`, so an
+unpacked copy loads with the same ID as the store release: `gcadffgngihfjameoafjagofiompdngo`. The ID
+is also stored in `extension/EXTENSION_ID`. The local helper accepts requests only from this
+extension ID, so keep the `key` in the manifest. Remove an unpacked copy before you install the
+store release, because both use the same ID.
 
 The extension asks for no site access at install. It requests access for one workspace at a time,
 when you connect it or save a color for it.

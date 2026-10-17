@@ -9,7 +9,7 @@
   'use strict';
 
   // Public identifier of the unpacked extension (stable via the manifest `key`). Not a secret.
-  var EXTENSION_ID = 'jfhjmnhnmkgknkjhmchcjddonpngcgna';
+  var EXTENSION_ID = 'gcadffgngihfjameoafjagofiompdngo';
   var KEY_RE = /^#k=([0-9a-f]{24})$/;
   var PAIR_TIMEOUT_MS = 20000;
 
