@@ -1,7 +1,8 @@
 # Chrome Web Store listing: Lakeline for Databricks
 
-Copy each block into the matching field of the Chrome Web Store developer dashboard. Placeholders
-in square brackets need your input before you submit.
+Copy each block into the matching field of the Chrome Web Store developer dashboard. The files to
+upload are gathered in `dist/store-upload/` (the ZIP, the store icon, screenshots 1 to 5 in upload
+order, and both promo tiles).
 
 Build the upload ZIP with `node scripts/package.mjs --store`. It writes
 `dist/lakeline-for-databricks-store-<version>.zip`, with `manifest.json` at the root, no
