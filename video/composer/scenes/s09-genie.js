@@ -184,7 +184,8 @@ export default function build(ctx, { n, t0, t1 }) {
   const steps = { labels: ['Ask', 'Keep working', 'Answer ready', 'Paste into doc', 'Switch agent', 'Switch workspace'], times: [t0, at.video, at.answer, at.doc, at.agent, at.prodTab] };
   sc.caps.add({ t0: L(0.3), t1: L(11.8), head: 'Ask Genie, then watch a video or get other work done.', steps });
   sc.caps.add({ t0: L(12.2), t1: L(18.9), head: 'Your answer is waiting in the side panel.', steps });
-  sc.caps.add({ t0: L(20.6), t1: L(27.3), head: 'Copy answers straight into your doc.', steps });
-  sc.caps.add({ t0: L(27.5), t1: t1 - 0.05, head: 'Switch workspaces and Genie Agents without leaving your work.', steps });
+  sc.caps.add({ t0: L(20.6), t1: at.agent - 0.2, head: 'Copy answers straight into your doc.', steps });
+  // Enters with the agent switch itself, so it never describes an action before it happens.
+  sc.caps.add({ t0: at.agent, t1: t1 - 0.05, head: 'Switch workspaces and Genie Agents without leaving your work.', steps });
   return sc;
 }
