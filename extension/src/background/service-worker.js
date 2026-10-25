@@ -26,6 +26,7 @@ importScripts(
   '../databricks/queries/explore.js',
   '../databricks/queries/index.js',
   './sender.js',
+  './idb-area.js',
   './secrets.js',
   './store.js',
   './cache.js',
@@ -50,7 +51,10 @@ const HELPER_PORT = 8766;
 const EXTENSION_ORIGIN = 'chrome-extension://' + chrome.runtime.id;
 
 const store = DCC.store.create(chrome.storage.local);
-const secrets = DCC.secrets.create(chrome.storage.session, chrome.storage.local);
+// Remembered tokens live in the extension's own IndexedDB, never in chrome.storage.local, which
+// content scripts can read. Older versions' tokens are moved over at startup.
+const secrets = DCC.secrets.create(chrome.storage.session, DCC.idbArea.create(), { legacyArea: chrome.storage.local });
+secrets.migrate().catch(() => {});
 const fetchImpl = (...args) => fetch(...args);
 const helperFactory = (o) => DCC.helperClient.create({ fetch: fetchImpl, getBridge: o.getBridge });
 const helper = helperFactory({ getBridge: () => secrets.getBridge() });

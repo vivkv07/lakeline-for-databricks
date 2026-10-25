@@ -22,7 +22,15 @@ aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   registers a message type twice, stops the router at startup instead of running unchecked.
 - Error redaction now runs before the 2000-character cut, so no token prefix survives, and it catches
   tokens glued to other text.
+- Tokens saved with "Remember on this computer" now live in the extension's own IndexedDB, which
+  content scripts can't open, instead of `chrome.storage.local`. Tokens remembered by 0.1.1 move
+  over automatically on first start, and the old key is deleted.
 - Review notes and open items: `notes/SECURITY-REVIEW.md`.
+
+### Fixed
+
+- The browser test for the run monitor no longer depends on the time of day. The fixture adds a
+  failed manual re-run three hours before now, which is always inside the monitor's 24-hour window.
 
 ## [0.1.1] (2026-10-16)
 

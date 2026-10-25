@@ -338,6 +338,33 @@ describe('browser e2e: real Chromium + extension against the SIMULATED fixture b
     assert.equal(statements().length, 0);
   });
 
+  it('Remember on this computer keeps the token in the extension\'s IndexedDB, never in chrome.storage.local', { timeout: 30000 }, async () => {
+    const { FIXTURE_TOKEN } = await import('../fixture-server.mjs');
+    assert.deepEqual(await sendOk({ type: 'admin:setPat', origin: ORIGIN, token: FIXTURE_TOKEN, remember: true }), { saved: true });
+    const localKeys = await opt.evaluate(async () => Object.keys(await chrome.storage.local.get(null)));
+    assert.deepEqual(localKeys.filter((k) => k.startsWith('dcc.secrets')), [], 'content scripts can read storage.local, so no secret goes there');
+    // The extension origin's IndexedDB (shared by the service worker and extension pages).
+    const stored = await opt.evaluate(
+      ({ origin, token }) =>
+        new Promise((resolve, reject) => {
+          const req = indexedDB.open('lakeline-secrets');
+          req.onerror = () => reject(req.error);
+          req.onsuccess = () => {
+            const get = req.result.transaction('kv').objectStore('kv').get('dcc.secrets.patRemembered');
+            get.onsuccess = () => resolve({ found: Boolean(get.result), matches: Boolean(get.result) && get.result[origin] === token });
+            get.onerror = () => reject(get.error);
+          };
+        }),
+      { origin: ORIGIN, token: FIXTURE_TOKEN }
+    );
+    assert.deepEqual(stored, { found: true, matches: true });
+    const state = await sendOk({ type: 'page:state' });
+    assert.equal(state.connections[ORIGIN].secrets.patRemembered, true);
+    // Back to a session-only token so the rest of the suite runs as before.
+    await sendOk({ type: 'admin:setPat', origin: ORIGIN, token: FIXTURE_TOKEN, remember: false });
+    assert.equal((await sendOk({ type: 'page:state' })).connections[ORIGIN].secrets.patRemembered, false);
+  });
+
   it('jobs page: one banner, first child of main, connected 30d priced subtotal equals the expected amount', { timeout: SQL_WAIT + 30000 }, async () => {
     page = await ctx.newPage();
     await page.goto(ORIGIN + '/jobs' + O);
@@ -565,12 +592,13 @@ describe('browser e2e: real Chromium + extension against the SIMULATED fixture b
       return r.ok && r.data.state && r.data.state.status === 'ok' ? r.data : null;
     }, { timeout: 40000, interval: 1500, label: 'monitor state ok' });
     const runsJson = JSON.stringify(st.state.runs);
-    const failedRunId = fx.templateValues.JOB_102_RUN_D1;
-    assert.ok(runsJson.includes(failedRunId), 'yesterday\'s failed job 102 run is listed');
+    // Job 101's failed re-run, three hours before now: inside the 24-hour window at any time of day.
+    const failedRunId = String(fixtureData.RECENT_FAILED_RUN_ID);
+    assert.ok(runsJson.includes(failedRunId), 'the recent failed run is listed');
     assert.ok(/"outcome":"failed"/.test(runsJson), 'a run with outcome failed');
     assert.ok(api.some((r) => r.method === 'GET' && r.path === '/api/2.2/jobs/runs/list'), 'monitor used the runs REST API');
     await mon.reload();
-    await poll(async () => (await mon.locator('#runs a[href*="/jobs/102/runs/' + failedRunId + '"]').count()) >= 1, { timeout: 20000, label: 'failed run link rendered in #runs' });
+    await poll(async () => (await mon.locator('#runs a[href*="/jobs/101/runs/' + failedRunId + '"]').count()) >= 1, { timeout: 20000, label: 'failed run link rendered in #runs' });
     assert.ok((await mon.locator('#runs a[href^="' + ORIGIN + '/jobs/"]').count()) >= 3, 'several run links');
     await shot(mon, '10-monitor-light');
     await mon.emulateMedia({ colorScheme: 'dark' });

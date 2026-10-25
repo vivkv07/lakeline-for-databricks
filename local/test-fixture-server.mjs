@@ -8,7 +8,7 @@ import net from 'node:net';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { startFixtureServer, FIXTURE_TOKEN, FIXTURE_ORIGIN, mapEngineError } from './fixture-server.mjs';
-import { buildDataset, monitorSnapshot, LIST_PRICES, JOBS_PRICE_AFTER_CHANGE, PRICE_CHANGE_DAYS_AGO, UNPRICED_SKU, SENTINEL_SQL_TEXT as DATA_SENTINEL, WAREHOUSES, PIPELINES } from './fixture-data.mjs';
+import { buildDataset, monitorSnapshot, RECENT_FAILED_RUN_ID, LIST_PRICES, JOBS_PRICE_AFTER_CHANGE, PRICE_CHANGE_DAYS_AGO, UNPRICED_SKU, SENTINEL_SQL_TEXT as DATA_SENTINEL, WAREHOUSES, PIPELINES } from './fixture-data.mjs';
 import { SENTINEL_SQL_TEXT } from './support/sqlengine.mjs';
 import { fixtureTemplateValues, renderFixtureTemplate, legacyFragment, escapeHtml, LEGACY_TEMPLATE_VALUES, TEMPLATE_PLACEHOLDER, NON_WAREHOUSE_STATEMENT_INDEX, queryHistoryDaysAgo } from './fixture-data.mjs';
 import { startHelper, readExtensionId, FIXTURE_TOKEN as HELPER_FIXTURE_TOKEN } from './server.mjs';
@@ -254,11 +254,19 @@ test('monitor REST data: runs (limit ≤ 25, active/failed), pipelines, clusters
   const clusters = await client.get('/api/2.1/clusters/list');
   assert.ok(clusters.clusters.some((c) => c.state === 'RUNNING'));
   assert.ok(clusters.clusters.some((c) => c.termination_reason && c.termination_reason.type === 'CLOUD_FAILURE'));
-  // The failed REST run is the same run the lakeflow table marks FAILED.
+  // Yesterday's failed job 102 run is the same run the lakeflow table marks FAILED.
   const snap = monitorSnapshot(NOW);
-  const failedRest = snap.runs.find((r) => r.state.result_state === 'FAILED');
-  const failedLake = buildDataset({ nowMs: NOW }).tables['lakeflow.job_run_timeline'].find((r) => r.result_state === 'FAILED');
+  const failedRest = snap.runs.find((r) => r.job_id === 102 && r.state.result_state === 'FAILED');
+  const lake = buildDataset({ nowMs: NOW }).tables['lakeflow.job_run_timeline'];
+  const failedLake = lake.find((r) => r.result_state === 'FAILED');
   assert.equal(String(failedRest.run_id), failedLake.run_id);
+  // The recent failed re-run is in the Jobs API only, three hours before now, whatever the clock.
+  for (const at of [NOW, Date.parse('2026-10-15T00:30:00Z'), Date.parse('2026-10-15T23:30:00Z')]) {
+    const recent = monitorSnapshot(at).runs.find((r) => r.run_id === RECENT_FAILED_RUN_ID);
+    assert.equal(recent.state.result_state, 'FAILED');
+    assert.equal(recent.start_time, at - 3 * 3600e3);
+  }
+  assert.ok(!lake.some((r) => r.run_id === String(RECENT_FAILED_RUN_ID)), 'not in the lagging system tables');
 });
 
 test('helper started with --fixture semantics runs summary against the DuckDB fixture with the fake token', async () => {
