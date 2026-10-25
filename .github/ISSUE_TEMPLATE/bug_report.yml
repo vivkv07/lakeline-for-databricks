@@ -1,0 +1,53 @@
+name: Bug report
+description: Something in Lakeline doesn't work as expected.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Please don't paste tokens, real workspace URLs or customer data.
+        For a security problem, use private reporting instead (see SECURITY.md).
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what you saw instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open the popup on a workspace tab
+        2. ...
+  - type: input
+    id: version
+    attributes:
+      label: Lakeline version
+      description: From chrome://extensions or edge://extensions.
+    validations:
+      required: true
+  - type: dropdown
+    id: browser
+    attributes:
+      label: Browser
+      options: [Chrome, Edge, Other Chromium browser]
+    validations:
+      required: true
+  - type: dropdown
+    id: cloud
+    attributes:
+      label: Databricks cloud
+      options: [AWS, Azure, GCP, Demo mode or local fixture, Not sure]
+  - type: dropdown
+    id: signin
+    attributes:
+      label: Sign-in method
+      options: [Sign in with Databricks, Personal access token, Organization app connection, Local helper, Demo mode]
+  - type: textarea
+    id: errors
+    attributes:
+      label: Error details
+      description: The error title and code Lakeline shows (popup, More, Diagnostics). Remove anything sensitive first.
+      render: text

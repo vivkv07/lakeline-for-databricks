@@ -3,7 +3,16 @@
   "version": "0.1.1",
   "private": true,
   "description": "Chrome/Edge MV3 extension that shows estimated Databricks costs inside the workspace.",
-  "license": "UNLICENSED",
+  "license": "Apache-2.0",
+  "author": "Vivek Kovvuru",
+  "homepage": "https://vivkv07.github.io/lakeline-for-databricks/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vivkv07/lakeline-for-databricks.git"
+  },
+  "bugs": {
+    "url": "https://github.com/vivkv07/lakeline-for-databricks/issues"
+  },
   "engines": {
     "node": ">=20"
   },

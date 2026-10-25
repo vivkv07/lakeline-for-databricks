@@ -10,7 +10,10 @@ Explorer, workspace top-bar colors, and an optional run monitor.
 > This is an independent project. It is not affiliated with, endorsed by, or sponsored by
 > Databricks, Inc. Databricks and related marks are trademarks of Databricks, Inc.
 
-Status: version 0.1.0, unreleased. See [CHANGELOG.md](CHANGELOG.md).
+Created and maintained by **Vivek Kovvuru**. Open source under the
+[Apache License 2.0](LICENSE); contributions are welcome, see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+Status: version 0.1.1, in review on the Chrome Web Store. See [CHANGELOG.md](CHANGELOG.md).
 
 **How the numbers are calculated:** [`extension/docs/calculation-guide.html`](extension/docs/calculation-guide.html).
 The guide is also linked from the banner (**How costs work**), the popup and Connection preferences.
@@ -462,6 +465,8 @@ Also delete any `costs.json` you created and the `dist/` folder if you built a p
 
 ## Security model
 
+Found a vulnerability? Please report it privately, as described in [SECURITY.md](SECURITY.md).
+
 - **Optional per-site access.** Site access is requested per workspace origin through
   `optional_host_permissions`, for `*.cloud.databricks.com`, `*.azuredatabricks.net`,
   `*.gcp.databricks.com` and the local fixture. Content scripts are registered only for origins you
@@ -521,4 +526,11 @@ costs.example.json    synthetic import example
 
 ## License
 
-No license has been chosen yet. `package.json` says `UNLICENSED`.
+Copyright 2026 Vivek Kovvuru. Licensed under the [Apache License, Version 2.0](LICENSE). Copies and
+forks must keep the [NOTICE](NOTICE) file, which credits the original project.
+
+The license covers the code, not the name: "Lakeline" and its icon are trademarks of Vivek
+Kovvuru, so published forks need their own name and icon. See [TRADEMARKS.md](TRADEMARKS.md).
+
+Contributions are welcome under the same license, with a DCO sign-off on each commit. See
+[CONTRIBUTING.md](CONTRIBUTING.md).
