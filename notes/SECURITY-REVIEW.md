@@ -23,7 +23,7 @@ start sending pull requests.
 
 | ID | Severity | Finding | Status |
 |----|----------|---------|--------|
-| M1 | Medium | Remembered PATs are stored in `chrome.storage.local`, which content scripts can read and write | Open |
+| M1 | Medium | Remembered PATs are stored in `chrome.storage.local`, which content scripts can read and write | **Fixed** |
 | M2 | Medium | Router trust check failed open for unknown trust classes, and add-ons could replace handlers | **Fixed** |
 | L1 | Low | The built-in sign-in asks for `all-apis` even when the user only wants costs | Open |
 | L2 | Low | Redaction ran after truncation and missed tokens glued to other characters | **Fixed** |
@@ -43,7 +43,16 @@ fixture server).
 
 ## Medium
 
-### M1. Remembered PATs are readable (and writable) by content scripts. Open
+### M1. Remembered PATs are readable (and writable) by content scripts. **Fixed**
+
+**Fixed in PR #5.** Remembered tokens now live in the extension origin's IndexedDB
+(`extension/src/background/idb-area.js`), which content scripts can't open. Tokens remembered by
+0.1.1 are moved over once and the `chrome.storage.local` key is deleted (`secrets.js` `migrate()`,
+run at service-worker start and before any remembered-token read). Tests:
+`local/test-secrets-storage.mjs` (no `dcc.secrets.*` key ever written to `storage.local`,
+migration, retry) and a real-browser check in `local/browser/test-e2e.mjs`.
+
+Original finding:
 
 - `extension/src/background/secrets.js:15,28-39,40-49`: with "Remember on this computer", the PAT
   is written to `dcc.secrets.patRemembered` in `persistArea`.
@@ -324,6 +333,7 @@ mistakes and obvious changes, not a full parser.
     *yesterday*, but the monitor lists only the last 24 hours (`monitor-api.js:31`). The test can
     pass only between 00:00 and 06:00 UTC. It failed the same way on an untouched checkout of
     959bb0c at 17:58 UTC. Follow-up: make the failed run relative to `nowMs`, for example
-    `nowMs - 3 h`.
+    `nowMs - 3 h`. **Fixed in PR #5:** the fixture adds job 101's failed re-run at `nowMs - 3 h`
+    (Jobs API only, `RECENT_FAILED_RUN_ID`), and the test checks that run.
 - `node scripts/package.mjs --store`: builds. The store manifest's `connect-src` has no
   `127.0.0.1:8765`.

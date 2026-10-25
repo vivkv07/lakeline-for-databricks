@@ -107,7 +107,7 @@ Show estimated Databricks costs, job run status and Genie answers for the user's
 **Remote code:** No. All JavaScript is included in the package. No eval, and no code loaded from the network.
 
 **Data usage** (answer the checkboxes conservatively and add this note)
-- *Authentication information:* yes, handled. Databricks OAuth tokens or a personal access token are used only to call the user's own Databricks workspace. They are kept in session storage. A token is kept in local storage only if the user ticks "Remember on this computer". They are never sent to the developer or any third party.
+- *Authentication information:* yes, handled. Databricks OAuth tokens or a personal access token are used only to call the user's own Databricks workspace. They are kept in session storage. A token is kept on disk only if the user ticks "Remember on this computer", and then only in the extension's own IndexedDB, which content scripts and websites cannot open. They are never sent to the developer or any third party.
 - *Website content:* yes, handled. The extension reads Databricks page URLs and page structure to place cost badges, and it shows Databricks query results and Genie answers. This data stays in the browser and goes only to the user's own workspace.
 - Everything else: no. That covers personally identifiable information, health, financial and payment, personal communications, location, web history and user activity.
 - Certify all three: data is not sold to third parties; it is not used or transferred for purposes unrelated to the single purpose; it is not used to determine creditworthiness or for lending.
