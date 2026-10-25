@@ -44,6 +44,8 @@ const ALLOW = [
   ['README.md'],
   ['CHANGELOG.md'],
   ['package.json'],
+  ['LICENSE'],
+  ['NOTICE'],
 ];
 
 /** Anything matching these must never be in the archive, even if an allowlisted dir contains it. */
@@ -165,6 +167,8 @@ function storeEntries() {
     }
     out.push({ name, data });
   }
+  // Apache-2.0 section 4: ship the license and the NOTICE with the package.
+  for (const f of ['LICENSE', 'NOTICE']) out.push({ name: f, data: readFileSync(path.join(ROOT, f)) });
   return out;
 }
 

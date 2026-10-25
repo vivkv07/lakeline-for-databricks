@@ -1,0 +1,19 @@
+Lakeline for Databricks
+Copyright 2026 Vivek Kovvuru
+
+This product includes software developed by Vivek Kovvuru
+(https://github.com/vivkv07/lakeline-for-databricks).
+
+"Lakeline" and the Lakeline icon are trademarks of Vivek Kovvuru. The Apache
+License does not grant permission to use them; see TRADEMARKS.md.
+
+Lakeline is an independent project and is not affiliated with, endorsed by or
+sponsored by Databricks, Inc. Databricks and Genie are trademarks of
+Databricks, Inc.
+
+Third-party components bundled in the extension:
+
+- Inter, by The Inter Project Authors, under the SIL Open Font License 1.1
+  (extension/fonts/OFL-Inter.txt).
+- IBM Plex Mono, by IBM Corp., under the SIL Open Font License 1.1
+  (extension/fonts/OFL-IBM-Plex-Mono.txt).

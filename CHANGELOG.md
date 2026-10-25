@@ -5,6 +5,15 @@ All notable changes to Lakeline for Databricks are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Open source under the Apache License 2.0, with a NOTICE file, a trademark policy for the Lakeline
+  name and icon, a contributing guide with DCO sign-off, a security policy with private reporting,
+  code owners, issue and pull request templates, CI (tests and the packaging secret scan) and a DCO
+  check. Store packages now include LICENSE and NOTICE.
+
 ## [0.1.1] (2026-10-16)
 
 ### Changed

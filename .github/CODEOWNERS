@@ -1,0 +1,15 @@
+# Every change needs the maintainer's review. Branch protection on main requires a code owner's
+# approval, so contributors' pull requests can't merge without it.
+*                                   @vivkv07
+
+# Security-sensitive paths (listed explicitly so the intent is visible).
+/extension/manifest.json            @vivkv07
+/extension/src/background/          @vivkv07
+/extension/src/databricks/queries/  @vivkv07
+/scripts/                           @vivkv07
+/package.json                       @vivkv07
+/package-lock.json                  @vivkv07
+/.github/                           @vivkv07
+/LICENSE                            @vivkv07
+/NOTICE                             @vivkv07
+/TRADEMARKS.md                      @vivkv07
