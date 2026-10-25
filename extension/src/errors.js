@@ -8,10 +8,11 @@
   const NODE = typeof module === 'object' && module && module.exports;
   const V = NODE ? require('./core/validate.js') : root.DCC.validate;
 
+  // Token shapes match anywhere, even glued to other word characters ("xdapi…", "dapi…abc").
   const REDACTIONS = [
     [/Bearer\s+[A-Za-z0-9._~+/=-]+/gi, 'Bearer [redacted]'],
-    [/\bdapi[0-9a-f]{32}(?:-\d+)?\b/gi, '[redacted-pat]'],
-    [/\b(?:dose|dkea|dsapi)[0-9a-f]{32}\b/gi, '[redacted-token]'],
+    [/dapi[0-9a-f]{32}(?:-\d+)?/gi, '[redacted-pat]'],
+    [/(?:dose|dkea|dsapi)[0-9a-f]{32}/gi, '[redacted-token]'],
     [/eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/g, '[redacted-jwt]'],
     [/("?(?:access_token|refresh_token|id_token|client_secret|token|password|secret)"?\s*[:=]\s*)"?[^"\s,}&]+"?/gi, '$1[redacted]'],
     [/(x-dcc-key\s*[:=]\s*)[0-9a-f]{24}/gi, '$1[redacted]'],
@@ -19,10 +20,15 @@
     [/\b[0-9a-f]{24}\b/g, '[redacted-key]'],
   ];
 
+  const REDACT_MAX = 2000;
+  // Redact first, then cut: cutting first can leave the start of a token behind. The scan window
+  // covers any token that starts inside the kept text.
+  const REDACT_SCAN = 16 * 1024;
+
   function redact(text) {
-    let out = V.safeText(text, 2000);
+    let out = V.safeText(text, REDACT_SCAN);
     for (const [re, rep] of REDACTIONS) out = out.replace(re, rep);
-    return out;
+    return out.slice(0, REDACT_MAX);
   }
 
   const CATALOG = {

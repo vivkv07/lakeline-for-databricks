@@ -16,6 +16,8 @@
   const config = dep('config', '../databricks/config.js');
 
   const MAX_REFS = 40;
+  // Every handler names one of these; dispatch refuses anything else (fail closed).
+  const TRUST_CLASSES = Object.freeze(['content', 'content-origin', 'page', 'admin', 'external']);
   const CONNECTED_KINDS = new Set(['queryEstimates', 'computeRates', 'exploreSummary', 'exploreEntities', 'exploreRuns']);
 
   /**
@@ -66,11 +68,10 @@
     const handlers = {
       /* ---------------------------------------------------------------- content scripts */
       'dcc:hello': {
-        trust: 'content-hello',
+        // The workspace may be unidentified yet: origin check only (dispatch ran contentOriginCheck).
+        trust: 'content-origin',
         async handle(msg, sender) {
-          if (!sender || sender.id !== deps.extensionId || !sender.tab || sender.frameId !== 0) throw new errors.DccError({ code: 'UNKNOWN', message: 'Rejected sender' });
           const cls = ids.classifyOrigin(sender.url);
-          if (!cls.ok || cls.origin !== msg.origin) throw new errors.DccError({ code: 'UNKNOWN', message: 'Rejected sender origin' });
           const conn = await deps.store.getConnection(cls.origin);
           const observed = await deps.store.getObserved(cls.origin);
           const resolved = ids.resolveWorkspaceId(sender.url, { observedId: observed && observed.workspaceId, savedId: conn && conn.workspaceId });
@@ -324,7 +325,14 @@
         },
       },
     };
-    Object.assign(handlers, deps.extra || {});
+    // Add-on modules may add message types but never replace one (and with it its trust class).
+    for (const [type, h] of Object.entries(deps.extra || {})) {
+      if (Object.prototype.hasOwnProperty.call(handlers, type)) throw new Error('Duplicate message handler: ' + type);
+      handlers[type] = h;
+    }
+    for (const [type, h] of Object.entries(handlers)) {
+      if (!h || !TRUST_CLASSES.includes(h.trust) || typeof h.handle !== 'function') throw new Error('Message handler ' + type + ' needs a known trust class and handle()');
+    }
 
     function sanitizeRefs(refs) {
       if (!Array.isArray(refs)) return [];
@@ -374,7 +382,7 @@
         else if (h.trust === 'external') {
           const v = senderMod.validateSetupSender(sender, ctx);
           if (!v.ok) throw new errors.DccError({ code: 'UNKNOWN', message: 'Rejected setup sender: ' + v.reason });
-        }
+        } else throw new errors.DccError({ code: 'UNKNOWN', message: 'Handler has no known trust class' });
         const data = await h.handle(msg, sender);
         return { ok: true, data: data === undefined ? null : data };
       } catch (e) {
@@ -389,7 +397,7 @@
     return { dispatch, handlers, sanitizeRefs };
   }
 
-  const api = Object.freeze({ create, MAX_REFS });
+  const api = Object.freeze({ create, MAX_REFS, TRUST_CLASSES });
   if (NODE) module.exports = api;
   else (root.DCC || (root.DCC = {})).router = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

@@ -21,6 +21,7 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import net from 'node:net';
@@ -284,6 +285,29 @@ describe('browser e2e: real Chromium + extension against the SIMULATED fixture b
     assert.ok(scripts.js.at(-1).endsWith('content-main.js'));
     const granted = await sw.evaluate(() => chrome.permissions.getAll());
     assert.ok(granted.origins.includes('http://127.0.0.1:8765/*'));
+  });
+
+  it('CSP connect-src: the service worker reaches the test workspace but never an unlisted host', { timeout: 30000 }, async () => {
+    const sw = ctx.serviceWorkers().find((w) => w.url().startsWith('chrome-extension://' + extId));
+    let hits = 0;
+    const other = http.createServer((req, res) => {
+      hits++;
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+      res.end('{}');
+    });
+    await new Promise((r) => other.listen(0, '127.0.0.1', r));
+    try {
+      const unlisted = 'http://127.0.0.1:' + other.address().port + '/';
+      const out = await sw.evaluate(async (urls) => {
+        const attempt = (u) => fetch(u, { cache: 'no-store', credentials: 'omit' }).then((r) => 'reached ' + r.status, () => 'refused');
+        return { workspace: await attempt(urls.workspace), unlisted: await attempt(urls.unlisted) };
+      }, { workspace: ORIGIN + '/', unlisted });
+      assert.match(out.workspace, /^reached /, 'the allowlisted test workspace is reachable');
+      assert.equal(out.unlisted, 'refused');
+      assert.equal(hits, 0, 'the request never left the browser');
+    } finally {
+      other.close();
+    }
   });
 
   it('connects through the real router from the options page: PAT, warehouse listing, Automatic picks the RUNNING one', { timeout: 60000 }, async () => {

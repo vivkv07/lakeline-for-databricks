@@ -54,6 +54,6 @@
     ]
   },
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'; base-uri 'none'; frame-ancestors 'none'"
+    "extension_pages": "script-src 'self'; object-src 'self'; base-uri 'none'; frame-ancestors 'none'; connect-src 'self' https://*.cloud.databricks.com https://*.azuredatabricks.net https://*.gcp.databricks.com http://127.0.0.1:8766 http://127.0.0.1:8765"
   }
 }
