@@ -89,6 +89,22 @@ test('diagnostics keep error code and statement ID but redact every secret shape
   assert.equal(out.details.errorCode, 'X');
 });
 
+test('redaction runs before truncation and catches tokens glued to other characters', () => {
+  const pat = 'dapi' + '0123456789abcdef'.repeat(2);
+  const jwt = 'eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.c2lnbmF0dXJlc2lnbmF0dXJl';
+  for (const at of [1960, 1975, 1990, 1999]) {
+    for (const secret of [pat, jwt]) {
+      const out = errors.redact('x'.repeat(at) + secret + ' tail');
+      assert.ok(out.length <= 2000);
+      assert.ok(!out.includes(secret.slice(0, 10)), 'no token prefix survives a cut at ' + at);
+    }
+  }
+  for (const glued of ['zz' + pat, pat + 'abc', 'id' + pat + '-3x']) {
+    assert.ok(!errors.redact('token was ' + glued).includes('0123456789abcdef'), glued.slice(0, 8));
+    assert.ok(!JSON.stringify(errors.classify({ message: 'y'.repeat(590) + glued })).includes('dapi0123'));
+  }
+});
+
 const EXT = { extensionId: 'abcdefghijklmnopabcdefghijklmnop', extensionOrigin: 'chrome-extension://abcdefghijklmnopabcdefghijklmnop', helperPort: 8766 };
 const tabSender = (url, extra = {}) => ({ id: EXT.extensionId, url, tab: { id: 9 }, frameId: 0, ...extra });
 

@@ -1,7 +1,12 @@
 // Packaging guard tests: allowlist contents and secret/real-workspace scanning.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { collect, inspect, storeEntries } from '../scripts/package.mjs';
+import { load } from './support/load.mjs';
+
+const ids = load('core/ids.js');
+const cspDirective = (csp, name) => (csp.split(';').map((d) => d.trim().split(/\s+/)).find((d) => d[0] === name) || []).slice(1);
 
 test('allowlist never includes tests, notes, node_modules or private files', () => {
   const files = collect();
@@ -41,4 +46,19 @@ test('store build: manifest at the root without a key, experimental browser logi
   assert.match(flags, /devTools:\s*false/);
   assert.ok(names.includes('fonts/OFL-Inter.txt') && names.includes('icons/icon-128.png'));
   assert.deepEqual(inspect(entries.map((e) => ({ name: e.name, text: e.data.toString('latin1') }))), []);
+});
+
+test('extension CSP: pages and the service worker connect only to workspace hosts and the local helper', () => {
+  const manifest = JSON.parse(readFileSync(new URL('../extension/manifest.json', import.meta.url), 'utf8'));
+  const csp = manifest.content_security_policy.extension_pages;
+  assert.deepEqual(cspDirective(csp, 'script-src'), ["'self'"]);
+  // The same workspace families classifyOrigin accepts, the helper and the dev-only test workspace.
+  const workspaces = ids.HOST_SUFFIXES.map((h) => 'https://*' + h.suffix);
+  assert.deepEqual(cspDirective(csp, 'connect-src').sort(), ["'self'", ...workspaces, 'http://127.0.0.1:8766', ids.FIXTURE_ORIGIN].sort());
+
+  const store = JSON.parse(storeEntries().find((e) => e.name === 'manifest.json').data.toString('utf8'));
+  const storeCsp = store.content_security_policy.extension_pages;
+  assert.deepEqual(cspDirective(storeCsp, 'connect-src').sort(), ["'self'", ...workspaces, 'http://127.0.0.1:8766'].sort(), 'no test workspace in the store build');
+  assert.equal(storeCsp.replace(' ' + ids.FIXTURE_ORIGIN, ''), storeCsp, 'store CSP never mentions the test workspace');
+  assert.deepEqual(cspDirective(storeCsp, 'script-src'), ["'self'"]);
 });

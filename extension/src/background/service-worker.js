@@ -87,7 +87,14 @@ const router = DCC.router.create({
   helperPort: HELPER_PORT,
   openPage,
   // Add-on modules (e.g. monitor) register handler factories: DCC.handlerFactories.push(deps => ({...})).
-  extra: (DCC.handlerFactories || []).reduce((acc, make) => Object.assign(acc, make({ store, secrets, data, helper, oauth, openPage, chromeApi: chrome })), {}),
+  // A message type registered twice is a bug, never an override: the router then refuses to start.
+  extra: (DCC.handlerFactories || []).reduce((acc, make) => {
+    for (const [type, h] of Object.entries(make({ store, secrets, data, helper, oauth, openPage, chromeApi: chrome }))) {
+      if (Object.prototype.hasOwnProperty.call(acc, type)) throw new Error('Duplicate message handler: ' + type);
+      acc[type] = h;
+    }
+    return acc;
+  }, {}),
 });
 (DCC.backgroundInits || []).forEach((init) => {
   try {

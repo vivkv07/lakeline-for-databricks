@@ -14,6 +14,16 @@ aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   code owners, issue and pull request templates, CI (tests and the packaging secret scan) and a DCO
   check. Store packages now include LICENSE and NOTICE.
 
+### Security
+
+- The extension CSP now allows connections only to Databricks workspace hosts and the local helper
+  (`connect-src`). The store build also drops the local test workspace from it.
+- The message router fails closed. A handler with an unknown trust class, or an add-on that
+  registers a message type twice, stops the router at startup instead of running unchecked.
+- Error redaction now runs before the 2000-character cut, so no token prefix survives, and it catches
+  tokens glued to other text.
+- Review notes and open items: `notes/SECURITY-REVIEW.md`.
+
 ## [0.1.1] (2026-10-16)
 
 ### Changed

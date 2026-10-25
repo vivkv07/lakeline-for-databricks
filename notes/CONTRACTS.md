@@ -105,7 +105,10 @@ The response envelope is `{ok:true, data}` or `{ok:false, error:{code, title, st
 Background add-ons register handlers without editing `router.js`:
 `(DCC.handlerFactories || (DCC.handlerFactories = [])).push((deps) => ({ 'monitor:open': { trust: 'page', handle: async (msg, sender) => ... } }))`.
 
-- Trust classes are `content`, `page` (popup/options/monitor), `admin` (options only) and `external`.
+- Trust classes are `content`, `content-origin` (our top-frame script, workspace not yet identified),
+  `page` (popup/options/monitor/side panel), `admin` (options only) and `external`. The router refuses
+  to start with any other value, and refuses a message type that an add-on registers twice or that
+  replaces a built-in one (fail closed; see notes/SECURITY-REVIEW.md).
 - `deps` = `{ store, secrets, data, helper, openPage, chromeApi }`.
 - One-time setup uses `(DCC.backgroundInits || (DCC.backgroundInits = [])).push((deps) => {...})`.
 - The page-sender allowlist is in `sender.js` `PAGE_PATHS`: `/ui/popup.html`, `/ui/options.html`, `/ui/monitor.html`.

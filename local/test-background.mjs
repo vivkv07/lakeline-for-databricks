@@ -241,7 +241,7 @@ test('connected mode without a token reports expired sign-in, not a generic erro
 const EXT_ID = 'gcadffgngihfjameoafjagofiompdngo';
 const EXT_ORIGIN = 'chrome-extension://' + EXT_ID;
 
-async function routerEnv() {
+async function routerEnv(extra) {
   const env = await connectedEnv({ mode: 'demo' });
   const opened = [];
   const router = routerMod.create({
@@ -256,6 +256,7 @@ async function routerEnv() {
     extensionOrigin: EXT_ORIGIN,
     helperPort: 8766,
     openPage: async (p) => opened.push(p),
+    extra,
   });
   return { ...env, router, opened };
 }
@@ -277,6 +278,29 @@ test('router validates content senders and workspace IDs on every request', asyn
   assert.equal(foreign.ok, false);
   const unknown = await router.dispatch({ type: 'dcc:evil', origin: ORIGIN, workspaceId: WS }, content());
   assert.equal(unknown.ok, false);
+});
+
+test('router fails closed: unknown trust classes and replaced message types are refused', async () => {
+  const handle = async () => 'ran';
+  await assert.rejects(routerEnv({ 'x:typo': { trust: 'pages', handle } }), /known trust class/);
+  await assert.rejects(routerEnv({ 'x:none': { handle } }), /known trust class/);
+  await assert.rejects(routerEnv({ 'admin:setPat': { trust: 'page', handle } }), /Duplicate message handler: admin:setPat/);
+  // A handler slipped in after creation still never runs without a known sender check.
+  const { router } = await routerEnv();
+  let ran = false;
+  router.handlers['x:late'] = { trust: 'public', handle: async () => (ran = true) };
+  const late = await router.dispatch({ type: 'x:late' }, page('/ui/options.html'));
+  assert.equal(late.ok, false);
+  assert.equal(ran, false);
+});
+
+test('dcc:hello is checked by the router: our top-frame script on its own origin only', async () => {
+  const { router } = await routerEnv();
+  assert.equal((await router.dispatch({ type: 'dcc:hello', origin: ORIGIN }, content())).ok, true);
+  assert.equal((await router.dispatch({ type: 'dcc:hello', origin: ORIGIN }, page('/ui/popup.html'))).ok, false);
+  assert.equal((await router.dispatch({ type: 'dcc:hello', origin: ORIGIN }, { ...content(), frameId: 3 })).ok, false);
+  assert.equal((await router.dispatch({ type: 'dcc:hello', origin: 'https://other.cloud.databricks.com' }, content())).ok, false);
+  assert.equal((await router.dispatch({ type: 'dcc:hello', origin: ORIGIN }, { ...content(), id: 'other' })).ok, false);
 });
 
 test('router sanitizes, dedupes and caps badge refs at 40', async () => {

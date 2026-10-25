@@ -155,6 +155,9 @@ function storeEntries() {
       delete m.key;
       // The synthetic test workspace (127.0.0.1:8765) is development-only.
       m.optional_host_permissions = (m.optional_host_permissions || []).filter((p) => !p.startsWith('http://127.0.0.1:8765'));
+      const csp = m.content_security_policy && m.content_security_policy.extension_pages;
+      if (typeof csp !== 'string' || !/connect-src [^;]*http:\/\/127\.0\.0\.1:8765/.test(csp)) throw new Error('manifest CSP has no connect-src entry for the test workspace to remove');
+      m.content_security_policy.extension_pages = csp.replace(/ http:\/\/127\.0\.0\.1:8765(?=[;\s]|$)/, '');
       data = Buffer.from(JSON.stringify(m, null, 2) + '\n');
     } else if (name === 'src/core/flags.js') {
       let text = data.toString('utf8');
