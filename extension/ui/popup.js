@@ -285,7 +285,6 @@
   }
 
   const PROGRESS = {
-    session: 'Checking your Databricks login in the open tab…',
     pat: 'Checking the token with Databricks…',
     builtin: 'Signing in with Databricks… finish in the tab that opens.',
     oauth: 'Signing in with Databricks… finish in the window that opens.',
@@ -325,7 +324,7 @@
     if (fresh.ok && fresh.data) state = fresh.data;
     renderSettings();
     renderTab();
-    const how = { session: ' · your Databricks login', pat: ' · access token' }[r.data.method] || '';
+    const how = r.data.method === 'pat' ? ' · access token' : '';
     setTabLine('ok', 'Connected · workspace ' + r.data.workspaceId + (r.data.warehouseName ? ' · ' + r.data.warehouseName : '') + how + '. Costs now show on the page.');
   }
 
@@ -631,14 +630,10 @@
     closePopup();
   }
 
-  /**
-   * The store build turns off "Use my Databricks login" and developer-only links (the local test
-   * workspace): their elements are removed, not hidden.
-   */
+  /** The store build removes developer-only links (the local test workspace), not just hides them. */
   function applyFlags() {
     const flags = (root.DCC && root.DCC.flags) || DCC.flags;
     if (!flags) return;
-    if (flags.sessionLogin === false) for (const el of doc.querySelectorAll('[data-feature="session-login"]')) el.remove();
     if (flags.devTools === false) for (const el of doc.querySelectorAll('[data-feature="dev-tools"]')) el.remove();
   }
 
@@ -646,11 +641,6 @@
     $('connect-btn').addEventListener('click', onConnect);
     $('oauth-save-connect').addEventListener('click', onSaveAndConnect);
     $('signin-alt').addEventListener('click', onToggleSetup);
-    if ($('use-session')) {
-      $('use-session').addEventListener('click', () => {
-        if (tab && tab.supported && tab.kind === 'workspace') requestAccessThen(() => oneClick(undefined, 'session'));
-      });
-    }
     $('pat-connect').addEventListener('click', onPatConnect);
     $('pat-input').addEventListener('keydown', (ev) => {
       if (ev.key === 'Enter') onPatConnect();

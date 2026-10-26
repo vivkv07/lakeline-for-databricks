@@ -395,10 +395,6 @@
   border-radius: 6px;
 }
 
-.op-tag--warn {
-  color: var(--dcc-warm);
-  background: var(--dcc-warm-soft);
-}
 
 .op-tag--plain {
   color: var(--dcc-body);

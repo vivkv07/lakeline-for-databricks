@@ -107,13 +107,6 @@
                 <span class="op-option__meta">Paste a token you create in Databricks.</span>
               </span>
             </label>
-            <label class="op-option" data-feature="session-login">
-              <input type="radio" name="auth" value="session" id="auth-session-radio">
-              <span class="op-option__main">
-                <span class="op-option__title">Use my Databricks login <span class="op-tag op-tag--warn">Experimental</span></span>
-                <span class="op-option__meta">Databricks currently rejects browser-login API calls on tested workspaces, so this may not work.</span>
-              </span>
-            </label>
             <label class="op-option">
               <input type="radio" name="auth" value="helper" id="auth-helper-radio">
               <span class="op-option__main">
@@ -163,15 +156,6 @@
           <div class="op-actions op-actions--tight">
             <button type="button" id="pat-clear" class="dcc-link op-quiet-link">Remove token</button>
           </div>
-        </div>
-
-        <div id="auth-session" class="op-subpanel" data-feature="session-login" hidden>
-          <h3 id="session-login" class="dcc-visually-hidden">Use my Databricks login</h3>
-          <p class="op-help">Requests go through your open Databricks tab with your full user access, using an undocumented Databricks API that can change or be blocked. Keep a tab of this workspace open while you use cost badges, the monitor or Genie. For background features without an open tab, prefer Sign in with Databricks.</p>
-          <div class="op-actions">
-            <button type="button" id="session-connect" class="dcc-btn dcc-btn--primary">Connect using my login</button>
-          </div>
-          <div id="session-result" class="op-result" aria-live="polite"></div>
         </div>
 
         <div id="auth-helper" class="op-subpanel">
@@ -373,7 +357,6 @@
   <script src="../src/core/ids.js"></script>
   <script src="../src/core/labels.js"></script>
   <script src="../src/errors.js"></script>
-  <script src="../src/core/flags.js"></script>
   <script src="../src/databricks/pricing.js"></script>
   <script src="../src/databricks/config.js"></script>
   <script src="../src/databricks/warehouses.js"></script>

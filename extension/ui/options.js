@@ -349,7 +349,7 @@
     $('history-source').value = (conn && conn.historySource) || config.DEFAULT_HISTORY_SOURCE;
     $('advanced').open = Boolean(conn && (conn.usageSource !== config.DEFAULT_USAGE_SOURCE || conn.historySource !== config.DEFAULT_HISTORY_SOURCE));
     for (const id of ['ws-id', 'currency', 'usage-source', 'history-source']) setFieldError(id, null);
-    for (const id of ['access-result', 'oauth-result', 'session-result', 'helper-result', 'helper-monitor-result', 'pat-result', 'save-result']) if ($(id)) show($(id), null);
+    for (const id of ['access-result', 'oauth-result', 'helper-result', 'helper-monitor-result', 'pat-result', 'save-result']) if ($(id)) show($(id), null);
   }
 
   /**
@@ -557,8 +557,6 @@
   function renderAuth() {
     const mode = currentAuthMode();
     $('auth-oauth').hidden = mode !== 'oauth';
-    if ($('auth-session')) $('auth-session').hidden = mode !== 'session';
-    if ($('session-connect')) $('session-connect').disabled = !(S.sel && S.sel.kind === 'workspace');
     $('auth-helper').hidden = mode !== 'helper';
     $('auth-pat').hidden = mode !== 'pat';
     const workspaceOk = Boolean(S.sel && S.sel.kind === 'workspace');
@@ -654,31 +652,6 @@
       show($('oauth-result'), messageBox('ok', 'Connected ' + sel.host, ['Workspace ' + res.data.workspaceId + (res.data.warehouseName ? ' · Automatic → ' + res.data.warehouseName : '') + ' · list prices.', 'Costs now show inside the workspace. You can change the warehouse or price table below.']));
       return undefined;
     }).catch((e) => show($('oauth-result'), errorBox(backgroundError(e && e.message))));
-  }
-
-  function onSessionConnect() {
-    if (!S.sel || S.sel.kind !== 'workspace') return;
-    const sel = S.sel;
-    const gen = S.selGen;
-    const pending = S.access === true ? Promise.resolve(true) : chromeApi.permissions.request({ origins: [sel.origin + '/*'] });
-    pending.then(async (granted) => {
-      const out = $('session-result');
-      if (!granted) return show(out, messageBox('error', 'Site access was not allowed', ['Allow access to ' + sel.host + ' so the extension can work in that tab.']));
-      const typedId = $('ws-id').value.trim();
-      setBusy($('session-connect'), true);
-      show(out, busyLine('Checking your Databricks login through the open tab…'));
-      const res = await send({ type: 'connect:oneClick', method: 'session', url: sel.origin + (V.isWorkspaceId(typedId) ? '/?o=' + typedId : '/') });
-      setBusy($('session-connect'), false);
-      await refreshState();
-      if (gen !== S.selGen) return show(out, null);
-      if (!res.ok) return show(out, errorBox(res.error));
-      if (!res.data || res.data.connected !== true || !V.isWorkspaceId(res.data.workspaceId)) {
-        return show(out, messageBox('error', 'Not connected', ['The extension did not confirm the connection. Reload the extension and the Databricks tab, then try again.']));
-      }
-      await selectWorkspace(sel.origin + '/?o=' + res.data.workspaceId);
-      show($('session-result'), messageBox('ok', 'Connected ' + sel.host + ' with your Databricks login', ['Workspace ' + res.data.workspaceId + (res.data.warehouseName ? ' · Automatic → ' + res.data.warehouseName : '') + ' · list prices.', 'Keep a tab of this workspace open for costs, the monitor and Genie.']));
-      return undefined;
-    }).catch((e) => show($('session-result'), errorBox(backgroundError(e && e.message))));
   }
 
   function renderPatStatus() {
@@ -978,7 +951,7 @@
     { step: 'auth', id: 'auth' },
     { step: 'warehouse', id: 'warehouse' },
   ]);
-  const AUTH_LABELS = Object.freeze({ oauth: 'Sign in with Databricks', pat: 'Personal access token', session: 'Your Databricks login', helper: 'Local helper' });
+  const AUTH_LABELS = Object.freeze({ oauth: 'Sign in with Databricks', pat: 'Personal access token', helper: 'Local helper' });
   const PRICE_SHORT = Object.freeze({ 'system.billing.list_prices': 'List prices', 'system.billing.account_prices': 'Account prices' });
 
   function stepDone(step) {
@@ -998,7 +971,6 @@
     const saved = Boolean(conn && conn.authMode === mode);
     if (mode === 'oauth') return saved ? 'signed in' : 'not signed in yet';
     if (mode === 'pat') return S.hasPat ? (conn && conn.secrets && conn.secrets.patRemembered ? 'token remembered on this computer' : 'token saved for this session') : 'no token saved';
-    if (mode === 'session') return saved ? 'connected' : 'not connected yet';
     return S.page && S.page.bridge && S.page.bridge.bridgePaired ? 'paired' : 'not paired yet';
   }
 
@@ -1139,7 +1111,7 @@
     const wh = saved.warehouse || {};
     const whText = wh.mode === 'manual' ? 'warehouse ' + (wh.name || wh.id) : 'Automatic → ' + (wh.resolvedName || wh.resolvedId || 'unresolved');
     const lines = [
-      'Workspace ' + saved.workspaceId + ' · ' + ({ oauth: 'Sign in with Databricks', session: 'your Databricks login', pat: 'personal access token', helper: 'local helper' }[saved.authMode] || saved.authMode) + ' · ' + whText + '.',
+      'Workspace ' + saved.workspaceId + ' · ' + ({ oauth: 'Sign in with Databricks', pat: 'personal access token', helper: 'local helper' }[saved.authMode] || saved.authMode) + ' · ' + whText + '.',
       'Listing a warehouse doesn\'t prove CAN USE or billing-table access. If the first cost query fails, its error names the missing permission.',
       S.access === false ? 'Next: allow site access under step 1 so costs appear inside the workspace.' : null,
     ];
@@ -1163,7 +1135,7 @@
 
   function onDisconnectAsk() {
     if (!S.sel || !S.sel.conn) return;
-    $('disconnect-question').textContent = 'Disconnect ' + S.sel.host + '? This removes its saved cost connection and session token. Workspace colors are kept.';
+    $('disconnect-question').textContent = 'Disconnect ' + S.sel.host + '? This removes its saved cost connection, its token and its sign-in. Workspace colors are kept.';
     $('disconnect-confirm').hidden = false;
     $('disconnect-btn').hidden = true;
     $('disconnect-yes').focus();
@@ -1187,7 +1159,7 @@
       invalidateWarehouses();
     }
     renderAll();
-    show(out, messageBox('ok', 'Disconnected ' + host, ['The saved connection and session token were removed. Workspace colors were not changed.']));
+    show(out, messageBox('ok', 'Disconnected ' + host, ['The saved connection, token and sign-in were removed. Workspace colors were not changed.']));
     $('save-btn').focus();
     return undefined;
   }
@@ -1359,13 +1331,6 @@
     return true;
   }
 
-  /** The store build turns off "Use my Databricks login": its elements are removed, not hidden. */
-  function applyFlags() {
-    const flags = DCC.flags;
-    if (!flags || flags.sessionLogin !== false) return;
-    for (const el of doc.querySelectorAll('[data-feature="session-login"]')) el.remove();
-  }
-
   function wire() {
     for (const btn of doc.querySelectorAll('[data-step-toggle]')) btn.addEventListener('click', () => onEditStep(btn.getAttribute('data-step-toggle')));
     $('ws-url-use').addEventListener('click', onUseUrl);
@@ -1381,7 +1346,6 @@
     $('access-remove').addEventListener('click', onRemoveAccess);
     $('helper-check').addEventListener('click', onHelperCheck);
     $('oauth-signin').addEventListener('click', onOauthSignIn);
-    if ($('session-connect')) $('session-connect').addEventListener('click', onSessionConnect);
     $('helper-login').addEventListener('click', () => onHelperLogin('cost'));
     $('helper-login-monitor').addEventListener('click', () => onHelperLogin('monitor'));
     $('pair-submit').addEventListener('click', onPairManual);
@@ -1430,7 +1394,6 @@
   }
 
   async function init() {
-    applyFlags();
     buildPriceTableOptions();
     for (const r of doc.querySelectorAll('input[name="auth"]')) r.checked = r.value === 'helper';
     wire();

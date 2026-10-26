@@ -410,5 +410,5 @@ ${DARK_OURS} { ${vars('dark')} }
   };
 
   (root.DCC.features || (root.DCC.features = [])).push(feature);
-  root.DCC.nativeEstimates = Object.freeze({ isActiveRoute, NOTE_TEXT, hashKeys, _state: state });
+  root.DCC.nativeEstimates = Object.freeze({ isActiveRoute, NOTE_TEXT, hashKeys });
 })(typeof globalThis !== 'undefined' ? globalThis : this);

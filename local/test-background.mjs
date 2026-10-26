@@ -241,12 +241,13 @@ test('connected mode without a token reports expired sign-in, not a generic erro
 const EXT_ID = 'gcadffgngihfjameoafjagofiompdngo';
 const EXT_ORIGIN = 'chrome-extension://' + EXT_ID;
 
-async function routerEnv(extra) {
+async function routerEnv(extra, { oauth } = {}) {
   const env = await connectedEnv({ mode: 'demo' });
   const opened = [];
   const router = routerMod.create({
     store: env.store,
     secrets: env.secrets,
+    oauth,
     data: env.data,
     helper: helperClient.create({ fetch: async () => { throw new Error('no helper'); }, getBridge: async () => null }),
     helperFactory: (o) => helperClient.create({ fetch: async () => jsonResponse(200, { ok: true, version: '0.1.0', capabilities: { priceAdapterVersion: 2, accountPrices: true, jobPipelineAttribution: true, monitor: true } }), getBridge: o.getBridge }),
@@ -326,6 +327,20 @@ test('admin messages only from options; page:state never returns secrets', async
   assert.equal(state.data.connections[ORIGIN].secrets.hasPat, true);
 });
 
+test('removing a connection also drops its token and its Databricks sign-in, only from options', async () => {
+  const signedOut = [];
+  const { router, secrets, store } = await routerEnv(undefined, { oauth: { signOut: async (o) => signedOut.push(o) } });
+  await router.dispatch({ type: 'admin:setPat', origin: ORIGIN, token: PAT }, page('/ui/options.html'));
+  const denied = await router.dispatch({ type: 'admin:removeConnection', origin: ORIGIN }, page('/ui/popup.html'));
+  assert.equal(denied.ok, false);
+  assert.deepEqual(signedOut, []);
+  const res = await router.dispatch({ type: 'admin:removeConnection', origin: ORIGIN }, page('/ui/options.html'));
+  assert.equal(res.ok, true);
+  assert.deepEqual(signedOut, [ORIGIN]);
+  assert.equal(await secrets.hasPat(ORIGIN), false);
+  assert.equal(await store.getConnection(ORIGIN), null);
+});
+
 test('setup pairing only through the external channel from the exact helper origin', async () => {
   const { router, opened, secrets } = await routerEnv();
   const key = '0123456789abcdef01234567';
@@ -400,11 +415,11 @@ function fakeScriptingChrome(origins) {
 }
 
 test('concurrent registration syncs (grant listener + page request) never fail with a duplicate ID', async () => {
-  const c = fakeScriptingChrome(['https://dbc-4f2a91c7-0e3b.cloud.databricks.com/*']);
+  const c = fakeScriptingChrome(['https://dbc-00000000-test.cloud.databricks.com/*']);
   const results = await Promise.allSettled([registration.sync(c), registration.sync(c), registration.sync(c)]);
   assert.deepEqual(results.map((r) => r.status), ['fulfilled', 'fulfilled', 'fulfilled']);
   assert.equal(c.registered.size, 1);
-  assert.deepEqual(c.registered.get('dcc-main').matches, ['https://dbc-4f2a91c7-0e3b.cloud.databricks.com/*']);
+  assert.deepEqual(c.registered.get('dcc-main').matches, ['https://dbc-00000000-test.cloud.databricks.com/*']);
 });
 
 test('registration recovers when another context registered the script first', async () => {
