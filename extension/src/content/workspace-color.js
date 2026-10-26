@@ -1,13 +1,16 @@
 /*
- * Workspace top-bar colors: pure helpers shared by the popup panel and the content feature.
+ * Workspace colors (top bar, optionally the sidebar): pure helpers shared by the popup panel and
+ * the content feature.
  *
  * - Strict `#RRGGBB` validation. Nothing else ever reaches injected CSS.
  * - WCAG 2.x relative luminance and contrast; the foreground is black or white, whichever
  *   contrasts more with the chosen background.
  * - Storage shape and key resolution for `chrome.storage.local['dcc.appearance']`:
- *     {version:1, entries:{'<origin>|<workspaceId>': {color, savedAt}, '<origin>|*': {...}}}
- *   An ID-specific entry wins; otherwise the host default (`origin|*`) applies. This key is
- *   separate from billing connections and settings, and nothing in billing ever writes it.
+ *     {version:1, entries:{'<origin>|<workspaceId>': {color, savedAt, sidebar?}, '<origin>|*': {...}}}
+ *   An ID-specific entry wins; otherwise the host default (`origin|*`) applies. `sidebar: true`
+ *   also tints the side navigation; it's stored only when on, so older entries read as off.
+ *   This key is separate from billing connections and settings, and nothing in billing ever
+ *   writes it.
  *
  * No DOM access here; safe in content scripts, extension pages and `node --test`.
  */
@@ -76,20 +79,56 @@
     return toBlack >= contrastRatio(hex, WHITE) ? BLACK : WHITE;
   }
 
+  /** `a` moved toward `b` by `t` (0…1), per sRGB channel. Both must be valid; output is #RRGGBB. */
+  function mix(a, b, t) {
+    const x = normalizeColor(a);
+    const y = normalizeColor(b);
+    if (!x || !y || !(t >= 0 && t <= 1)) return null;
+    let out = '#';
+    for (let i = 1; i < 7; i += 2) {
+      const p = parseInt(x.slice(i, i + 2), 16);
+      const q = parseInt(y.slice(i, i + 2), 16);
+      out += Math.round(p + (q - p) * t).toString(16).padStart(2, '0');
+    }
+    return out.toUpperCase();
+  }
+
+  // How far the surface tone moves away from the bar color: lighter on light bars, darker on
+  // dark ones, so the foreground's contrast on it is never lower than on the bar itself.
+  const SURFACE_TOWARD_WHITE = 0.42;
+  const SURFACE_TOWARD_BLACK = 0.24;
+
+  /** Secondary text (placeholders, shortcut hints): as soft as possible while keeping 4.5:1. */
+  function mutedOn(fg, surface) {
+    for (let t = 0.4; t > 0; t = Math.round((t - 0.05) * 100) / 100) {
+      const m = mix(fg, surface, t);
+      if (contrastRatio(m, surface) >= 4.5) return m;
+    }
+    return fg;
+  }
+
   /**
-   * Everything the CSS and preview need, derived only from a validated color. The secondary
-   * values are fixed constants per foreground, never derived from input text.
+   * Everything the CSS and preview need, derived only from a validated color: every tone is
+   * computed numerically and formatted as #RRGGBB, and the translucent overlays are fixed
+   * constants per foreground, so input text never reaches the stylesheet.
+   *   surface  search field, pills and the selected sidebar item (same hue, one step away)
+   *   muted    placeholders and shortcut hints on the surface (≥ 4.5:1)
    */
   function themeFor(hex) {
     const bg = normalizeColor(hex);
     if (!bg) return null;
     const fg = chooseForeground(bg);
     const dark = fg === WHITE;
+    let surface = dark ? mix(bg, BLACK, SURFACE_TOWARD_BLACK) : mix(bg, WHITE, SURFACE_TOWARD_WHITE);
+    // Pure white or black bars have no room in that direction: step toward the foreground.
+    if (contrastRatio(bg, surface) < 1.1) surface = mix(bg, fg, 0.1);
     return Object.freeze({
       bg,
       fg,
       fgName: dark ? 'white' : 'black',
       contrast: Math.round(contrastRatio(bg, fg) * 100) / 100,
+      surface,
+      muted: mutedOn(fg, surface),
       line: dark ? 'rgba(255, 255, 255, 0.28)' : 'rgba(0, 0, 0, 0.18)',
       hover: dark ? 'rgba(255, 255, 255, 0.16)' : 'rgba(0, 0, 0, 0.08)',
     });
@@ -175,16 +214,19 @@
       const color = normalizeColor(e.color);
       if (!color) continue;
       out.entries[key] = { color, savedAt: Number.isFinite(e.savedAt) ? e.savedAt : 0 };
+      if (e.sidebar === true) out.entries[key].sidebar = true;
       n++;
     }
     return out;
   }
 
-  function withEntry(appearance, key, color, nowMs) {
+  /** @param {{sidebar?: boolean}} [opts] */
+  function withEntry(appearance, key, color, nowMs, opts) {
     const c = normalizeColor(color);
     if (!parseKey(key) || !c) throw new Error('Invalid appearance entry');
     const next = sanitizeAppearance(appearance);
     next.entries[key] = { color: c, savedAt: Number.isFinite(nowMs) ? nowMs : Date.now() };
+    if (opts && opts.sidebar === true) next.entries[key].sidebar = true;
     return next;
   }
 
@@ -195,19 +237,21 @@
   }
 
   /**
-   * Color for a workspace page. ID-specific entry first, then the host default.
-   * @returns {{color, key, scope:'workspace'|'host'}|null}
+   * Color for a workspace page. ID-specific entry first, then the host default. The sidebar
+   * choice travels with the entry that supplies the color.
+   * @returns {{color, sidebar: boolean, key, scope:'workspace'|'host'}|null}
    */
   function resolveColor(appearance, origin, workspaceId) {
     const app = sanitizeAppearance(appearance);
     const o = cleanOrigin(origin);
     if (!o) return null;
+    const hit = (key, scope) => ({ color: app.entries[key].color, sidebar: app.entries[key].sidebar === true, key, scope });
     if (V.isWorkspaceId(workspaceId)) {
       const key = entryKey(o, workspaceId);
-      if (app.entries[key]) return { color: app.entries[key].color, key, scope: 'workspace' };
+      if (app.entries[key]) return hit(key, 'workspace');
     }
     const hostKey = entryKey(o, null);
-    if (app.entries[hostKey]) return { color: app.entries[hostKey].color, key: hostKey, scope: 'host' };
+    if (app.entries[hostKey]) return hit(hostKey, 'host');
     return null;
   }
 
@@ -250,6 +294,7 @@
     relativeLuminance,
     contrastRatio,
     chooseForeground,
+    mix,
     themeFor,
     entryKey,
     parseKey,

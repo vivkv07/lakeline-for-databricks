@@ -124,11 +124,89 @@
   border-radius: 999px;
 }
 
-/* Sample top bar: background and text color are set from the validated color in JS. */
+/* Sidebar checkbox: native control, label to its right. */
+.dcc-ap-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--dcc-text-sm);
+  font-weight: 500;
+  color: var(--dcc-text);
+}
+
+.dcc-ap-check input {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+
+.dcc-ap-check label {
+  cursor: pointer;
+}
+
+.dcc-ap-check + .dcc-ap-hint {
+  margin-top: 0;
+  padding-left: 24px;
+}
+
+/*
+ * Sample workspace: top bar, sidebar and page. Background and text colors of the bar, the search
+ * pill, the sidebar and its selected item are set from the validated theme in JS; when the
+ * sidebar option is off it keeps the neutral look below.
+ */
 .dcc-ap-preview {
   border: 1px solid var(--dcc-line);
   border-radius: var(--dcc-radius);
   overflow: hidden;
+}
+
+.dcc-ap-pv-body {
+  display: flex;
+  height: 44px;
+  background: var(--dcc-bg);
+}
+
+.dcc-ap-pv-side {
+  flex: none;
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  width: 64px;
+  padding: 6px;
+  background: var(--dcc-surface);
+  border-right: 1px solid var(--dcc-line);
+}
+
+.dcc-ap-pv-side--on {
+  border-right-color: transparent;
+}
+
+.dcc-ap-pv-item {
+  display: block;
+  height: 6px;
+  border-radius: 3px;
+  background: currentColor;
+  color: var(--dcc-line2);
+}
+
+.dcc-ap-pv-item--on {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--dcc-control);
+}
+
+.dcc-ap-pv-side--on .dcc-ap-pv-item {
+  color: inherit;
+  opacity: 0.5;
+}
+
+.dcc-ap-pv-side--on .dcc-ap-pv-item--on {
+  opacity: 1;
+}
+
+.dcc-ap-pv-page {
+  flex: 1 1 auto;
 }
 
 .dcc-ap-preview-bar {
@@ -162,15 +240,14 @@
   white-space: nowrap;
 }
 
-/* Mirrors the theme rule that keeps native search fields light with dark text. */
+/* Mirrors the theme rule for native search fields: a shade of the bar color with soft text. */
 .dcc-ap-pv-search {
   flex: 1 1 auto;
   min-width: 0;
   padding: 3px 8px;
   font-weight: 400;
-  color: #52525B;
-  background: #FFFFFF;
-  border: 1px solid rgba(10, 10, 10, 0.3);
+  color: inherit;
+  background: transparent;
   border-radius: 6px;
 }
 
@@ -249,7 +326,10 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .dcc-ap-preview-bar {
+  .dcc-ap-preview-bar,
+  .dcc-ap-pv-search,
+  .dcc-ap-pv-side,
+  .dcc-ap-pv-item {
     transition: background-color 120ms var(--dcc-ease), color 120ms var(--dcc-ease);
   }
 }
