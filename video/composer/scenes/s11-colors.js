@@ -80,7 +80,12 @@ export default function build(ctx, { n, t0, t1 }) {
   const split = popStates.findIndex((st) => WS.indexOf('stage') >= 0 && POP.stage.includes(st));
   const prodPart = split > 0 ? [popStates.slice(0, split), popSched.slice(0, split)] : [popStates, popSched];
   const stagePart = split > 0 ? [popStates.slice(split), popSched.slice(split).map((x, i) => Object.assign({}, x, { i, t: i === 0 ? -1e9 : x.t }))] : null;
-  const opts = (open, close) => ({ open, close, maxH: span ? Math.min(600, span.h + 24) : 600, focusFor: () => span });
+  // Show the URL through the save status; a taller panel is drawn smaller, so it never takes more of
+  // the frame than 600 CSS px at 1.4×.
+  const opts = (open, close) => {
+    const maxH = span ? span.h + 24 : 600;
+    return { open, close, maxH, scale: 1.4 * Math.min(1, 600 / maxH), focusFor: () => span };
+  };
   pop = prodPart[0].length ? popup(sc, win, prodPart[0], prodPart[1], opts(tOpenProd, closeProd)) : null;
   const popStage = stagePart && stagePart[0].length ? popup(sc, win, stagePart[0], stagePart[1], opts(tOpenStage + PACE.click, closeStage)) : null;
   click(tRed, swatch(POP.prod[0], 'red', 0), 'Red preset');

@@ -134,7 +134,7 @@ export function reveal(ctx, { t0, t1 }) {
 export const SECURITY_POINTS = [
   ['database', 'Read-only SQL on your own system tables.'],
   ['route', 'Talks only to your workspace, with no Lakeline servers or analytics.'],
-  ['session', 'Sign-in and Genie chats live in your browser session and clear when it closes.'],
+  ['session', 'Sign-in stays in this browser. Genie chats clear when it closes.'],
   ['history', 'Your full chat history stays in Genie in Databricks.'],
   ['key', 'Access granted one workspace at a time.'],
 ];
@@ -143,7 +143,7 @@ export function security(ctx, { t0, t1 }) {
   const layer = el('div', 'layer', ctx.root);
   const eb = el('div', 'eyebrow abs', layer, { left: '120px', top: '112px', fontSize: '18px', color: '#8FB0FF' });
   eb.textContent = 'Security and privacy';
-  const head = kinetic(layer, 'Nothing leaves your Databricks workspace and your browser.', { size: 66, stagger: 0.05, dur: 0.9, tracking: -0.03, style: { left: '120px', top: '150px' } });
+  const head = kinetic(layer, 'Nothing leaves your Databricks workspace and your browser.', { size: 58, stagger: 0.05, dur: 0.9, tracking: -0.03, style: { left: '120px', top: '150px' } });
   const rows = SECURITY_POINTS.map(([icon, text], i) => {
     const y = 318 + i * 116;
     const row = el('div', 'abs', layer, { left: '120px', top: y + 'px', width: '1380px', height: '116px' });
