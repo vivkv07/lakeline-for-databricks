@@ -18,7 +18,6 @@
     'src/core/allocation.js',
     'src/errors.js',
     'src/databricks/http.js',
-    'src/content/session-bridge.js',
     'src/content/dom.js',
     'src/content/native-adapter.js',
     'src/content/workspace-data.js',

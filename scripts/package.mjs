@@ -125,7 +125,8 @@ function zip(entries) {
     lh.writeUInt32LE(comp.length, 18); lh.writeUInt32LE(data.length, 22); lh.writeUInt16LE(nameBuf.length, 26); lh.writeUInt16LE(0, 28);
     local.push(lh, nameBuf, comp);
     const ch = Buffer.alloc(46);
-    ch.writeUInt32LE(0x02014b50, 0); ch.writeUInt16LE((3 << 8) | 20, 4); // made by Unix → modes honored ch.writeUInt16LE(20, 6); ch.writeUInt16LE(0x0800, 8); ch.writeUInt16LE(8, 10);
+    // "Made by" Unix (3 << 8), so the file modes in the external attributes are honored.
+    ch.writeUInt32LE(0x02014b50, 0); ch.writeUInt16LE((3 << 8) | 20, 4); ch.writeUInt16LE(20, 6); ch.writeUInt16LE(0x0800, 8); ch.writeUInt16LE(8, 10);
     ch.writeUInt16LE(dosTime, 12); ch.writeUInt16LE(dosDate, 14); ch.writeUInt32LE(crc, 16); ch.writeUInt32LE(comp.length, 20);
     ch.writeUInt32LE(data.length, 24); ch.writeUInt16LE(nameBuf.length, 28); ch.writeUInt32LE(0, 30); ch.writeUInt32LE(0, 34);
     ch.writeUInt32LE(name.endsWith('.command') || name.endsWith('.sh') ? (0o100755 << 16) >>> 0 : (0o100644 << 16) >>> 0, 38);
@@ -141,7 +142,7 @@ function zip(entries) {
 }
 
 /** Flags the store build writes into src/core/flags.js. */
-const STORE_FLAGS = Object.freeze({ sessionLogin: false, devTools: false });
+const STORE_FLAGS = Object.freeze({ devTools: false });
 
 /** Entries for the Chrome Web Store upload ZIP (manifest at the root, no key, store flags). */
 function storeEntries() {
@@ -155,6 +156,9 @@ function storeEntries() {
       delete m.key;
       // The synthetic test workspace (127.0.0.1:8765) is development-only.
       m.optional_host_permissions = (m.optional_host_permissions || []).filter((p) => !p.startsWith('http://127.0.0.1:8765'));
+      const csp = m.content_security_policy && m.content_security_policy.extension_pages;
+      if (typeof csp !== 'string' || !/connect-src [^;]*http:\/\/127\.0\.0\.1:8765/.test(csp)) throw new Error('manifest CSP has no connect-src entry for the test workspace to remove');
+      m.content_security_policy.extension_pages = csp.replace(/ http:\/\/127\.0\.0\.1:8765(?=[;\s]|$)/, '');
       data = Buffer.from(JSON.stringify(m, null, 2) + '\n');
     } else if (name === 'src/core/flags.js') {
       let text = data.toString('utf8');
@@ -211,4 +215,4 @@ function main() {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main();
-export { collect, inspect, storeEntries, STORE_FLAGS, ALLOW, FORBIDDEN_PATH, SECRET_CONTENT };
+export { collect, inspect, storeEntries, zip, STORE_FLAGS, ALLOW, FORBIDDEN_PATH, SECRET_CONTENT };

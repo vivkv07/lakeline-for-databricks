@@ -561,7 +561,7 @@ if (isMain()) {
   startFixtureServer({ port })
     .then((fx) => {
       const usage = fx.counts['billing.usage'];
-      process.stdout.write('Synthetic fixture (dev only) on ' + fx.origin + ' — ' + usage + ' usage rows, DuckDB simulation. Ctrl+C to stop.\n');
+      process.stdout.write('Synthetic fixture (dev only) on ' + fx.origin + ': ' + usage + ' usage rows, DuckDB simulation. Ctrl+C to stop.\n');
       const stop = () => fx.close().then(() => process.exit(0));
       process.on('SIGINT', stop);
       process.on('SIGTERM', stop);

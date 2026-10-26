@@ -35,7 +35,8 @@ let skip = false;
 try {
   ({ chromium } = await import('playwright'));
   const exe = chromium.executablePath();
-  if (!exe || !fs.existsSync(exe)) skip = 'Playwright Chromium is not installed (' + exe + '); this suite never downloads browsers';
+  // An installed browser channel (E2E_CHANNEL=msedge) doesn't need Playwright's own Chromium.
+  if (!process.env.E2E_CHANNEL && (!exe || !fs.existsSync(exe))) skip = 'Playwright Chromium is not installed (' + exe + '); this suite never downloads browsers';
 } catch (e) {
   skip = 'playwright is not installed: ' + String((e && e.message) || e).slice(0, 120);
 }

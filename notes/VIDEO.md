@@ -1,6 +1,6 @@
 # Lakeline for Databricks: launch video (storyboard and production contract)
 
-Owner's brief:
+Brief:
 - A 4K marketing video with motion graphics and good background music.
 - It shows every feature, ease of access, and why it matters.
 - It matches the exact UI and design, with no deviation.
@@ -27,7 +27,6 @@ Owner's brief:
 4. **House style** (notes/STYLE.md):
    - Pure black or white, Inter + IBM Plex Mono, blue accent, amber for data.
    - Hairlines, the navy panel with blue wave lines, no em dashes in on-screen text.
-   - No brand labels from the style's origin.
 5. **Original music.** Composed and synthesized for this video, with no samples or melodies from existing works, so there is no licensing risk.
 6. **Output:**
    - `dist/video/lakeline-launch-4k.mp4`: 3840×2160, 30 fps, H.264 High, yuv420p, CRF ≤ 16, AAC 48 kHz 320 kb/s.
@@ -63,7 +62,7 @@ Then they ask Genie, switching workspaces and agents. The run monitor catches a 
 | 12 | 104.0–112.0 | Security and privacy | MG navy panel | "Nothing leaves your Databricks and your browser." Points: read-only SQL on your own system tables; talks only to your workspace, with no Lakeline servers or analytics; sign-in and Genie chats live in your browser session and clear when it closes; your full chat history stays in Genie in Databricks; access granted one workspace at a time. |
 | 13 | 112.0–116.0 | CTA | MG | Icon, "Lakeline for Databricks", "Add to Chrome", small line "Independent project; not affiliated with Databricks, Inc." Music resolves; tail to about 118 s. |
 
-## Framing rules (owner feedback: the browser looked small and far away)
+## Framing rules (review feedback: the browser looked small and far away)
 
 - The browser window fills the stage: at least 92% of the width (about 1770 of 1920 CSS px), with margins of 24 to 48 px. No large empty side areas in product scenes.
 - Camera on every product shot:
@@ -93,7 +92,7 @@ Then they ask Genie, switching workspaces and agents. The run monitor catches a 
   - It renders on a virtual clock (performance.now and requestAnimationFrame replaced; every frame exact) at 1920×1080 CSS with deviceScaleFactor 2 → 3840×2160.
   - Frames are piped as high-quality JPEG to ffmpeg; no PNGs on disk.
 
-## Pacing v2 (owner feedback: zoom moves felt off and the cut was too fast to follow)
+## Pacing v2 (review feedback: zoom moves felt off and the cut was too fast to follow)
 
 This section supersedes the times in the timeline table above. Scene content is unchanged. Target length 2:34 (154 s plus a tail to about 156 s). All marks fall on 2 s bar lines at 120 BPM.
 

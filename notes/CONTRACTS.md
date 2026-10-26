@@ -1,25 +1,17 @@
-# Shared contracts for parallel work
+# Developer contracts
 
-Read `notes/SPEC.md` (product spec) and `PLAN.md` (stages and decisions) first. Then read the
-existing modules you build on. Match the surrounding code style and comment density.
+How the extension's modules fit together: the module pattern, query kinds, the message types the
+service worker accepts, content feature modules, test harnesses and fixture pages. Read it before
+changing shared code, together with [CONTRIBUTING.md](../CONTRIBUTING.md).
 
-## Ground rules
+## Rules that keep the extension safe
 
-- **Edit only the files you own** (see the brief that assigned your work). If you need a change in a
-  file you don't own, describe the change in your final report (file, exact snippet, reason). The
-  integrator applies it.
-- **Do not run `git commit`** or any git command that writes. The integrator commits.
-- **Run only your own tests**, for example `node --test local/test-row-*.mjs`. Other agents are editing
-  in parallel, so the full suite may be red for reasons that aren't yours. Before you finish, also run
-  `node --test local/test-identity.mjs local/test-contracts.mjs local/test-pricing.mjs local/test-banner-smoke.mjs`.
-  These are the baseline suites and must stay green.
-- No new runtime dependencies. Dev-only test dependencies already installed: `jsdom` and
-  `@duckdb/node-api`. Don't install anything else without saying so in your report.
 - Never read SQL statement text or result rows of user queries. Never infer identity from names.
-  Never use `innerHTML` with page data or any variable data (static extension-authored SVG constants
+- Never use `innerHTML` with page data or any variable data (static extension-authored SVG constants
   are OK). Never log secrets.
-- Report honestly. Say which tests you ran and their exact pass/fail counts. Label simulated tests
-  (DuckDB, jsdom) as simulated.
+- No new runtime dependencies. Dev-only test dependencies: `jsdom`, `@duckdb/node-api` and
+  `playwright`.
+- Label simulated tests (DuckDB, jsdom, the fixture server) as simulated.
 
 ## Module pattern (every shared file)
 
@@ -105,7 +97,10 @@ The response envelope is `{ok:true, data}` or `{ok:false, error:{code, title, st
 Background add-ons register handlers without editing `router.js`:
 `(DCC.handlerFactories || (DCC.handlerFactories = [])).push((deps) => ({ 'monitor:open': { trust: 'page', handle: async (msg, sender) => ... } }))`.
 
-- Trust classes are `content`, `page` (popup/options/monitor), `admin` (options only) and `external`.
+- Trust classes are `content`, `content-origin` (our top-frame script, workspace not yet identified),
+  `page` (popup/options/monitor/side panel), `admin` (options only) and `external`. The router refuses
+  to start with any other value, and refuses a message type that an add-on registers twice or that
+  replaces a built-in one (fail closed).
 - `deps` = `{ store, secrets, data, helper, openPage, chromeApi }`.
 - One-time setup uses `(DCC.backgroundInits || (DCC.backgroundInits = [])).push((deps) => {...})`.
 - The page-sender allowlist is in `sender.js` `PAGE_PATHS`: `/ui/popup.html`, `/ui/options.html`, `/ui/monitor.html`.

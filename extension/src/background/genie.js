@@ -200,15 +200,10 @@
       const conn = cls.ok && cls.origin === origin ? await store.getConnection(origin) : null;
       if (!conn) throw fail('NOT_CONNECTED');
       if (conn.authMode === 'helper') throw fail('GENIE_HELPER_MODE');
-      if (!['oauth', 'pat', 'session'].includes(conn.authMode)) throw fail('GENIE_AUTH_UNSUPPORTED');
+      if (!['oauth', 'pat'].includes(conn.authMode)) throw fail('GENIE_AUTH_UNSUPPORTED');
       if (chromeApi.permissions && chromeApi.permissions.contains) {
         const granted = await chromeApi.permissions.contains({ origins: [origin + '/*'] });
         if (!granted) throw fail('PERMISSION_NOT_GRANTED');
-      }
-      if (conn.authMode === 'session') {
-        // Browser login: Genie requests are relayed through an open tab, limited to the Genie allowlist.
-        if (!deps.data || typeof deps.data.clientFor !== 'function') throw fail('GENIE_AUTH_UNSUPPORTED');
-        return { client: await deps.data.clientFor(origin, 'session', { scope: 'genie' }), demo: false, authMode: 'session' };
       }
       let token;
       if (conn.authMode === 'oauth') {
@@ -595,7 +590,7 @@
         const c = conns[origin];
         let status = 'ready';
         if (c.authMode === 'helper') status = 'helper';
-        else if (!['oauth', 'pat', 'session'].includes(c.authMode)) status = 'unsupported';
+        else if (!['oauth', 'pat'].includes(c.authMode)) status = 'unsupported';
         else if (c.authMode === 'pat') status = (await deps.secrets.getPat(origin)) ? 'ready' : 'pat';
         else if (c.authMode === 'oauth') status = deps.oauth && (await deps.oauth.describe(origin)).genie ? 'ready' : 'signin';
         out.push({ origin, host: hostOf(origin), workspaceId: c.workspaceId, authMode: c.authMode, status });

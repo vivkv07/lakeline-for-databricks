@@ -81,6 +81,23 @@ git rebase --signoff main
 git push --force-with-lease
 ```
 
+## How your contribution ships
+
+1. **Start:** open an issue for a feature (so we agree on the approach first), or go straight to a
+   pull request for a fix. Issues labeled `good first issue` are a good place to begin.
+2. **Build it:** fork the repository, create a branch, and commit with `git commit -s`.
+3. **Open a pull request:** the template asks what changed, how you tested it, and a short
+   checklist. Fill it in; it saves a review round.
+4. **Checks run:** CI runs the tests and the packaging secret scan, and the DCO check confirms
+   every commit is signed off. Workflows from first-time contributors wait for the maintainer to
+   approve them, which is a GitHub safety default.
+5. **Review:** the maintainer reviews every pull request (code owner approval is required). Expect
+   questions or change requests; resolve each conversation before merge.
+6. **Merge:** the change lands on `main` and is listed under "Unreleased" in `CHANGELOG.md`.
+7. **Release:** the maintainer cuts the next version and publishes it to the Chrome Web Store and
+   Microsoft Edge Add-ons, as described in [RELEASING.md](RELEASING.md). Store review takes from a
+   few days to a few weeks. The release notes credit your GitHub handle.
+
 ## Licensing and credit
 
 - Contributions are licensed under the [Apache License 2.0](LICENSE), the same license as the rest
