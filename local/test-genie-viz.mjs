@@ -220,7 +220,7 @@ test('copy and export: TSV and CSV keep raw values, neutralize formulas, never t
   assert.equal(tsv[4], 'plain, "quoted"\t0\t1\t');
   const csv = viz.toCsv(m).split('\r\n');
   assert.equal(csv[0], 'label,delta,big,note');
-  assert.equal(csv[1], '"\'=HYPERLINK(""https://evil.example"",""x"")",-2.5,12345678901234567890,"a\tb\nc"'.replace('\n', '\n'));
+  assert.equal(csv[1], '"\'=HYPERLINK(""https://evil.example"",""x"")",-2.5,12345678901234567890,"a\tb\nc"');
   assert.equal(csv[3].split(',')[0], "'-3", 'formula-looking text is neutralized; numeric -2.5 stays a number');
   assert.equal(csv[4], '"plain, ""quoted""",0,1,');
 });
