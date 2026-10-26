@@ -11,7 +11,7 @@
 
   const DEFAULT_USAGE_SOURCE = 'system.billing.usage';
   const DEFAULT_HISTORY_SOURCE = 'system.query.history';
-  const AUTH_MODES = Object.freeze(['oauth', 'session', 'pat', 'helper']);
+  const AUTH_MODES = Object.freeze(['oauth', 'pat', 'helper']);
 
   /**
    * Approved source: the default system table, or a three-part view outside the `system`
@@ -36,7 +36,7 @@
     const cls = ids.classifyOrigin(src.origin);
     if (!cls.ok) errors.push('Workspace URL must be a supported Databricks workspace (not an account console).');
     if (!V.isWorkspaceId(src.workspaceId)) errors.push('Workspace ID must be numeric.');
-    if (!AUTH_MODES.includes(src.authMode)) errors.push('Choose a sign-in method: Sign in with Databricks, your Databricks login, a personal access token, or the local helper.');
+    if (!AUTH_MODES.includes(src.authMode)) errors.push('Choose a sign-in method: Sign in with Databricks, a personal access token, or the local helper.');
     const oauthClientId = src.oauthClientId === undefined || src.oauthClientId === null || src.oauthClientId === '' ? null : String(src.oauthClientId);
     if (oauthClientId !== null && !/^[A-Za-z0-9][A-Za-z0-9._-]{5,127}$/.test(oauthClientId)) errors.push('OAuth client ID is not valid.');
 

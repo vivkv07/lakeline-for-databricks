@@ -1273,7 +1273,7 @@
     return CSV.download(app.doc, app.root, name, text);
   }
 
-  const api = Object.freeze({ mount, VIEWS, buildCsv: (handle) => buildCsv(handle.app), _sessions: sessions });
+  const api = Object.freeze({ mount, VIEWS, buildCsv: (handle) => buildCsv(handle.app) });
   if (NODE) module.exports = api;
   else (root.DCC || (root.DCC = {})).explorer = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

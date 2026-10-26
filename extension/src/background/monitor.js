@@ -233,16 +233,6 @@
     /** @returns {{get(path, query)} | {signin: next}} */
     async function clientFor(conn) {
       const host = new URL(conn.origin).host;
-      if (conn.authMode === 'session') {
-        // Browser login: relayed through an open tab of this workspace (errors say when none is open).
-        const client = await deps.data.clientFor(conn.origin, 'session');
-        return {
-          get(path, query) {
-            assertPath(path);
-            return client.get(path, cleanQuery(query));
-          },
-        };
-      }
       if (conn.authMode === 'oauth') {
         if (!deps.oauth) return { signin: NEXT.signinOauth() };
         let token;

@@ -21,7 +21,7 @@
   const CONNECTED_KINDS = new Set(['queryEstimates', 'computeRates', 'exploreSummary', 'exploreEntities', 'exploreRuns']);
 
   /**
-   * @param deps {store, secrets, data, helper, chromeApi, extensionId, extensionOrigin, helperPort,
+   * @param deps {store, secrets, oauth?, data, helper, chromeApi, extensionId, extensionOrigin, helperPort,
    *              registration, openPage(path), extra?: {[type]: {trust, handle}}}
    */
   function create(deps) {
@@ -261,6 +261,8 @@
         async handle(msg) {
           await deps.store.removeConnection(msg.origin);
           await deps.secrets.clearPat(msg.origin);
+          // Sign-in tokens go with the connection, not only when the browser closes.
+          if (deps.oauth) await deps.oauth.signOut(msg.origin);
           deps.data.cache.clear();
           return { removed: true };
         },

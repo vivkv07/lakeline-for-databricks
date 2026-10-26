@@ -34,7 +34,6 @@ importScripts(
   './registration.js',
   './appearance-handlers.js',
   './oauth.js',
-  './session-transport.js',
   './data-service.js',
   './ui-handlers.js',
   './connect-handlers.js',
@@ -59,8 +58,7 @@ const fetchImpl = (...args) => fetch(...args);
 const helperFactory = (o) => DCC.helperClient.create({ fetch: fetchImpl, getBridge: o.getBridge });
 const helper = helperFactory({ getBridge: () => secrets.getBridge() });
 const oauth = DCC.oauth.create({ chromeApi: chrome, fetch: fetchImpl });
-const sessionTransport = DCC.sessionTransport.create({ chromeApi: chrome });
-const data = DCC.dataService.create({ store, secrets, helper, oauth, sessionTransport, fetch: fetchImpl });
+const data = DCC.dataService.create({ store, secrets, helper, oauth, fetch: fetchImpl });
 
 async function openPage(path) {
   const url = chrome.runtime.getURL(path);
@@ -81,6 +79,7 @@ async function openPage(path) {
 const router = DCC.router.create({
   store,
   secrets,
+  oauth,
   data,
   helper,
   helperFactory,

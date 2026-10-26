@@ -392,5 +392,5 @@
     onPeriod() {},
     onSummary() {},
   });
-  root.DCC.warehousePreview = Object.freeze({ SIZES, AZURE_SERVERLESS_DBU, sizeIn, dbuIn, routeMode, detectWarehouseType, detectPhoton, _state: state });
+  root.DCC.warehousePreview = Object.freeze({ SIZES, AZURE_SERVERLESS_DBU, sizeIn, dbuIn, routeMode, detectWarehouseType, detectPhoton });
 })(typeof globalThis !== 'undefined' ? globalThis : this);

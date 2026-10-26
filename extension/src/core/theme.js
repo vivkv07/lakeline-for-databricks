@@ -71,7 +71,6 @@
   const FONT = 'Inter, -apple-system, "Segoe UI", Roboto, Arial, sans-serif';
   const MONO = '"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
   const DARK_BELOW = 0.2;
-  const NAMES = Object.freeze(['light', 'dark']);
 
   function tokens(name) {
     return name === 'dark' ? DARK : LIGHT;
@@ -260,7 +259,6 @@
     FONT,
     MONO,
     DARK_BELOW,
-    NAMES,
     tokens,
     varName,
     cssVars,
