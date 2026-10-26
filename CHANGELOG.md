@@ -13,6 +13,17 @@ aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   name and icon, a contributing guide with DCO sign-off, a security policy with private reporting,
   code owners, issue and pull request templates, CI (tests and the packaging secret scan) and a DCO
   check. Store packages now include LICENSE and NOTICE.
+- README prerequisites (system tables, grants and a SQL warehouse that can read them), screenshots,
+  and RELEASING.md describing how a merged contribution reaches the stores.
+
+### Removed
+
+- The experimental "Use my Databricks login" sign-in. Databricks' public API rejects browser
+  sessions, the store build already hid it, and its bridge script no longer loads into workspace
+  tabs. Connections saved with it by development builds are dropped; connect again with Sign in
+  with Databricks or a token.
+- Unused code: chart color constants, exported lists and debug hooks nothing read, and two message
+  handlers nothing sent.
 
 ### Security
 
@@ -25,10 +36,15 @@ aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Tokens saved with "Remember on this computer" now live in the extension's own IndexedDB, which
   content scripts can't open, instead of `chrome.storage.local`. Tokens remembered by 0.1.1 move
   over automatically on first start, and the old key is deleted.
-- Review notes and open items: `notes/SECURITY-REVIEW.md`.
+- Disconnecting a workspace now also signs it out, instead of keeping its sign-in tokens until the
+  browser closes.
 
 ### Fixed
 
+- Store ZIPs had an invalid central directory: entries were compressed but labeled as stored, so
+  strict ZIP readers rejected them. A test now checks every entry inflates to its CRC.
+- The calculation guide and README described an admin-only sign-in, a SQL-only scope and
+  session-only tokens; they now match 0.1.1.
 - The browser test for the run monitor no longer depends on the time of day. The fixture adds a
   failed manual re-run three hours before now, which is always inside the monitor's 24-hour window.
 
@@ -47,9 +63,9 @@ aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - An organization's app connection (client ID) still works and moved under Other ways to sign in.
 - New messages: quick sign-in blocked by an admin, token refused, token format.
 
-## [Unreleased]: 0.1.0 (2026-10-15)
+## [0.1.0] (2026-10-15)
 
-First development version. Not yet released. Independent project, not affiliated with Databricks,
+First development version. Independent project, not affiliated with Databricks,
 Inc. All amounts are estimates: "Estimated costs. Billing can be delayed; final invoices may differ."
 
 ### Added

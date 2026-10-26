@@ -6,7 +6,7 @@ order, and both promo tiles).
 
 Build the upload ZIP with `node scripts/package.mjs --store`. It writes
 `dist/lakeline-for-databricks-store-<version>.zip`, with `manifest.json` at the root, no
-development `key`, the experimental browser login hidden, and no local test-workspace permission.
+development `key`, no developer-only links and no local test-workspace permission.
 
 ---
 
