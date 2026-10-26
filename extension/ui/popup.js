@@ -62,14 +62,26 @@
     };
   }
 
-  /** sendMessage that always resolves to {ok, data} | {ok:false, error}. */
+  /**
+   * An error tagged with the request that failed (a message type such as 'connect:oneClick'), so
+   * a generic "Something went wrong" still says what it was about under Technical details.
+   */
+  function failed(error, type) {
+    const e = error && typeof error === 'object' ? error : {};
+    const details = Object.assign({}, e.details && typeof e.details === 'object' ? e.details : {});
+    if (typeof details.action !== 'string' && typeof type === 'string') details.action = type;
+    return Object.assign({}, e, { details });
+  }
+
+  /** sendMessage that always resolves to {ok, data} | {ok:false, error}; errors name the request. */
   async function send(msg) {
+    const type = msg && msg.type;
     try {
       const res = await chromeApi.runtime.sendMessage(msg);
-      if (res && typeof res === 'object' && typeof res.ok === 'boolean') return res;
-      return { ok: false, error: backgroundError('No response') };
+      if (res && typeof res === 'object' && typeof res.ok === 'boolean') return res.ok ? res : { ok: false, error: failed(res.error, type) };
+      return { ok: false, error: failed(backgroundError('No response'), type) };
     } catch (e) {
-      return { ok: false, error: backgroundError(e && e.message) };
+      return { ok: false, error: failed(backgroundError(e && e.message), type) };
     }
   }
 
@@ -83,14 +95,24 @@
 
   /* ---------------------------------------------------------------- alerts */
 
-  function alertBox(kind, title, lines) {
+  /** `tech`: [label, value] rows for a collapsed Technical details block (errors only). */
+  function alertBox(kind, title, lines, tech) {
     const items = (lines || []).filter(Boolean);
+    const rows = tech || [];
     return h('div', { class: 'dcc-alert dcc-alert--' + kind, role: kind === 'error' ? 'alert' : null }, [
       h('p', { class: 'dcc-alert__title' }, title),
       items.length === 1 ? h('p', { class: 'dcc-alert__body' }, items[0]) : null,
       items.length > 1 ? h('ul', { class: 'dcc-alert__steps' }, items.map((l) => h('li', {}, l))) : null,
+      rows.length
+        ? h('details', { class: 'dcc-tech-details' }, [
+            h('summary', {}, 'Technical details'),
+            h('dl', { class: 'dcc-tech' }, [].concat(...rows.map(([label, value]) => [h('dt', {}, label), h('dd', {}, h('code', {}, value))]))),
+          ])
+        : null,
     ]);
   }
+
+  const ACTION_RE = /^[a-z]{1,20}:[A-Za-z]{1,40}$/;
 
   function errorParts(error) {
     const e = error && typeof error === 'object' ? error : {};
@@ -98,7 +120,21 @@
     const cat = (errors && errors.CATALOG[code]) || { title: 'Something went wrong', steps: [] };
     const title = clean(e.title) || cat.title;
     const steps = (Array.isArray(e.steps) ? e.steps : cat.steps).map((s) => clean(s)).filter(Boolean).slice(0, 4);
-    return { code, title, steps };
+    // Technical details: which request failed and what the background reported (already redacted
+    // there; redacted again here). Shown only for failures that came from a request.
+    const d = e.details && typeof e.details === 'object' ? e.details : {};
+    const action = typeof d.action === 'string' && ACTION_RE.test(d.action) ? d.action : null;
+    const message = d.message ? clean(d.message, 600) : '';
+    const tech = [];
+    if (action || message) {
+      tech.push(['Code', code]);
+      if (action) tech.push(['Request', action]);
+      if (Number.isInteger(d.httpStatus)) tech.push(['HTTP status', String(d.httpStatus)]);
+      if (d.errorCode) tech.push(['Error code', clean(d.errorCode, 80)]);
+      if (V.isStatementId(String(d.statementId || '').toLowerCase())) tech.push(['Statement ID', String(d.statementId).toLowerCase()]);
+      if (message) tech.push(['Message', message]);
+    }
+    return { code, title, steps, tech };
   }
 
   function showAlert(error) {
@@ -106,7 +142,7 @@
     slot.textContent = '';
     if (!error) return;
     const p = errorParts(error);
-    slot.appendChild(alertBox('error', p.title, p.steps));
+    slot.appendChild(alertBox('error', p.title, p.steps, p.tech));
   }
 
   function setGenieStatus(kind, title, lines) {
@@ -213,6 +249,8 @@
       actions.appendChild(genie);
     }
     $('signin-alt').hidden = !canChoose;
+    // Say what signing in shares before the first sign-in (store user-data disclosure).
+    $('connect-note').hidden = connectedHere || !canChoose;
     syncSetupToggle();
   }
 
@@ -225,13 +263,15 @@
   const CLIENT_ID_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{5,127}$/;
   /** The built-in sign-in reads its redirect from the sign-in tab, so it also needs this origin. */
   const SIGNIN_REDIRECT_PATTERN = 'http://localhost:8020/*';
+  const PRIVACY_URL = 'https://vivkv07.github.io/lakeline-for-databricks/privacy.html';
   /** Where Databricks lists a user's tokens (Settings, Developer, Access tokens). */
   const TOKEN_PAGE_PATH = '/settings/user/developer/access-tokens';
   /** Codes after which the token box is the natural next step. */
   const OFFER_TOKEN = ['BUILTIN_SIGNIN_BLOCKED', 'AUTH_CANCELLED'];
 
+  const policy = () => (state && state.policy) || {};
   const customClientId = () => {
-    const id = state && state.settings && state.settings.oauth && state.settings.oauth.clientId;
+    const id = policy().oauthClientId || (state && state.settings && state.settings.oauth && state.settings.oauth.clientId);
     return CLIENT_ID_RE.test(id || '') ? id : null;
   };
 
@@ -316,7 +356,7 @@
     }
     if (!r.data || r.data.connected !== true) {
       setTabLine(null, '');
-      showAlert({ code: 'UNKNOWN', title: 'Not connected', steps: ['The extension did not confirm the connection. Reload the extension and the Databricks tab, then try again.'] });
+      showAlert({ code: 'UNKNOWN', title: 'Not connected', steps: ['The extension did not confirm the connection. Reload the extension and the Databricks tab, then try again.'], details: { action: 'connect:oneClick', message: 'The reply did not confirm a connection' } });
       return;
     }
     $('oauth-setup').hidden = true;
@@ -333,6 +373,12 @@
     const conn = tab && tab.supported ? connections()[tab.origin] : null;
     const mismatch = conn && tab.workspaceId && tab.workspaceId !== conn.workspaceId;
     // One click on real workspaces; the local fixture and edits use Connection preferences.
+    if (tab && tab.supported && tab.kind === 'workspace' && !mismatch && (!conn || conn.authMode === 'oauth') && !customClientId() && policy().disableBuiltInSignIn) {
+      // The administrator turned off the CLI client's sign-in: offer the token box instead.
+      showAlert({ code: 'BUILTIN_SIGNIN_POLICY', title: 'Your organization turned off this sign-in', steps: ['Use a personal access token below, or the app connection your organization registered.'] });
+      showSetup();
+      return;
+    }
     if (tab && tab.supported && tab.kind === 'workspace' && !mismatch && (!conn || conn.authMode === 'oauth')) {
       // Without a registered app, sign-in goes through Databricks' built-in client, whose redirect
       // the extension reads on localhost:8020; both accesses are asked for in this one click.
@@ -399,13 +445,35 @@
     closePopup();
   }
 
+  /** How long a one-click connect that ended while the popup was closed is still reported. */
+  const OUTCOME_MAX_AGE_MS = 3 * 60 * 1000;
+
+  /**
+   * The last one-click connect (connect:status, mirrored in chrome.storage.session) when it still
+   * describes this tab: the same workspace origin, recent, and not superseded by a connection
+   * saved after it. A failure is not shown once this tab's workspace is connected (for example a
+   * Reconnect that was cancelled, or an older attempt): the saved connection is what applies, and
+   * the failure stays listed under Diagnostics. Entries without an origin come from an older
+   * version and are never shown.
+   */
+  function recentConnectOutcome(st, nowMs) {
+    if (!st || typeof st !== 'object' || !tab || !tab.supported) return null;
+    if (!Number.isFinite(st.at) || nowMs - st.at > OUTCOME_MAX_AGE_MS || st.at - nowMs > 60 * 1000) return null;
+    if (typeof st.origin !== 'string' || st.origin !== tab.origin) return null;
+    const conn = connections()[tab.origin] || null;
+    if (conn && Number.isFinite(conn.savedAt) && conn.savedAt >= st.at) return null;
+    const connectedHere = Boolean(conn && !(tab.workspaceId && tab.workspaceId !== conn.workspaceId));
+    if (st.state === 'error') return connectedHere || !st.error ? null : st;
+    return st.state === 'signing-in' || st.state === 'configuring' ? st : null;
+  }
+
   /** The popup may have closed while the sign-in window was open; show how it ended. */
   async function showRecentConnectOutcome() {
     const r = await send({ type: 'connect:status' });
-    const st = r.ok && r.data;
-    if (!st || !tab || !tab.supported || Date.now() - st.at > 3 * 60 * 1000) return;
-    if (st.state === 'signing-in' || st.state === 'configuring') setTabLine(null, 'Finishing sign-in…');
-    else if (st.state === 'error' && st.error) showAlert(st.error);
+    const st = r.ok ? recentConnectOutcome(r.data, Date.now()) : null;
+    if (!st) return;
+    if (st.state === 'error') showAlert(failed(st.error, 'connect:oneClick'));
+    else setTabLine(null, 'Finishing sign-in…');
   }
 
   /* ---------------------------------------------------------------- settings */
@@ -603,12 +671,16 @@
       const p = errorParts({ code: d && d.code });
       const det = (d && d.details) || {};
       const statementId = V.isStatementId(String(det.statementId || '').toLowerCase()) ? String(det.statementId).toLowerCase() : null;
-      const meta = [timeLabel(d && d.at), p.code, d && typeof d.type === 'string' ? clean(d.type, 40) : null].filter(Boolean).join(' · ');
+      const meta = [timeLabel(d && d.at), p.code, d && typeof d.type === 'string' ? clean(d.type, 40) : null, Number.isInteger(det.httpStatus) ? 'HTTP ' + det.httpStatus : null].filter(Boolean).join(' · ');
+      // The background's own words (redacted when recorded, again here): what a generic
+      // "Something went wrong" was about.
+      const message = det.message ? clean(det.message, 300) : '';
       list.appendChild(
         h('li', {}, [
           h('div', { class: 'pp-diag-title' }, p.title),
           h('div', { class: 'pp-diag-meta' }, meta),
           statementId ? h('div', { class: 'pp-diag-meta' }, ['Statement ID ', h('code', {}, statementId)]) : null,
+          message ? h('div', { class: 'pp-diag-meta' }, message) : null,
         ])
       );
     }
@@ -650,6 +722,7 @@
     $('oauth-guide').addEventListener('click', () => openPage('guide', 'sign-in'));
     $('open-options').addEventListener('click', () => openPage('options'));
     $('guide-link').addEventListener('click', () => openPage('guide'));
+    $('privacy-link').addEventListener('click', () => chromeApi.tabs.create({ url: PRIVACY_URL }));
     for (const input of doc.querySelectorAll('input[name="mode"]')) {
       input.addEventListener('change', () => {
         if (input.checked) updateSettings({ mode: input.value });

@@ -165,7 +165,7 @@
     if (demo) cls += ' demo';
 
     const lines = [headline];
-    lines.push(demo ? 'Synthetic demo figure; not from Databricks.' : imported ? 'Imported summary from a local costs.json file; contains no run detail.' : 'Estimated recorded cost: signed usage quantity × unit price.');
+    lines.push(demo ? 'Synthetic demo figure; not from Databricks.' : imported ? 'Imported summary from a local costs.json file; contains no run detail.' : 'Lakeline estimate of recorded cost: signed usage quantity × unit price.');
     lines.push(scopeLine(item, type, periodDays, nowMs));
     const attr = attributionLine(item, type, currency);
     if (attr) lines.push(attr);

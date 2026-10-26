@@ -4,9 +4,10 @@ The code in this repository is licensed under the [Apache License 2.0](LICENSE).
 the code only. It does not grant rights to the project's name or logo (Apache License 2.0,
 section 6).
 
-**"Lakeline"**, **"Lakeline for Databricks"** and the **Lakeline icon** (three bars, the tallest in
-blue) are trademarks of Vivek Kovvuru. They identify the official extension that Vivek Kovvuru
-publishes on the Chrome Web Store and Microsoft Edge Add-ons.
+**"Lakeline"** and the **Lakeline icon** (three bars, the tallest in blue) are trademarks of Vivek
+Kovvuru. They identify the extension that Vivek Kovvuru publishes on the Chrome Web Store and
+Microsoft Edge Add-ons under the name "Lakeline for Databricks". The words "for Databricks" only say
+which platform it works with; no rights in "Databricks" are claimed.
 
 ## You may
 
@@ -30,7 +31,7 @@ requires.
 ## Databricks
 
 Lakeline is an independent project and is not affiliated with, endorsed by or sponsored by
-Databricks, Inc. Databricks and Genie are trademarks of Databricks, Inc. This policy covers only the
+Databricks, Inc. Databricks is a registered trademark of Databricks, Inc.; Genie and other Databricks product names are used only to identify Databricks products. This policy covers only the
 Lakeline marks.
 
 ## Questions

@@ -18,7 +18,7 @@ https://learn.microsoft.com/microsoft-edge/extensions/publish/create-dev-account
 
 ## 2. Packages
 
-**Create new extension**, then drag in `dist/edge-upload/lakeline-for-databricks-0.1.1.zip` (a copy of the store ZIP). Partner Center
+**Create new extension**, then drag in `dist/edge-upload/lakeline-for-databricks-<version>.zip` (a copy of the store ZIP). Partner Center
 reads the name, version, summary and permissions from `manifest.json`.
 
 ## 3. Availability
@@ -88,8 +88,8 @@ synthetic answers with tables and charts.
 
 For the in-page banner and badges, open any Databricks workspace (a free trial works) with access
 to the system.billing tables, click the toolbar icon, then Connect this workspace. A tab opens on
-that workspace's own sign-in page and closes itself once you are signed in. Databricks' built-in
-sign-in client (databricks-cli) only redirects to http://localhost:8020, so the extension asks for
+that workspace's own sign-in page and closes itself once you are signed in. The Databricks CLI's
+public sign-in client (databricks-cli) only redirects to http://localhost:8020, so the extension asks for
 that origin and reads the one-time code from its own sign-in tab; nothing runs on that port. Or open
 Other ways to sign in and paste a personal access token (Settings, Developer, Access tokens).
 
@@ -110,5 +110,5 @@ Then select **Publish**. Microsoft reviews within about 7 business days and emai
     with Databricks or a token, which is what the store build offers anyway.
   - **An organization's own app connection** needs `https://<edge-id>.chromiumapp.org/` added as a
     second redirect URL.
-- The default sign-in (built-in client) and personal access tokens need nothing for Edge.
+- The default sign-in (the Databricks CLI's public client) and personal access tokens need nothing for Edge.
 - Updates: upload a new ZIP on the **Packages** page, then **Publish** again.

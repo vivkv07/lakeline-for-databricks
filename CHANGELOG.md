@@ -7,14 +7,44 @@ aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.2] (2026-10-25)
+
 ### Added
 
+- **Administrator policy.** Organizations can turn off sign-in through the Databricks CLI's public
+  client (`disableBuiltInSignIn`) or point Lakeline at their own app connection (`oauthClientId`)
+  through the browser's managed extension policy. The check sits in the sign-in itself, so no path
+  bypasses it.
+- The popup says what signing in shares before the first sign-in, links the privacy policy, and
+  says Lakeline is an independent project; Connection preferences has the same notice.
+- Remembered personal access tokens are encrypted at rest (AES-GCM) with a non-exportable key kept
+  in the extension's own database. Tampered or unreadable data counts as no token.
+- The privacy policy has a Limited Use section and covers both Chrome and Microsoft Edge; the store
+  description says a Databricks workspace is required and names Databricks fewer times.
+
+- **Workspace colors, optional sidebar.** "Also color the sidebar" (saved per workspace) tints the
+  side navigation and the shell around the page card in the same color, so bar and sidebar read as
+  one frame.
+- **Workspace colors blend native controls.** The search box, pills, the New button and the
+  selected sidebar item use a lighter or darker shade of the workspace color, with readable
+  secondary text; account initials keep their own circle. Search fields are no longer forced white.
 - Open source under the Apache License 2.0, with a NOTICE file, a trademark policy for the Lakeline
   name and icon, a contributing guide with DCO sign-off, a security policy with private reporting,
   code owners, issue and pull request templates, CI (tests and the packaging secret scan) and a DCO
   check. Store packages now include LICENSE and NOTICE.
 - README prerequisites (system tables, grants and a SQL warehouse that can read them), screenshots,
   and RELEASING.md describing how a merged contribution reaches the stores.
+
+### Changed
+
+- Brand and policy hygiene before sharing: TRADEMARKS claims only "Lakeline" and the icon; one
+  attribution line everywhere; the default sign-in is described as reusing the public client
+  Databricks provides for its own CLI, not as something Databricks made for Lakeline; the in-page
+  banner, estimates and side panel name Lakeline; the run-failure notification no longer reads as if
+  Databricks sent it; store screenshots carry a synthetic-data, not-affiliated caption.
+- RELEASING and CONTRIBUTING add publishing safety rules: synthetic data only (never Free Edition,
+  employer workspaces or real prices), never share account logins with reviewers, no Databricks
+  logos or endorsement claims.
 
 ### Removed
 
@@ -47,6 +77,20 @@ aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   session-only tokens; they now match 0.1.1.
 - The browser test for the run monitor no longer depends on the time of day. The fixture adds a
   failed manual re-run three hours before now, which is always inside the monitor's 24-hour window.
+- The popup no longer shows a red "Something went wrong" over a connected workspace. The last
+  one-click connect is remembered per workspace: a failed attempt shows only on a tab of that
+  workspace, only while it isn't connected, for at most three minutes, and never once a later save
+  replaced it. The failure stays under Diagnostics.
+- Popup errors that come from a request now have Technical details naming the request that failed
+  (for example `connect:oneClick`) and the background's message, redacted. Popup Diagnostics list
+  that message too.
+- "Sign-in was cancelled" no longer reads "use a personal access token: [redacted] ways to sign in".
+  Display-time redaction took the catalog text for a token; no catalog text looks like one now.
+- Workspace colors on the dark top bar: the search placeholder kept its native dark-theme gray,
+  which was unreadable on light and bright colors, because the design system sets it (and the field
+  background) with class-level `!important`. Theme rules inside the bar now outrank class-based
+  styles. The search box also keeps a subtle frame instead of losing its border. A new fixture
+  (`local/fixture/topbar-dark.html`) and browser test cover this search structure in five colors.
 
 ## [0.1.1] (2026-10-16)
 
@@ -160,12 +204,6 @@ Inc. All amounts are estimates: "Estimated costs. Billing can be delayed; final 
 - Per-workspace top-bar colors from the popup: strict `#RRGGBB` values, presets, a preview, Save
   and Reset. Stored separately from cost connections, keyed by `origin|workspaceId`, with host
   defaults. Text contrast is chosen automatically.
-- Optional sidebar coloring ("Also color the sidebar", saved per workspace): the side navigation
-  and the shell around the page card take the same color, so bar and sidebar read as one frame.
-- Native controls blend with the color instead of keeping their own backgrounds: the search box,
-  pills, the New button and the selected sidebar item use a lighter or darker shade of the same
-  color, with readable secondary text; account initials keep their own circle. Search fields are
-  no longer forced white.
 
 **Monitor widget**
 - A compact monitor window for job runs, pipeline updates, SQL warehouses and clusters. It polls

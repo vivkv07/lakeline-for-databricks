@@ -143,7 +143,7 @@ export function security(ctx, { t0, t1 }) {
   const layer = el('div', 'layer', ctx.root);
   const eb = el('div', 'eyebrow abs', layer, { left: '120px', top: '112px', fontSize: '18px', color: '#8FB0FF' });
   eb.textContent = 'Security and privacy';
-  const head = kinetic(layer, 'Nothing leaves your Databricks and your browser.', { size: 66, stagger: 0.05, dur: 0.9, tracking: -0.03, style: { left: '120px', top: '150px' } });
+  const head = kinetic(layer, 'Nothing leaves your Databricks workspace and your browser.', { size: 66, stagger: 0.05, dur: 0.9, tracking: -0.03, style: { left: '120px', top: '150px' } });
   const rows = SECURITY_POINTS.map(([icon, text], i) => {
     const y = 318 + i * 116;
     const row = el('div', 'abs', layer, { left: '120px', top: y + 'px', width: '1380px', height: '116px' });
@@ -160,7 +160,7 @@ export function security(ctx, { t0, t1 }) {
     t0, t1, pre: 0, post: 0.05, layer,
     events: () => [
       { t: t0 + 0.25, kind: 'eyebrow', scene: 12, label: 'Security and privacy', dur: 0.8 },
-      { t: t0 + 0.35, kind: 'title', scene: 12, label: 'Nothing leaves your Databricks and your browser.', dur: 0.05 * 7 + 0.9 },
+      { t: t0 + 0.35, kind: 'title', scene: 12, label: 'Nothing leaves your Databricks workspace and your browser.', dur: 0.05 * 7 + 0.9 },
       ...SECURITY_POINTS.map(([, text], i) => ({ t: t0 + 1.6 + i * 0.95, kind: 'point', scene: 12, label: text, dur: 0.9 })),
       { t: t1 - 0.45, kind: 'title-out', scene: 12, label: 'security panel leaves', dur: 0.45 },
     ],

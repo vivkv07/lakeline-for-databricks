@@ -80,13 +80,15 @@ function shot({ theme, eyebrow, headline, url = '', body }) {
 .head h1 { margin-top: 12px; font-size: 33px; line-height: 1.12; font-weight: 650; letter-spacing: -0.02em; }
 .brand { position: absolute; right: 50px; top: 30px; display: flex; align-items: center; gap: 8px; font: 600 13px/1 Inter; color: ${t.muted}; }
 .brand img { width: 20px; height: 20px; border-radius: 5px; }
-.frame.main { left: 50px; top: 128px; width: 1180px; height: 648px; }
-.frame.main .content { height: 616px; }
+.frame.main { left: 50px; top: 128px; width: 1180px; height: 640px; }
+.frame.main .content { height: 608px; }
+.fine { position: absolute; left: 50px; right: 50px; bottom: 9px; font: 500 11px/1 Inter; color: ${t.muted}; }
 </style></head><body>
 <div class="head"><p class="eyebrow">${esc(eyebrow)}</p><h1>${esc(headline)}</h1></div>
 <div class="brand"><img src="${ICON}" alt="">Lakeline for Databricks</div>
 <div class="frame main"><div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span>${url ? `<span class="addr">${esc(url)}</span>` : ''}</div>
 <div class="content">${body}</div></div>
+<p class="fine">Synthetic sample workspace and data. Independent project, not affiliated with Databricks, Inc.</p>
 </body></html>`;
 }
 
@@ -122,7 +124,7 @@ const SHOTS = [
   { file: 'screenshot-dark-2.png', theme: 'dark', eyebrow: 'Ask Genie', headline: 'Copy answers straight into your doc.', url: 'docs.example', body: docked('09-genie/dark/page-doc-2-table-docked.png', '09-genie/dark/panel-10-copied-table.png', { pageX: 20, y: 0 }) },
   { file: 'screenshot-dark-3.png', theme: 'dark', eyebrow: 'Cost Explorer', headline: 'Spot the spike day in seconds.', url: PROD, body: crop('07-explorer/dark/05-calendar-spike-hover.png', { x: 240, y: 40, w: 1030 }) },
   { file: 'screenshot-dark-4.png', theme: 'dark', eyebrow: 'Run monitor', headline: 'Runs and compute at a glance. Failures flagged.', url: PROD + '/jobs', body: monitorOverlay() },
-  { file: 'screenshot-dark-5.png', theme: 'dark', eyebrow: 'Security and privacy', headline: 'Nothing leaves your Databricks and your browser.', url: '', body: privacyCard() },
+  { file: 'screenshot-dark-5.png', theme: 'dark', eyebrow: 'Security and privacy', headline: 'Nothing leaves your Databricks workspace and your browser.', url: '', body: privacyCard() },
 ];
 
 function colorsTrio(theme) {

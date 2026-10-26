@@ -99,3 +99,13 @@ test('ZIP archives are valid: the central directory agrees with every local head
     p += 46 + nlen + buf.readUInt16LE(p + 30) + buf.readUInt16LE(p + 32);
   }
 });
+
+test('the administrator policy schema ships with the store build and matches the manifest', () => {
+  const entries = storeEntries();
+  const manifest = JSON.parse(entries.find((e) => e.name === 'manifest.json').data.toString('utf8'));
+  assert.equal(manifest.storage.managed_schema, 'managed_schema.json');
+  const schema = JSON.parse(entries.find((e) => e.name === 'managed_schema.json').data.toString('utf8'));
+  assert.deepEqual(Object.keys(schema.properties).sort(), ['disableBuiltInSignIn', 'oauthClientId']);
+  assert.equal(schema.properties.disableBuiltInSignIn.type, 'boolean');
+  assert.equal(schema.properties.oauthClientId.type, 'string');
+});

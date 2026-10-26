@@ -19,6 +19,7 @@ const version = JSON.parse(readFileSync(path.join(ROOT, 'extension/manifest.json
 /** Allowlist: [path relative to repo root, {recursive, extensions}] */
 const ALLOW = [
   ['extension/manifest.json'],
+  ['extension/managed_schema.json'],
   ['extension/EXTENSION_ID'],
   ['extension/icons', { recursive: true, ext: ['.png'] }],
   ['extension/fonts', { recursive: false, ext: ['.woff2', '.txt'] }],

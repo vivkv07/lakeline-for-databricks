@@ -29,11 +29,22 @@ function env(legacyInitial = {}) {
 }
 
 const secretKeys = (area) => Object.keys(area.data).filter((k) => k.startsWith('dcc.secrets'));
+/** The remembered map as stored: encrypted, so no token text appears anywhere in it. */
+const storedPlain = (area) => JSON.stringify(area.data[KEY], (k, v) => (v instanceof Uint8Array ? Array.from(v) : v));
+const rememberedIn = async (idb) => {
+  const restarted = secretsMod.create(fakeArea(), idb);
+  const out = {};
+  for (const o of [A, B]) if (await restarted.isPatRemembered(o)) out[o] = await restarted.getPat(o);
+  return out;
+};
 
 test('a remembered token goes to the extension-only area and never to chrome.storage.local', async () => {
   const e = env();
   await e.secrets.setPat(A, PAT_A, { remember: true });
-  assert.deepEqual(e.idb.data[KEY], { [A]: PAT_A });
+  assert.equal(e.idb.data[KEY].v, 1, 'stored encrypted (AES-GCM)');
+  assert.ok(!storedPlain(e.idb).includes(PAT_A), 'no token text at rest');
+  assert.equal(e.idb.data['dcc.secrets.encKey'].extractable, false, 'the key cannot be exported');
+  assert.deepEqual(await rememberedIn(e.idb), { [A]: PAT_A });
   assert.deepEqual(secretKeys(e.legacy), [], 'nothing under dcc.secrets in storage.local');
   assert.deepEqual(e.writes, [], 'storage.local is never written');
   assert.equal(await e.secrets.isPatRemembered(A), true);
@@ -43,14 +54,15 @@ test('a remembered token goes to the extension-only area and never to chrome.sto
   assert.equal(await restarted.getPat(A), PAT_A);
 
   await restarted.clearPat(A);
-  assert.deepEqual(e.idb.data[KEY], {});
+  assert.deepEqual(await rememberedIn(e.idb), {});
   assert.equal(await restarted.getPat(A), null);
 });
 
 test('tokens remembered by 0.1.1 in chrome.storage.local move over once, and the old key is deleted', async () => {
   const e = env({ [KEY]: { [A]: PAT_A, [B]: PAT_B, 'https://dbc-ccc.cloud.databricks.com': 'not-a-token' } });
   assert.equal(await e.secrets.getPat(A), PAT_A);
-  assert.deepEqual(e.idb.data[KEY], { [A]: PAT_A, [B]: PAT_B }, 'implausible values are dropped');
+  assert.deepEqual(await rememberedIn(e.idb), { [A]: PAT_A, [B]: PAT_B }, 'implausible values are dropped');
+  assert.ok(!storedPlain(e.idb).includes(PAT_A) && !storedPlain(e.idb).includes(PAT_B), 'moved tokens are encrypted too');
   assert.equal(KEY in e.legacy.data, false, 'old key removed from storage.local');
   assert.equal(await e.secrets.isPatRemembered(B), true);
   assert.deepEqual(e.writes, [], 'migration only deletes from storage.local');
@@ -89,4 +101,16 @@ test('the service worker keeps remembered tokens in IndexedDB and passes storage
     }
   })(root);
   assert.deepEqual(hits, ['src/background/secrets.js']);
+});
+
+test('tampered or unreadable remembered data counts as empty instead of failing', async () => {
+  const e = env();
+  await e.secrets.setPat(A, PAT_A, { remember: true });
+  const box = e.idb.data[KEY];
+  box.data[0] ^= 0xff; // flip bits: AES-GCM authentication fails
+  const restarted = secretsMod.create(fakeArea(), e.idb);
+  assert.equal(await restarted.getPat(A), null);
+  assert.equal(await restarted.isPatRemembered(A), false);
+  await restarted.setPat(B, PAT_B, { remember: true });
+  assert.equal(await secretsMod.create(fakeArea(), e.idb).getPat(B), PAT_B, 'remembering again works');
 });

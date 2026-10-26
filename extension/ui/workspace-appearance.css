@@ -240,14 +240,17 @@
   white-space: nowrap;
 }
 
-/* Mirrors the theme rule for native search fields: a shade of the bar color with soft text. */
+/* Mirrors the theme rule for native search fields: a shade of the bar color with soft text, in a
+   subtle frame (the line color, set inline with the tones). */
 .dcc-ap-pv-search {
   flex: 1 1 auto;
   min-width: 0;
-  padding: 3px 8px;
+  padding: 2px 7px;
   font-weight: 400;
   color: inherit;
   background: transparent;
+  background-clip: padding-box;
+  border: 1px solid transparent;
   border-radius: 6px;
 }
 

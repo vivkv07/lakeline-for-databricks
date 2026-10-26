@@ -27,7 +27,7 @@ const BAD_PAT = 'dapi' + 'deadbeef'.repeat(4);
  * onTab(url, id) decides what the built-in sign-in tab does: return a URL to navigate to (the
  * default is the localhost redirect with a code), 'close' to close the tab, or null to stay put.
  */
-function fakeChrome({ onAuth, onTab, deny = [] } = {}) {
+function fakeChrome({ onAuth, onTab, deny = [], managed = null } = {}) {
   const session = fakeArea();
   const registered = new Map();
   const calls = { auth: [], scripts: [], removedTabs: [] };
@@ -36,7 +36,7 @@ function fakeChrome({ onAuth, onTab, deny = [] } = {}) {
   return {
     calls,
     registered,
-    storage: { session, local: fakeArea() },
+    storage: { session, local: fakeArea(), ...(managed ? { managed: fakeArea(managed) } : {}) },
     identity: {
       getRedirectURL: () => REDIRECT,
       async launchWebAuthFlow({ url, interactive }) {
@@ -298,9 +298,60 @@ test('one click with a pasted token: saved only after Databricks accepts it; a r
   assert.equal(await env.secrets.isPatRemembered(ORIGIN), false, 'remembered only when asked');
 });
 
+test('a failed one click is mirrored for its own workspace (connect:status), and a later success replaces it', async () => {
+  const env = await connectEnv();
+  await assert.rejects(env.handlers['connect:oneClick'].handle({ url: ORIGIN + '/genie/rooms/x?o=999' }), (e) => e.dcc.code === 'WORKSPACE_MISMATCH');
+  let st = await env.handlers['connect:status'].handle();
+  assert.deepEqual([st.state, st.origin, st.error.code], ['error', ORIGIN, 'WORKSPACE_MISMATCH']);
+  assert.ok(Number.isFinite(st.at));
+
+  await assert.rejects(env.handlers['connect:oneClick'].handle({ url: 'https://accounts.cloud.databricks.com/' }));
+  st = await env.handlers['connect:status'].handle();
+  assert.deepEqual([st.state, st.origin], ['error', null], 'no workspace, so no tab ever shows it');
+
+  // A step after the save fails (here: Chrome refusing the content-script files, as an old service
+  // worker did once session-bridge.js was deleted): the connection exists, the failure is UNKNOWN
+  // with Chrome's own words, and it is scoped to this workspace.
+  const realRegister = env.chrome.scripting.registerContentScripts;
+  env.chrome.scripting.registerContentScripts = async () => {
+    throw new Error("Could not load javascript 'src/content/session-bridge.js' for script.");
+  };
+  await assert.rejects(env.handlers['connect:oneClick'].handle({ url: ORIGIN + '/jobs' }), (e) => !e.dcc && /session-bridge/.test(e.message));
+  st = await env.handlers['connect:status'].handle();
+  assert.deepEqual([st.state, st.origin, st.error.code, st.error.title], ['error', ORIGIN, 'UNKNOWN', 'Something went wrong']);
+  assert.match(st.error.details.message, /Could not load javascript 'src\/content\/session-bridge\.js'/);
+  const saved = await env.store.getConnection(ORIGIN);
+  assert.ok(saved && saved.savedAt <= st.at, 'saved before the failure was mirrored');
+
+  env.chrome.scripting.registerContentScripts = realRegister;
+  const out = await env.handlers['connect:oneClick'].handle({ url: ORIGIN + '/jobs' });
+  assert.equal(out.connected, true);
+  st = await env.handlers['connect:status'].handle();
+  assert.deepEqual([st.state, st.origin], ['connected', ORIGIN]);
+});
+
 test('one click refuses conflicting workspace IDs and non-workspace pages', async () => {
   const env = await connectEnv({ orgId: '999' });
   await assert.rejects(env.handlers['connect:oneClick'].handle({ url: ORIGIN + '/jobs?o=1234567890' }), (e) => e.dcc.code === 'WORKSPACE_MISMATCH');
   await assert.rejects(env.handlers['connect:oneClick'].handle({ url: 'https://accounts.cloud.databricks.com/' }));
   await assert.rejects(env.handlers['connect:oneClick'].handle({ url: 'http://127.0.0.1:8765/jobs' }));
+});
+
+test('administrator policy: the CLI client can be turned off, or replaced by the organization\'s app connection', async () => {
+  const off = fakeChrome({ managed: { disableBuiltInSignIn: true } });
+  await assert.rejects(oauthMod.create({ chromeApi: off, fetch: async () => { throw new Error('no network'); } }).signIn({ origin: ORIGIN, clientId: 'databricks-cli' }), (e) => e.dcc.code === 'BUILTIN_SIGNIN_POLICY');
+  assert.equal(off.calls.auth.length, 0, 'no sign-in tab or window opens');
+
+  const org = fakeChrome({ managed: { disableBuiltInSignIn: true, oauthClientId: CLIENT } });
+  const ws = fakeWorkspace(org);
+  await oauthMod.create({ chromeApi: org, fetch: ws.fetchImpl }).signIn({ origin: ORIGIN, clientId: 'databricks-cli' });
+  assert.equal(org.calls.auth[0].tab, undefined, 'the organization\'s app uses launchWebAuthFlow');
+  assert.equal(org.calls.auth[0].url.searchParams.get('client_id'), CLIENT);
+
+  // A registered app chosen by the user still works under the off switch; bad policy values are ignored.
+  const userApp = fakeChrome({ managed: { disableBuiltInSignIn: true } });
+  await oauthMod.create({ chromeApi: userApp, fetch: fakeWorkspace(userApp).fetchImpl }).signIn({ origin: ORIGIN, clientId: CLIENT });
+  assert.equal(userApp.calls.auth[0].url.searchParams.get('client_id'), CLIENT);
+  assert.deepEqual(await oauthMod.readPolicy(fakeChrome({ managed: { disableBuiltInSignIn: 'yes', oauthClientId: 'databricks-cli' } })), { disableBuiltInSignIn: false, oauthClientId: null });
+  assert.deepEqual(await oauthMod.readPolicy({}), { disableBuiltInSignIn: false, oauthClientId: null });
 });

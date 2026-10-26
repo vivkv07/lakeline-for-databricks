@@ -98,11 +98,16 @@
     },
     AUTH_CANCELLED: {
       title: 'Sign-in was cancelled',
-      steps: ['Click Connect again and finish signing in to Databricks. If Databricks showed an error instead of signing you in, use a personal access token: Other ways to sign in, Use a token.'],
+      // Catalog text is redacted again on display, so it never reads like "token: <value>".
+      steps: ['Click Connect again and finish signing in to Databricks. If Databricks showed an error rather than signing you in, use a personal access token instead: Other ways to sign in, Use a token.'],
     },
     BUILTIN_SIGNIN_BLOCKED: {
       title: 'This Databricks account does not allow quick sign-in',
-      steps: ['An admin may have turned off the built-in sign-in app. Use a personal access token instead: Other ways to sign in, Use a token.', 'Or ask an account admin to register Lakeline once and use that app connection.'],
+      steps: ['An admin may have turned off the Databricks CLI\'s public sign-in client (databricks-cli), which Lakeline reuses. Use a personal access token instead: Other ways to sign in, Use a token.', 'Or ask an account admin to register Lakeline once and use that app connection.'],
+    },
+    BUILTIN_SIGNIN_POLICY: {
+      title: 'Your organization turned off this sign-in',
+      steps: ['An administrator set Lakeline not to use the Databricks CLI\'s public sign-in client. Use a personal access token (Other ways to sign in, Use a token), or the app connection your organization registered.'],
     },
     PAT_REJECTED: {
       title: 'Databricks did not accept this token',

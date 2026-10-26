@@ -853,3 +853,14 @@
     padding: 10px 8px;
   }
 }
+
+/* ------------------------------------------------------------------ footer */
+
+.op-footer {
+  max-width: 768px;
+  margin: 0 auto;
+  padding: 8px 24px 32px;
+  font-size: var(--dcc-text-xs);
+  line-height: 1.5;
+  color: var(--dcc-muted);
+}

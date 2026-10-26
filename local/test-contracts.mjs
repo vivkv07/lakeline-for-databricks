@@ -105,6 +105,14 @@ test('redaction runs before truncation and catches tokens glued to other charact
   }
 });
 
+test('catalog titles and steps read the same after redaction (pages redact them again on display)', () => {
+  // AUTH_CANCELLED once said "use a personal access token: Other ways…", which the popup showed
+  // as "token: [redacted] ways to sign in".
+  for (const [code, entry] of Object.entries(errors.CATALOG)) {
+    for (const text of [entry.title, ...entry.steps]) assert.equal(errors.redact(text), text, code);
+  }
+});
+
 const EXT = { extensionId: 'abcdefghijklmnopabcdefghijklmnop', extensionOrigin: 'chrome-extension://abcdefghijklmnopabcdefghijklmnop', helperPort: 8766 };
 const tabSender = (url, extra = {}) => ({ id: EXT.extensionId, url, tab: { id: 9 }, frameId: 0, ...extra });
 

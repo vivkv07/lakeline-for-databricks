@@ -200,6 +200,10 @@ td.num { font-family: var(--mono); }
       svg.setAttribute('class', 'mark');
       svg.setAttribute('viewBox', '0 0 16 16');
       svg.setAttribute('aria-hidden', 'true');
+      // A hover label tells users this banner comes from the extension, not from Databricks.
+      const label = doc.createElementNS(SVG_NS, 'title');
+      label.textContent = 'Lakeline for Databricks (independent browser extension)';
+      svg.appendChild(label);
       // Product mark: black rounded square, white bars, the tallest bar in accent blue.
       for (const [x, y, w, hh, fill, rx] of [[0, 0, 16, 16, '#000000', 4], [3.5, 8.5, 2, 4, '#FFFFFF'], [7, 5.5, 2, 7, '#FFFFFF'], [10.5, 3.5, 2, 9, '#5B8CFF']]) {
         const r = doc.createElementNS(SVG_NS, 'rect');
@@ -500,7 +504,7 @@ td.num { font-family: var(--mono); }
       const hadFocus = Boolean(active);
       const openKeys = new Set([...wrap.querySelectorAll('details[open][data-k]')].map((d) => d.getAttribute('data-k')));
 
-      const bar = h('div', { class: 'bar', role: 'region', tabindex: '-1', 'aria-label': 'Estimated Databricks costs', 'aria-busy': String(state.status === 'loading') }, [
+      const bar = h('div', { class: 'bar', role: 'region', tabindex: '-1', 'aria-label': 'Lakeline: estimated Databricks costs', 'aria-busy': String(state.status === 'loading') }, [
         h('div', { class: 'row' }, [lead(state), meta(state), controls(state)]),
         details(state),
         state.notice ? h('p', { class: 'note warn' }, V.safeText(state.notice, 300)) : null,

@@ -7,6 +7,10 @@
  *
  * Versions up to 0.1.1 kept remembered tokens in chrome.storage.local, which content scripts can
  * read. Those are moved over once, on first use, and the old key is deleted.
+ *
+ * Remembered tokens are encrypted at rest with AES-GCM. The key is a non-extractable CryptoKey kept
+ * in the same extension-only database, so no script, not even the extension's own, can read the raw
+ * key; only this module can decrypt.
  */
 (function (root) {
   'use strict';
@@ -16,6 +20,7 @@
   const PAT_KEY = 'dcc.secrets.pat';
   const BRIDGE_KEY = 'dcc.secrets.bridge';
   const REMEMBERED_PAT_KEY = 'dcc.secrets.patRemembered';
+  const ENC_KEY = 'dcc.secrets.encKey';
 
   /**
    * @param area chrome.storage.session
@@ -24,10 +29,49 @@
    * @param [opts.legacyArea] chrome.storage.local, read once to move tokens remembered by older
    *   versions into persistArea; never written except to delete that key
    */
-  function create(area, persistArea, { legacyArea = null } = {}) {
+  function create(area, persistArea, { legacyArea = null, cryptoApi = root.crypto } = {}) {
     async function read(key, fallback, from = area) {
       const got = await from.get(key);
       return got && got[key] !== undefined ? got[key] : fallback;
+    }
+
+    const subtle = cryptoApi && cryptoApi.subtle;
+    let keyPromise = null;
+    function encKey() {
+      if (!keyPromise) {
+        keyPromise = (async () => {
+          const existing = await read(ENC_KEY, null, persistArea);
+          if (existing) return existing;
+          const k = await subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+          await persistArea.set({ [ENC_KEY]: k });
+          return k;
+        })().catch((e) => {
+          keyPromise = null;
+          throw e;
+        });
+      }
+      return keyPromise;
+    }
+
+    /** Remembered tokens as a plain {origin: token} map, decrypted. Unreadable data counts as empty. */
+    async function readKeptRaw() {
+      const stored = await read(REMEMBERED_PAT_KEY, null, persistArea);
+      if (!stored || typeof stored !== 'object') return {};
+      if (stored.v !== 1) return Object.assign({}, stored); // written before encryption existed
+      try {
+        const plain = await subtle.decrypt({ name: 'AES-GCM', iv: new Uint8Array(stored.iv) }, await encKey(), stored.data);
+        const map = JSON.parse(new TextDecoder().decode(plain));
+        return map && typeof map === 'object' ? map : {};
+      } catch (_) {
+        return {};
+      }
+    }
+
+    async function writeKept(map) {
+      if (!subtle) throw new Error('Encryption is not available to remember a token');
+      const iv = cryptoApi.getRandomValues(new Uint8Array(12));
+      const data = await subtle.encrypt({ name: 'AES-GCM', iv }, await encKey(), new TextEncoder().encode(JSON.stringify(map)));
+      await persistArea.set({ [REMEMBERED_PAT_KEY]: { v: 1, iv: Array.from(iv), data: new Uint8Array(data) } });
     }
 
     let migrating = null;
@@ -40,11 +84,11 @@
           if (!got || !Object.prototype.hasOwnProperty.call(got, REMEMBERED_PAT_KEY)) return;
           const old = got[REMEMBERED_PAT_KEY];
           if (old && typeof old === 'object') {
-            const kept = await read(REMEMBERED_PAT_KEY, {}, persistArea);
+            const kept = await readKeptRaw();
             for (const [origin, token] of Object.entries(old)) {
               if (!kept[origin] && V.isPlausiblePat(token)) kept[origin] = token;
             }
-            await persistArea.set({ [REMEMBERED_PAT_KEY]: kept });
+            await writeKept(kept);
           }
           await legacyArea.remove(REMEMBERED_PAT_KEY);
         })().catch((e) => {
@@ -57,7 +101,7 @@
 
     async function readKept() {
       await migrate();
-      return read(REMEMBERED_PAT_KEY, {}, persistArea);
+      return readKeptRaw();
     }
 
     return {
@@ -70,7 +114,7 @@
           const kept = await readKept();
           if (remember) kept[origin] = token;
           else delete kept[origin];
-          await persistArea.set({ [REMEMBERED_PAT_KEY]: kept });
+          await writeKept(kept);
         }
       },
       async getPat(origin) {
@@ -98,7 +142,7 @@
         if (persistArea) {
           const kept = await readKept();
           delete kept[origin];
-          await persistArea.set({ [REMEMBERED_PAT_KEY]: kept });
+          await writeKept(kept);
         }
       },
 

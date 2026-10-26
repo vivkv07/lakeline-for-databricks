@@ -1,0 +1,81 @@
+<!--
+  Fixture fragment: a synthetic imitation of the DARK native top bar (the variant a Free Edition
+  workspace shows), as Databricks renders it WITHOUT the extension. Synthetic data only; no vendor
+  assets. Structure follows a read-only capture of a real workspace's top bar:
+    nav[aria-label="Top Navigation"]
+      > transparent flex wrapper
+        > div.du-bois-dark[data-testid="ds-override-tokens-wrapper"]   (0x0: display: contents;
+            switches the design tokens to their dark theme for everything inside)
+          > form > div                                                 (transparent)
+            > div[role="combobox"][aria-label="Search"]                (transparent)
+              > span.du-bois-dark-input-affix-wrapper                  (the visible box: dark
+                  rgb(17, 23, 28) with a subtle 1px border, 4px radius, 32px tall)
+                > input.du-bois-dark-input[type=text]                  (transparent, light text)
+  Right side: two text buttons, an apps grid icon and an initials circle (no "avatar" class).
+  Classes prefixed fxd- stand in for the design system's generated class names: the extension
+  must never rely on them.
+
+  Two native rules carry !important on purpose. In the capture, an older build's class-level
+  `!important` overrides lost to the native field background and the native placeholder color
+  (while winning on the field's border color and the input's text color), so the design system
+  must set those two with !important at higher specificity. They are modeled here the way
+  generated styles do it (a doubled class, like `.css-x.css-x`).
+  Colors are literal values (no var()): jsdom does not resolve custom properties.
+-->
+<style data-fixture="topbar-dark">
+  .fxd-topnav { display: flex; align-items: center; gap: 8px; box-sizing: border-box; height: 48px; padding: 0 8px; background-color: #1b3139; color: #ffffff; font: 13px/1.4 system-ui, sans-serif; }
+  .fxd-icon-btn, .fxd-text-btn { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-width: 32px; min-height: 32px; padding: 0 8px; border: 0; border-radius: 4px; background-color: transparent; color: #e8ecf0; font: inherit; cursor: pointer; }
+  .fxd-icon-btn:hover, .fxd-text-btn:hover { background-color: rgba(255, 255, 255, 0.08); }
+  .fxd-home { display: inline-flex; align-items: center; gap: 6px; color: #ffffff; text-decoration: none; font-weight: 600; }
+  .fxd-center { flex: 1 1 auto; display: flex; justify-content: center; min-width: 0; height: 32px; background-color: transparent; }
+  .du-bois-dark { display: contents; color: #e8ecf0; }
+  .fxd-form { display: flex; margin: 0; width: 560px; max-width: 100%; background-color: transparent; }
+  .fxd-search { flex: 1 1 auto; background-color: transparent; }
+  .fxd-combo { display: block; background-color: transparent; color: #e8ecf0; }
+  .du-bois-dark-input-affix-wrapper { display: flex; align-items: center; gap: 6px; box-sizing: border-box; height: 32px; padding: 0 8px; border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 4px; color: #92a4b3; }
+  .du-bois-dark-input-affix-wrapper.fxd-field.fxd-field { background-color: #11171c !important; }
+  .du-bois-dark-input-prefix, .du-bois-dark-input-suffix { display: inline-flex; align-items: center; color: #92a4b3; }
+  .du-bois-dark-input { flex: 1 1 auto; min-width: 0; padding: 0; border: 0; outline: 0; background-color: transparent; color: #e8ecf0; font: inherit; }
+  .du-bois-dark-input-affix-wrapper .du-bois-dark-input.fxd-input::placeholder { color: #8396a5 !important; opacity: 1; }
+  .fxd-kbd { font-size: 11px; color: #92a4b3; }
+  .fxd-right { display: flex; align-items: center; gap: 4px; }
+  .fxd-initials { display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; background-color: #7f56d9; color: #ffffff; font: 600 11px system-ui, sans-serif; }
+</style>
+<nav aria-label="Top Navigation" class="fxd-topnav" data-testid="fx-topnav-dark">
+  <button type="button" class="fxd-icon-btn" aria-label="Toggle navigation">
+    <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M2 3.5h12V5H2zm0 3.75h12v1.5H2zM2 11h12v1.5H2z"/></svg>
+  </button>
+  <a href="/?o=1234567890" class="fxd-home" aria-label="Workspace home">
+    <svg data-fx="brand-graphic" viewBox="0 0 20 20" width="20" height="20" aria-hidden="true"><path fill="#E8590C" d="M4 2h4a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"/><path fill="#F2F4F7" d="M12 10h4a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2z"/></svg>
+    <span class="fxd-wordmark">Fixture Workspace</span>
+  </a>
+  <div class="fxd-center">
+    <div class="du-bois-dark" data-testid="ds-override-tokens-wrapper">
+      <form class="fxd-form" role="search">
+        <div class="fxd-search">
+          <div role="combobox" aria-label="Search" aria-expanded="false" aria-haspopup="listbox" class="fxd-combo">
+            <span class="du-bois-dark-input-affix-wrapper fxd-field">
+              <span class="du-bois-dark-input-prefix"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M7 2a5 5 0 0 1 3.9 8.1l3 3-1 1-3-3A5 5 0 1 1 7 2zm0 1.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z"/></svg></span>
+              <input type="text" class="du-bois-dark-input fxd-input" placeholder="Search data, notebooks, recents, and more..." aria-label="Search" autocomplete="off">
+              <span class="du-bois-dark-input-suffix"><span class="fxd-kbd">Ctrl P</span></span>
+            </span>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+  <div class="fxd-right">
+    <button type="button" class="fxd-text-btn" data-fx="verify">Verify identity</button>
+    <button type="button" class="fxd-text-btn" aria-haspopup="menu" aria-label="Switch workspace" data-fx="switcher">
+      workspace
+      <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><path fill="currentColor" d="M4 6l4 4 4-4z"/></svg>
+    </button>
+    <button type="button" class="fxd-icon-btn" aria-label="Apps" data-fx="apps">
+      <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M2 2h3v3H2zm4.5 0h3v3h-3zM11 2h3v3h-3zM2 6.5h3v3H2zm4.5 0h3v3h-3zm4.5 0h3v3h-3zM2 11h3v3H2zm4.5 0h3v3h-3zm4.5 0h3v3h-3z"/></svg>
+    </button>
+    <button type="button" class="fxd-icon-btn" data-testid="user-menu-trigger" aria-label="Account: Test User">
+      <span class="fxd-initials" aria-hidden="true">TU</span>
+    </button>
+  </div>
+</nav>
+<main data-testid="main-content"><h1>Home</h1><p>Synthetic workspace page body.</p></main>

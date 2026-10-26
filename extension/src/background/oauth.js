@@ -46,6 +46,23 @@
   const isClientId = (v) => typeof v === 'string' && CLIENT_ID.test(v);
   const isBuiltin = (v) => v === BUILTIN.clientId;
 
+  /**
+   * Administrator policy (chrome.storage.managed, schema in managed_schema.json):
+   *   disableBuiltInSignIn  never sign in through the Databricks CLI's public client
+   *   oauthClientId         sign in through the organization's own app connection instead
+   * Missing or invalid values mean "no policy".
+   */
+  async function readPolicy(chromeApi) {
+    try {
+      const area = chromeApi && chromeApi.storage && chromeApi.storage.managed;
+      if (!area || typeof area.get !== 'function') return { disableBuiltInSignIn: false, oauthClientId: null };
+      const got = (await area.get(['disableBuiltInSignIn', 'oauthClientId'])) || {};
+      return { disableBuiltInSignIn: got.disableBuiltInSignIn === true, oauthClientId: isClientId(got.oauthClientId) && !isBuiltin(got.oauthClientId) ? got.oauthClientId : null };
+    } catch (_) {
+      return { disableBuiltInSignIn: false, oauthClientId: null };
+    }
+  }
+
   /** The client to sign in with: a connection's or the account's registered app, else the built-in one. */
   function effectiveClientId(conn, settings) {
     const own = (conn && conn.oauthClientId) || (settings && settings.oauth && settings.oauth.clientId);
@@ -229,8 +246,15 @@
      * Run the authorization-code + PKCE flow. With interactive:false it succeeds only when the
      * browser already has a Databricks session (used for silent reconnects).
      */
-    async function signIn({ origin, clientId, purpose: requested = 'cost', interactive = true }) {
+    async function signIn({ origin, clientId: requestedClient, purpose: requested = 'cost', interactive = true }) {
       const o = workspaceOrigin(origin);
+      let clientId = requestedClient;
+      if (isBuiltin(clientId)) {
+        // An administrator's app connection replaces the CLI's client; a policy can also forbid it.
+        const policy = await readPolicy(chromeApi);
+        if (policy.oauthClientId) clientId = policy.oauthClientId;
+        else if (policy.disableBuiltInSignIn) throw new errors.DccError({ code: 'BUILTIN_SIGNIN_POLICY', message: 'Sign-in through the Databricks CLI client is turned off by policy' });
+      }
       if (!isClientId(clientId)) throw new errors.DccError({ code: 'OAUTH_CLIENT_MISSING', message: 'No OAuth client ID configured' });
       const asked = canonicalPurpose(requested);
       if (!asked) throw new errors.DccError({ code: 'UNKNOWN', message: 'Unknown sign-in purpose' });
@@ -320,7 +344,7 @@
     return { signIn, getAccessToken, signOut, describe };
   }
 
-  const api = Object.freeze({ SCOPES, PURPOSE_ALIASES, KEY, BUILTIN, isClientId, isBuiltin, effectiveClientId, pkcePair, canonicalPurpose, create });
+  const api = Object.freeze({ SCOPES, PURPOSE_ALIASES, KEY, BUILTIN, isClientId, isBuiltin, effectiveClientId, readPolicy, pkcePair, canonicalPurpose, create });
   if (NODE) module.exports = api;
   else (root.DCC || (root.DCC = {})).oauth = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

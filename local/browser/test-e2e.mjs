@@ -44,6 +44,7 @@ const periods = load('core/periods.js');
 const labels = load('core/labels.js');
 const summaryQ = load('databricks/queries/summary.js');
 const resultMod = load('databricks/result.js');
+const colors = load('content/workspace-color.js');
 
 /* ------------------------------------------------------------------ availability */
 
@@ -352,13 +353,18 @@ describe('browser e2e: real Chromium + extension against the SIMULATED fixture b
           req.onerror = () => reject(req.error);
           req.onsuccess = () => {
             const get = req.result.transaction('kv').objectStore('kv').get('dcc.secrets.patRemembered');
-            get.onsuccess = () => resolve({ found: Boolean(get.result), matches: Boolean(get.result) && get.result[origin] === token });
+            // Encrypted at rest: an AES-GCM box with no token text in it.
+            get.onsuccess = () => {
+              const v = get.result;
+              const text = v ? JSON.stringify(v, (k, x) => (x instanceof Uint8Array ? Array.from(x) : x)) : '';
+              resolve({ found: Boolean(v), encrypted: Boolean(v) && v.v === 1 && v.data instanceof Uint8Array, plaintext: text.includes(token) || text.includes(origin) });
+            };
             get.onerror = () => reject(get.error);
           };
         }),
       { origin: ORIGIN, token: FIXTURE_TOKEN }
     );
-    assert.deepEqual(stored, { found: true, matches: true });
+    assert.deepEqual(stored, { found: true, encrypted: true, plaintext: false });
     const state = await sendOk({ type: 'page:state' });
     assert.equal(state.connections[ORIGIN].secrets.patRemembered, true);
     // Back to a session-only token so the rest of the suite runs as before.
@@ -580,6 +586,46 @@ describe('browser e2e: real Chromium + extension against the SIMULATED fixture b
     assert.equal(nav.style, 1);
     assert.equal((await inlineBadges()).length, 0, 'still no badges while paused');
     await shot(page, '09-paused-with-workspace-color');
+  });
+
+  it('the installed extension blends the dark-token search field of the dark top bar (topbar-dark fragment)', { timeout: 30000 }, async () => {
+    // The fragment is served on its own (no SPA around it); the saved color for this workspace applies.
+    const dark = await ctx.newPage();
+    try {
+      await dark.goto(ORIGIN + '/fixture/topbar-dark.html' + O);
+      const got = await poll(
+        async () =>
+          dark.evaluate(() => {
+            const nav = document.querySelector('nav[aria-label="Top Navigation"]');
+            const wrap = document.querySelector('.du-bois-dark-input-affix-wrapper');
+            const input = wrap && wrap.querySelector('input');
+            if (!nav || nav.getAttribute('data-dcc-themed') !== 'top' || wrap.getAttribute('data-dcc-tone') !== 'field') return null;
+            const cs = (el, pseudo) => getComputedStyle(el, pseudo);
+            return {
+              tones: [...nav.querySelectorAll('[data-dcc-tone]')].map((el) => el.getAttribute('data-dcc-tone') + ':' + (el === wrap ? 'field-box' : el.matches('[data-testid="user-menu-trigger"] > span') ? 'initials' : el.tagName)),
+              bar: cs(nav).backgroundColor,
+              shadow: cs(wrap).boxShadow,
+              border: cs(wrap).borderTopColor,
+              inputBg: cs(input).backgroundColor,
+              inputColor: cs(input).color,
+              placeholder: cs(input, '::placeholder').color,
+            };
+          }),
+        { timeout: 20000, label: 'toned dark search field' }
+      );
+      const t = colors.themeFor('#1D4ED8');
+      const rgb = (hex) => 'rgb(' + [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(', ') + ')';
+      assert.deepEqual(got.tones, ['field:field-box', 'keep:initials']);
+      assert.equal(got.bar, 'rgb(29, 78, 216)');
+      assert.ok(got.shadow.startsWith(rgb(t.surface) + ' ') && /inset$/.test(got.shadow), 'field painted with the surface shade: ' + got.shadow);
+      assert.equal(got.border, 'rgba(255, 255, 255, 0.28)', 'a subtle frame');
+      assert.equal(got.inputBg, 'rgba(0, 0, 0, 0)', 'no white box inside the field');
+      assert.equal(got.inputColor, 'rgb(255, 255, 255)');
+      assert.equal(got.placeholder, rgb(t.muted), 'the theme placeholder beats the native !important one');
+      await shot(dark, '09b-dark-topbar-with-workspace-color');
+    } finally {
+      await dark.close();
+    }
   });
 
   it('monitor page: enabled for the fixture origin, refresh lists runs including the failed one; Float (PiP) is reported', { timeout: 90000 }, async () => {

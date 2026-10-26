@@ -121,7 +121,10 @@
           try {
             return await connect(msg || {});
           } catch (e) {
-            await setStatus({ state: 'error', error: errors.toPayload(e) });
+            // Scoped to its workspace: the popup shows it only on a tab of that workspace, and not
+            // once that workspace is connected (a later save supersedes it).
+            const cls = ids.classifyOrigin((msg && (msg.url || msg.origin)) || '');
+            await setStatus({ state: 'error', origin: cls.ok ? cls.origin : null, error: errors.toPayload(e) });
             throw e;
           }
         },
