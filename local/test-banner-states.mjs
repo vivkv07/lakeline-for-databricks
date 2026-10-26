@@ -58,7 +58,7 @@ test('loading: placeholder text, aria-busy, period and refresh controls', () => 
   assert.match(t.text(), /Loading costs…/);
   assert.equal(t.$('.bar').getAttribute('aria-busy'), 'true');
   assert.ok(t.$('[data-k="period-30"]') && t.$('[data-k="refresh"]'));
-  assert.match(t.text(), new RegExp(DISCLAIMER.replace(/[.]/g, '\\.')));
+  assert.ok(t.text().includes(DISCLAIMER), 'the disclaimer is shown verbatim');
   t.env.close();
 });
 

@@ -57,7 +57,8 @@ export const FIXTURE_ORIGIN = 'http://127.0.0.1:8765';
 export const FIXTURE_TOKEN = 'dapi-fixture-0000000000000000000000000000';
 
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml' };
-const TOP_STATIC = /^\/(workspace(?:[-.][a-z0-9-]+)*\.(?:js|css|svg))$/;
+// Separators and name parts never overlap ([-.] vs [a-z0-9]), so matching can't backtrack exponentially.
+const TOP_STATIC = /^\/(workspace(?:[-.][a-z0-9]+)*\.(?:js|css|svg))$/;
 const FIXTURE_STATIC = /^\/fixture\/([a-z0-9][a-z0-9_.-]{0,80}\.(?:html|js|css|svg))$/;
 const STATEMENT_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const MAX_BODY = 1024 * 1024;
