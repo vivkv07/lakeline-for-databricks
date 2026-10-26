@@ -22,7 +22,7 @@ const C = load('content/workspace-color.js');
 const FILES = ['src/core/validate.js', 'src/core/ids.js', 'src/content/dom.js', 'src/content/native-adapter.js', 'src/content/workspace-color.js', 'src/content/workspace-theme.js'];
 const FRAGMENT = fs.readFileSync(path.join(ROOT, 'local/fixture/topbar-dark.html'), 'utf8');
 const NATIVE_STYLE = /<style data-fixture="topbar-dark">[\s\S]*?<\/style>/.exec(FRAGMENT)[0];
-const BODY = FRAGMENT.replace(NATIVE_STYLE, '').replace(/<!--[\s\S]*?-->/, '');
+const BODY = FRAGMENT.replace(NATIVE_STYLE, '');
 const ORIGIN = 'https://dbc-1.cloud.databricks.com';
 const KEY = 'dcc.appearance';
 const NATIVE_FIELD = '#11171C'; // rgb(17, 23, 28)
