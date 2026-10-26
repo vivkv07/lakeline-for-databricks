@@ -13,7 +13,7 @@ const secretsMod = load('background/secrets.js');
 const dataService = load('background/data-service.js');
 const helperClient = load('background/helper-client.js');
 
-const ORIGIN = 'https://dbc-4f2a91c7-0e3b.cloud.databricks.com';
+const ORIGIN = 'https://dbc-00000000-test.cloud.databricks.com';
 const CLIENT = 'lakeline-client-0001';
 const REDIRECT = 'https://gcadffgngihfjameoafjagofiompdngo.chromiumapp.org/';
 const WH = 'a1b2c3d4e5f60001';
