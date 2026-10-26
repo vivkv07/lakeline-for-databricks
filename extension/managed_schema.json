@@ -1,0 +1,15 @@
+{
+  "type": "object",
+  "properties": {
+    "disableBuiltInSignIn": {
+      "title": "Turn off sign-in through the Databricks CLI's public client",
+      "description": "When true, Lakeline never signs in through the public OAuth client that Databricks provides for its own CLI (databricks-cli). Users sign in with a personal access token or with the app connection set in oauthClientId.",
+      "type": "boolean"
+    },
+    "oauthClientId": {
+      "title": "Your organization's Lakeline app connection",
+      "description": "OAuth client ID of a public app connection registered in the Databricks account console (redirect https://<extension-id>.chromiumapp.org/, scopes sql and all-apis). When set, Lakeline signs in through it instead of the Databricks CLI's public client.",
+      "type": "string"
+    }
+  }
+}

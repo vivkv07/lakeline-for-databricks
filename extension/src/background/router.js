@@ -8,6 +8,8 @@
   const NODE = typeof module === 'object' && module && module.exports;
   const dep = (name, path) => (NODE ? require(path) : root.DCC[name]);
   const errors = dep('errors', '../errors.js');
+  // Looked up when used: oauth.js may load after this file in the service worker.
+  const OAUTH = () => (NODE ? require('./oauth.js') : root.DCC.oauth);
   const V = dep('validate', '../core/validate.js');
   const ids = dep('ids', '../core/ids.js');
   const senderMod = dep('sender', './sender.js');
@@ -169,6 +171,8 @@
             diagnostics,
             importSummary: imp ? { entries: imp.entries.length, importedAt: imp.importedAt } : null,
             bridge: await deps.secrets.describe(null),
+            // Administrator policy (managed storage): which sign-in paths the popup may offer.
+            policy: await OAUTH().readPolicy(deps.chromeApi),
             extensionId: deps.extensionId,
           };
         },

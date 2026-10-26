@@ -27,7 +27,7 @@ const BAD_PAT = 'dapi' + 'deadbeef'.repeat(4);
  * onTab(url, id) decides what the built-in sign-in tab does: return a URL to navigate to (the
  * default is the localhost redirect with a code), 'close' to close the tab, or null to stay put.
  */
-function fakeChrome({ onAuth, onTab, deny = [] } = {}) {
+function fakeChrome({ onAuth, onTab, deny = [], managed = null } = {}) {
   const session = fakeArea();
   const registered = new Map();
   const calls = { auth: [], scripts: [], removedTabs: [] };
@@ -36,7 +36,7 @@ function fakeChrome({ onAuth, onTab, deny = [] } = {}) {
   return {
     calls,
     registered,
-    storage: { session, local: fakeArea() },
+    storage: { session, local: fakeArea(), ...(managed ? { managed: fakeArea(managed) } : {}) },
     identity: {
       getRedirectURL: () => REDIRECT,
       async launchWebAuthFlow({ url, interactive }) {
@@ -335,4 +335,23 @@ test('one click refuses conflicting workspace IDs and non-workspace pages', asyn
   await assert.rejects(env.handlers['connect:oneClick'].handle({ url: ORIGIN + '/jobs?o=1234567890' }), (e) => e.dcc.code === 'WORKSPACE_MISMATCH');
   await assert.rejects(env.handlers['connect:oneClick'].handle({ url: 'https://accounts.cloud.databricks.com/' }));
   await assert.rejects(env.handlers['connect:oneClick'].handle({ url: 'http://127.0.0.1:8765/jobs' }));
+});
+
+test('administrator policy: the CLI client can be turned off, or replaced by the organization\'s app connection', async () => {
+  const off = fakeChrome({ managed: { disableBuiltInSignIn: true } });
+  await assert.rejects(oauthMod.create({ chromeApi: off, fetch: async () => { throw new Error('no network'); } }).signIn({ origin: ORIGIN, clientId: 'databricks-cli' }), (e) => e.dcc.code === 'BUILTIN_SIGNIN_POLICY');
+  assert.equal(off.calls.auth.length, 0, 'no sign-in tab or window opens');
+
+  const org = fakeChrome({ managed: { disableBuiltInSignIn: true, oauthClientId: CLIENT } });
+  const ws = fakeWorkspace(org);
+  await oauthMod.create({ chromeApi: org, fetch: ws.fetchImpl }).signIn({ origin: ORIGIN, clientId: 'databricks-cli' });
+  assert.equal(org.calls.auth[0].tab, undefined, 'the organization\'s app uses launchWebAuthFlow');
+  assert.equal(org.calls.auth[0].url.searchParams.get('client_id'), CLIENT);
+
+  // A registered app chosen by the user still works under the off switch; bad policy values are ignored.
+  const userApp = fakeChrome({ managed: { disableBuiltInSignIn: true } });
+  await oauthMod.create({ chromeApi: userApp, fetch: fakeWorkspace(userApp).fetchImpl }).signIn({ origin: ORIGIN, clientId: CLIENT });
+  assert.equal(userApp.calls.auth[0].url.searchParams.get('client_id'), CLIENT);
+  assert.deepEqual(await oauthMod.readPolicy(fakeChrome({ managed: { disableBuiltInSignIn: 'yes', oauthClientId: 'databricks-cli' } })), { disableBuiltInSignIn: false, oauthClientId: null });
+  assert.deepEqual(await oauthMod.readPolicy({}), { disableBuiltInSignIn: false, oauthClientId: null });
 });

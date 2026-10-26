@@ -249,6 +249,8 @@
       actions.appendChild(genie);
     }
     $('signin-alt').hidden = !canChoose;
+    // Say what signing in shares before the first sign-in (store user-data disclosure).
+    $('connect-note').hidden = connectedHere || !canChoose;
     syncSetupToggle();
   }
 
@@ -261,13 +263,15 @@
   const CLIENT_ID_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{5,127}$/;
   /** The built-in sign-in reads its redirect from the sign-in tab, so it also needs this origin. */
   const SIGNIN_REDIRECT_PATTERN = 'http://localhost:8020/*';
+  const PRIVACY_URL = 'https://vivkv07.github.io/lakeline-for-databricks/privacy.html';
   /** Where Databricks lists a user's tokens (Settings, Developer, Access tokens). */
   const TOKEN_PAGE_PATH = '/settings/user/developer/access-tokens';
   /** Codes after which the token box is the natural next step. */
   const OFFER_TOKEN = ['BUILTIN_SIGNIN_BLOCKED', 'AUTH_CANCELLED'];
 
+  const policy = () => (state && state.policy) || {};
   const customClientId = () => {
-    const id = state && state.settings && state.settings.oauth && state.settings.oauth.clientId;
+    const id = policy().oauthClientId || (state && state.settings && state.settings.oauth && state.settings.oauth.clientId);
     return CLIENT_ID_RE.test(id || '') ? id : null;
   };
 
@@ -369,6 +373,12 @@
     const conn = tab && tab.supported ? connections()[tab.origin] : null;
     const mismatch = conn && tab.workspaceId && tab.workspaceId !== conn.workspaceId;
     // One click on real workspaces; the local fixture and edits use Connection preferences.
+    if (tab && tab.supported && tab.kind === 'workspace' && !mismatch && (!conn || conn.authMode === 'oauth') && !customClientId() && policy().disableBuiltInSignIn) {
+      // The administrator turned off the CLI client's sign-in: offer the token box instead.
+      showAlert({ code: 'BUILTIN_SIGNIN_POLICY', title: 'Your organization turned off this sign-in', steps: ['Use a personal access token below, or the app connection your organization registered.'] });
+      showSetup();
+      return;
+    }
     if (tab && tab.supported && tab.kind === 'workspace' && !mismatch && (!conn || conn.authMode === 'oauth')) {
       // Without a registered app, sign-in goes through Databricks' built-in client, whose redirect
       // the extension reads on localhost:8020; both accesses are asked for in this one click.
@@ -712,6 +722,7 @@
     $('oauth-guide').addEventListener('click', () => openPage('guide', 'sign-in'));
     $('open-options').addEventListener('click', () => openPage('options'));
     $('guide-link').addEventListener('click', () => openPage('guide'));
+    $('privacy-link').addEventListener('click', () => chromeApi.tabs.create({ url: PRIVACY_URL }));
     for (const input of doc.querySelectorAll('input[name="mode"]')) {
       input.addEventListener('change', () => {
         if (input.checked) updateSettings({ mode: input.value });

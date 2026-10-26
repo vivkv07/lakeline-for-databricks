@@ -105,6 +105,10 @@
       title: 'This Databricks account does not allow quick sign-in',
       steps: ['An admin may have turned off the Databricks CLI\'s public sign-in client (databricks-cli), which Lakeline reuses. Use a personal access token instead: Other ways to sign in, Use a token.', 'Or ask an account admin to register Lakeline once and use that app connection.'],
     },
+    BUILTIN_SIGNIN_POLICY: {
+      title: 'Your organization turned off this sign-in',
+      steps: ['An administrator set Lakeline not to use the Databricks CLI\'s public sign-in client. Use a personal access token (Other ways to sign in, Use a token), or the app connection your organization registered.'],
+    },
     PAT_REJECTED: {
       title: 'Databricks did not accept this token',
       steps: ['Check that you copied the whole token and that it has not expired or been revoked. Create a new one in Databricks: Settings, Developer, Access tokens.', 'If your workspace turned off personal access tokens, use Sign in with Databricks instead.'],

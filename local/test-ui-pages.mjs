@@ -130,8 +130,8 @@ function baseSettings(patch = {}) {
   );
 }
 
-function popupWorker({ settings, connections = {}, diagnostics = [], hooks = {} } = {}) {
-  const st = { settings: baseSettings(settings), connections, observed: {}, diagnostics, importSummary: null, bridge: { hasPat: false, bridgePaired: false, helperVersion: null, capabilities: null }, extensionId: 'testextensionid' };
+function popupWorker({ settings, connections = {}, diagnostics = [], hooks = {}, policy = null } = {}) {
+  const st = { settings: baseSettings(settings), connections, observed: {}, diagnostics, importSummary: null, bridge: { hasPat: false, bridgePaired: false, helperVersion: null, capabilities: null }, extensionId: 'testextensionid', ...(policy ? { policy } : {}) };
   const fn = async (msg) => {
     if (hooks[msg.type]) {
       const r = await hooks[msg.type](msg, st);
@@ -1280,4 +1280,42 @@ test('popup: store build removes developer-only links (local test workspace); de
   await dev.window.DCC.popupPage.ready;
   assert.ok(dev.$('fixture-link'));
   dev.close();
+});
+
+test('popup: says what signing in shares before the first sign-in, and that Lakeline is independent', async () => {
+  const env = openPage('popup', { onMessage: popupWorker().fn, tabs: [{ id: 7, url: A + '/jobs?o=42' }] });
+  await env.window.DCC.popupPage.ready;
+  assert.equal(env.$('connect-note').hidden, false, 'shown on an unconnected workspace tab');
+  assert.match(env.text('connect-note'), /this workspace only/);
+  assert.match(env.text('independent'), /Independent project; not affiliated with Databricks, Inc\./);
+  env.$('privacy-link').click();
+  await settle();
+  assert.equal(env.events.filter((e) => e.kind === 'tab').at(-1).url, 'https://vivkv07.github.io/lakeline-for-databricks/privacy.html');
+  env.close();
+
+  const connected = openPage('popup', { onMessage: popupWorker({ settings: { mode: 'connected' }, connections: { [A]: { origin: A, workspaceId: '42', authMode: 'oauth', warehouse: { mode: 'auto' }, secrets: { hasPat: false } } } }).fn, tabs: [{ id: 7, url: A + '/jobs?o=42' }] });
+  await connected.window.DCC.popupPage.ready;
+  assert.equal(connected.$('connect-note').hidden, true, 'hidden once connected');
+  connected.close();
+});
+
+test('popup: an administrator policy that turns off the CLI client opens the token box instead of signing in', async () => {
+  const env = openPage('popup', { onMessage: popupWorker({ policy: { disableBuiltInSignIn: true, oauthClientId: null } }).fn, tabs: [{ id: 7, url: A + '/jobs?o=42' }], granted: [A + '/*'] });
+  await env.window.DCC.popupPage.ready;
+  env.$('connect-btn').click();
+  await settle();
+  assert.match(env.text('page-alert'), /organization turned off this sign-in/);
+  assert.equal(env.$('oauth-setup').hidden, false);
+  assert.equal(env.messages.filter((m) => m.type === 'connect:oneClick').length, 0, 'no sign-in attempt');
+  assert.ok(!env.perms.requests.some((r) => (r.origins || []).includes('http://localhost:8020/*')), 'localhost access never requested');
+  env.close();
+
+  // With the organization's app connection in policy, Connect signs in through it, without localhost.
+  const org = openPage('popup', { onMessage: popupWorker({ policy: { disableBuiltInSignIn: true, oauthClientId: 'lakeline-client-0001' }, hooks: { 'connect:oneClick': async () => ok({ connected: true, origin: A, workspaceId: '42', warehouseName: null }), 'connect:status': async () => ok(null) } }).fn, tabs: [{ id: 7, url: A + '/jobs?o=42' }] });
+  await org.window.DCC.popupPage.ready;
+  org.$('connect-btn').click();
+  await settle();
+  assert.deepEqual(org.perms.requests, [{ origins: [A + '/*'] }]);
+  assert.equal(org.messages.filter((m) => m.type === 'connect:oneClick').length, 1);
+  org.close();
 });

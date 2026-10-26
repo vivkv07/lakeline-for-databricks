@@ -198,6 +198,18 @@ closes it. Tokens stay in browser session storage.
 - **Your organization's app connection.** If an account admin registered Lakeline under App
   connections, paste its client ID. The sign-in screen then names your app.
 
+**For administrators.** Lakeline reads two optional policies from the browser's managed storage
+for the extension (schema: [`extension/managed_schema.json`](extension/managed_schema.json)):
+
+| Policy | Type | Effect |
+|---|---|---|
+| `disableBuiltInSignIn` | boolean | Never sign in through the Databricks CLI's public client. Users sign in with a personal access token or your app connection. |
+| `oauthClientId` | string | Sign in through your organization's own app connection instead (redirect `https://<extension-id>.chromiumapp.org/`, scopes SQL and All APIs, no client secret). |
+
+Set them like any extension policy: in the Google Admin console (Apps and extensions, the
+extension, Policy for extensions), or with the `3rdparty` extension policy for Chrome or Microsoft
+Edge (Windows registry or macOS configuration profile), keyed by the extension ID.
+
 **Connection preferences** (the options page) covers everything else, including the local helper.
 If several workspaces are open, you choose one. The extension never switches workspace silently.
 
