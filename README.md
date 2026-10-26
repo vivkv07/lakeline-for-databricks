@@ -266,8 +266,8 @@ PAT mode works without the helper or CLI.
 
 By default the token is kept only in session storage, which content scripts can't read. Enter it
 again after a browser restart or an extension reload. If you tick **Remember on this computer**,
-it is also saved in the extension's own IndexedDB, which only the extension can open (content
-scripts and Databricks pages can't). Versions up to 0.1.1 kept remembered tokens in
+it is also saved, encrypted (AES-GCM, with a key that can't be exported), in the extension's own
+IndexedDB, which only the extension can open (content scripts and Databricks pages can't). Versions up to 0.1.1 kept remembered tokens in
 `chrome.storage.local`; they move over automatically on the first start after updating.
 Workspace admins can disable PATs, and Databricks recommends OAuth where possible.
 
@@ -550,9 +550,9 @@ Found a vulnerability? Please report it privately, as described in [SECURITY.md]
   Admin actions are accepted only from the options page. Pairing messages are accepted only from
   the helper's `/setup` page on `http://127.0.0.1:8766`.
 - **Secrets.** Sign-in tokens, PATs and the helper pairing live in `chrome.storage.session`, which
-  is memory-only and hidden from content scripts. A PAT the user chose to remember is also kept in
-  the extension origin's IndexedDB, never in `chrome.storage.local` (content scripts can read that
-  area). Secrets are never returned to pages or written to logs, and diagnostics are redacted.
+  is memory-only and hidden from content scripts. A PAT the user chose to remember is also kept,
+  encrypted with AES-GCM and a non-exportable key, in the extension origin's IndexedDB, never in
+  `chrome.storage.local` (content scripts can read that area). Secrets are never returned to pages or written to logs, and diagnostics are redacted.
 - **Helper.**
   - Binds to `127.0.0.1` only and validates the `Host` header.
   - Bridge calls must carry the random pairing key and come from this extension's origin. CORS

@@ -14,7 +14,7 @@
 <main>
   <p class="label">Privacy policy</p>
   <h1>Your data stays between your browser and your Databricks workspace.</h1>
-  <p class="meta">Effective 16 October 2026 · applies to the Lakeline for Databricks browser extension and its optional local helper.</p>
+  <p class="meta">Effective 25 October 2026 · applies to the Lakeline for Databricks browser extension in Google Chrome and Microsoft Edge, and its optional local helper.</p>
 
   <h2>Summary</h2>
   <ul>
@@ -29,7 +29,7 @@
     <tbody>
       <tr><td>Settings (period, data source, display options), saved workspace connections (workspace URL and ID, chosen SQL warehouse, price table, currency), workspace colors</td><td>Browser local storage on this device</td><td>Until you change them or remove the extension</td></tr>
       <tr><td>Sign-in tokens (Sign in with Databricks)</td><td>Browser session storage</td><td>Cleared when the browser closes</td></tr>
-      <tr><td>Personal access token</td><td>Browser session storage. If you tick "Remember on this computer", also in the extension's own database on this device, which Databricks pages and other websites can't read</td><td>Session, or until you remove it or the extension</td></tr>
+      <tr><td>Personal access token</td><td>Browser session storage. If you tick "Remember on this computer", also in the extension's own database on this device, encrypted (AES-GCM) with a key that can't be exported, which Databricks pages and other websites can't read</td><td>Session, or until you remove it or the extension</td></tr>
       <tr><td>Genie conversations (questions, answers, result tables)</td><td>Browser session storage, size-capped</td><td>Cleared when the browser closes, or with "Clear now"</td></tr>
       <tr><td>Cost results</td><td>Memory and session storage, as a short cache (about 5 minutes)</td><td>Cleared when the browser closes</td></tr>
       <tr><td>Recent error details (sanitized, secrets removed)</td><td>Browser local storage, last 20 entries</td><td>Until you clear Diagnostics or remove the extension</td></tr>
@@ -44,6 +44,9 @@
     <li><strong>The optional local helper</strong> (if you choose to run it): it runs on your computer at 127.0.0.1, and its Databricks credentials stay in the Databricks CLI on your computer.</li>
   </ul>
   <p>The extension does not read the text of your SQL queries or the result rows of your queries in Query History. Cost estimates use only timestamps, durations, warehouse IDs and billing records.</p>
+
+  <h2>Limited Use</h2>
+  <p>Lakeline's use of the information it handles complies with the <a href="https://developer.chrome.com/docs/webstore/program-policies/user-data-faq">Chrome Web Store User Data Policy</a>, including the Limited Use requirements, and with the Microsoft Edge Add-ons policies. That information is used only to provide Lakeline's single purpose (cost estimates, run status and Genie answers for your own workspace). It is never sold, never transferred to anyone (including the developer), never used for advertising, and never used to determine creditworthiness or for lending.</p>
 
   <h2>Permissions</h2>
   <p>Site access is requested one workspace at a time, only when you connect it. The extension never asks for access to all websites. To finish "Sign in with Databricks", it also asks once for <code>localhost:8020</code>, used only to read the address of its own sign-in tab. Desktop notifications are optional and contain no query data. See the <a href="https://developer.chrome.com/docs/extensions/develop/concepts/declare-permissions">Chrome permissions documentation</a> for what each permission means.</p>

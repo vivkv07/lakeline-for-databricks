@@ -353,13 +353,18 @@ describe('browser e2e: real Chromium + extension against the SIMULATED fixture b
           req.onerror = () => reject(req.error);
           req.onsuccess = () => {
             const get = req.result.transaction('kv').objectStore('kv').get('dcc.secrets.patRemembered');
-            get.onsuccess = () => resolve({ found: Boolean(get.result), matches: Boolean(get.result) && get.result[origin] === token });
+            // Encrypted at rest: an AES-GCM box with no token text in it.
+            get.onsuccess = () => {
+              const v = get.result;
+              const text = v ? JSON.stringify(v, (k, x) => (x instanceof Uint8Array ? Array.from(x) : x)) : '';
+              resolve({ found: Boolean(v), encrypted: Boolean(v) && v.v === 1 && v.data instanceof Uint8Array, plaintext: text.includes(token) || text.includes(origin) });
+            };
             get.onerror = () => reject(get.error);
           };
         }),
       { origin: ORIGIN, token: FIXTURE_TOKEN }
     );
-    assert.deepEqual(stored, { found: true, matches: true });
+    assert.deepEqual(stored, { found: true, encrypted: true, plaintext: false });
     const state = await sendOk({ type: 'page:state' });
     assert.equal(state.connections[ORIGIN].secrets.patRemembered, true);
     // Back to a session-only token so the rest of the suite runs as before.

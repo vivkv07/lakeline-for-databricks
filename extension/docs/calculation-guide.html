@@ -615,7 +615,7 @@ AND (price.price_end_time IS NULL OR usage.usage_end_time &lt; price.price_end_t
   <ul>
     <li><strong>Local storage</strong> (<code>chrome.storage.local</code>, kept until you remove the extension): settings, one connection per workspace origin (no secrets), workspace IDs seen in tabs, a validated import, the last 20 cleaned-up diagnostics, and workspace color preferences.</li>
     <li><strong>Session storage</strong> (<code>chrome.storage.session</code>, memory only): sign-in tokens, personal access tokens, the helper pairing, Genie conversations and the monitor's current state. These are cleared when the browser restarts or the extension is reloaded, updated or disabled. Content scripts can't read them.</li>
-    <li><strong>The extension's own database</strong> (IndexedDB, on this device): only a personal access token you chose to <strong>Remember on this computer</strong>. Content scripts and web pages can't open it.</li>
+    <li><strong>The extension's own database</strong> (IndexedDB, on this device): only a personal access token you chose to <strong>Remember on this computer</strong>, encrypted (AES-GCM) with a key that can't be exported. Content scripts and web pages can't open it.</li>
     <li>Signing in through the helper uses the Databricks CLI's own credential store. Those OAuth tokens never enter the extension.</li>
   </ul>
 

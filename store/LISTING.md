@@ -23,7 +23,9 @@ Databricks cost estimates, run monitoring and a Genie side panel. Independent pr
 
 **Description**
 
-Lakeline puts Databricks cost context, run status and Genie answers right where you work.
+Lakeline puts cost context, run status and Genie answers right inside your Databricks workspace.
+
+Requires a Databricks workspace (AWS, Azure or Google Cloud) and read access to its billing system tables. Demo mode works without one.
 
 Cost estimates inside your workspace
 - A slim banner shows estimated spend for the last 7, 30 or 90 complete UTC days, the change from the previous period, and how fresh the billing data is.
@@ -41,21 +43,21 @@ Ask Genie from the side panel
 - Pick a Genie Agent, ask a question and keep working. The answer, the result table, a chart and the generated SQL appear when Genie is done.
 
 How the numbers are calculated
-- Read-only SQL against your own Databricks system tables, priced with system.billing.list_prices (or system.billing.account_prices if you choose it).
+- Read-only SQL against your own system tables, priced with system.billing.list_prices (or system.billing.account_prices if you choose it).
 - Every amount is labeled as an estimate. Billing can be delayed, and final invoices may differ. Cloud provider charges are not included.
 - A built-in guide explains every formula and limitation.
 
 Privacy
-- No analytics, no tracking, no developer servers. The extension talks only to the Databricks workspaces you connect.
+- No analytics, no tracking, no developer servers. The extension talks only to the workspaces you connect.
 - Sign-in tokens and Genie conversations stay in your browser.
 
 Sign in
-- Sign in with your Databricks account in one click, with no admin setup. Lakeline reuses the public OAuth client that Databricks provides for its own CLI (databricks-cli); Databricks did not create it for Lakeline and does not endorse Lakeline.
+- Sign in with your workspace account in one click, with no admin setup. Lakeline reuses the public OAuth client provided for the Databricks CLI (databricks-cli); that client was not created for Lakeline, and Lakeline is not endorsed by Databricks. Administrators can turn this off or use their own app connection by policy.
 - Or paste a personal access token, or use your organization's own app connection.
 
 Screenshots show a synthetic sample workspace with made-up data.
 
-Lakeline is an independent project and is not affiliated with, endorsed by or sponsored by Databricks, Inc. Databricks is a registered trademark of Databricks, Inc.; Genie and other Databricks product names are used only to identify Databricks products.
+Lakeline is an independent project and is not affiliated with, endorsed by or sponsored by Databricks, Inc. Databricks is a registered trademark of Databricks, Inc.
 
 **Graphic assets** (all in `store/assets/`, 24-bit PNG without alpha, as the store requires)
 
@@ -109,7 +111,7 @@ Show estimated Databricks costs, job run status and Genie answers for the user's
 **Remote code:** No. All JavaScript is included in the package. No eval, and no code loaded from the network.
 
 **Data usage** (answer the checkboxes conservatively and add this note)
-- *Authentication information:* yes, handled. Databricks OAuth tokens or a personal access token are used only to call the user's own Databricks workspace. They are kept in session storage. A token is kept on disk only if the user ticks "Remember on this computer", and then only in the extension's own IndexedDB, which content scripts and websites cannot open. They are never sent to the developer or any third party.
+- *Authentication information:* yes, handled. Databricks OAuth tokens or a personal access token are used only to call the user's own Databricks workspace. They are kept in session storage. A token is kept on disk only if the user ticks "Remember on this computer", and then only encrypted (AES-GCM, non-exportable key) in the extension's own IndexedDB, which content scripts and websites cannot open. They are never sent to the developer or any third party.
 - *Website content:* yes, handled. The extension reads Databricks page URLs and page structure to place cost badges, and it shows Databricks query results and Genie answers. This data stays in the browser and goes only to the user's own workspace.
 - Everything else: no. That covers personally identifiable information, health, financial and payment, personal communications, location, web history and user activity.
 - Certify all three: data is not sold to third parties; it is not used or transferred for purposes unrelated to the single purpose; it is not used to determine creditworthiness or for lending.
