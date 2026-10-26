@@ -155,7 +155,7 @@ function privacyCard() {
   const points = [
     'Read-only SQL on your own system tables.',
     'Talks only to your workspace. No Lakeline servers, no analytics.',
-    'Sign-in and Genie chats live in your browser session and clear when it closes.',
+    'Sign-in stays in this browser. Genie chats clear when it closes.',
     'Your full chat history stays in Genie in Databricks.',
     'Access is granted one workspace at a time.',
   ];
