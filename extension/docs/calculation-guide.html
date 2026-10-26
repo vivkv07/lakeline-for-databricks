@@ -733,12 +733,13 @@ AND (price.price_end_time IS NULL OR usage.usage_end_time &lt; price.price_end_t
 <!-- ================================================================== colors -->
 <section id="colors" aria-labelledby="colors-title">
   <h2 id="colors-title">Workspace colors</h2>
-  <p>Workspace colors tint the Databricks top bar so you can tell workspaces apart at a glance. Colors are independent of billing. They need no sign-in, helper or SQL, only site access for that workspace, which the extension requests when you save if it isn't already granted.</p>
+  <p>Workspace colors tint the Databricks top bar, and optionally the sidebar, so you can tell workspaces apart at a glance. Colors are independent of billing. They need no sign-in, helper or SQL, only site access for that workspace, which the extension requests when you save if it isn't already granted.</p>
   <ul>
-    <li>Open the popup and choose <strong>Workspace colors</strong>. Pick a saved workspace or enter a URL. Then choose a color with the picker, a six-digit hex value (<code>#RRGGBB</code>) or a preset. Check the preview, then select <strong>Save</strong>.</li>
+    <li>Open the popup and choose <strong>Workspace colors</strong>. Pick a saved workspace or enter a URL. Then choose a color with the picker, a six-digit hex value (<code>#RRGGBB</code>) or a preset. Check <strong>Also color the sidebar</strong> to tint the left navigation as well. Check the preview, then select <strong>Save</strong>.</li>
     <li>Preferences are stored per <code>origin|workspaceId</code>, separately from cost connections. Changing or disconnecting billing never changes them.</li>
     <li>A color saved for a URL without a workspace ID becomes a default for that host. A color for a specific workspace ID wins over the host default. If a page URL has no ID, the saved connection's ID is used when there is one.</li>
-    <li>Only the native top navigation is tinted. Other headers and the extension's own banner aren't. Text switches to black or white based on contrast, search and action controls stay readable, and brand graphics are kept.</li>
+    <li>Only the native top navigation is tinted, plus the sidebar and the frame around the page when you choose that option. The page itself, other headers and the extension's own banner aren't. Text switches to black or white based on contrast, and brand graphics and account initials are kept.</li>
+    <li>Controls that paint their own background, like the search box, pills, the New button and the selected sidebar item, take a lighter or darker shade of the same color, so the whole bar blends. Text on that shade stays at least as readable as on the bar itself.</li>
     <li>Only strict <code>#RRGGBB</code> values are accepted. Nothing else you type reaches the injected styles.</li>
     <li><strong>Reset</strong> removes the override. If a host default still applies, the panel says so.</li>
     <li>Colors stay on when cost display is paused.</li>

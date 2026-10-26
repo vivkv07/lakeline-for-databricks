@@ -160,6 +160,12 @@ Inc. All amounts are estimates: "Estimated costs. Billing can be delayed; final 
 - Per-workspace top-bar colors from the popup: strict `#RRGGBB` values, presets, a preview, Save
   and Reset. Stored separately from cost connections, keyed by `origin|workspaceId`, with host
   defaults. Text contrast is chosen automatically.
+- Optional sidebar coloring ("Also color the sidebar", saved per workspace): the side navigation
+  and the shell around the page card take the same color, so bar and sidebar read as one frame.
+- Native controls blend with the color instead of keeping their own backgrounds: the search box,
+  pills, the New button and the selected sidebar item use a lighter or darker shade of the same
+  color, with readable secondary text; account initials keep their own circle. Search fields are
+  no longer forced white.
 
 **Monitor widget**
 - A compact monitor window for job runs, pipeline updates, SQL warehouses and clusters. It polls
