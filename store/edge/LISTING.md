@@ -7,20 +7,12 @@ Everything to upload is gathered in `dist/edge-upload/`.
 
 ---
 
-## 1. Create the developer account (free, one time)
+## 1. Developer account (free, one time)
 
-1. Open https://partner.microsoft.com/dashboard/microsoftedge/public/login?ref=dd and sign in with
-   a Microsoft account. A personal Outlook or Hotmail account works, or sign up for a new one with
-   your existing Gmail address.
-2. Choose **Account type: Individual**. A Company account needs business verification, which takes
-   longer.
-3. Fill in the publisher details.
-   - **Publisher display name:** Vivek Kovvuru. This shows under the extension's name.
-   - Your name, contact email and address.
-4. Accept the Microsoft Edge program agreement, then select **Finish**.
-5. Verify the contact email from the message Microsoft sends.
-
-There is no registration fee. Partner Center then opens on **Microsoft Edge, Extensions**.
+The maintainer publishes with a Microsoft Edge program account in Partner Center, registered as an
+Individual with a personal Microsoft account or a GitHub sign-in (work and school accounts aren't
+accepted). See Microsoft's guide:
+https://learn.microsoft.com/microsoft-edge/extensions/publish/create-dev-account
 
 ---
 

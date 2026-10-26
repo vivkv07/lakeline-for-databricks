@@ -1,8 +1,8 @@
 /*
  * One-click connect. From the popup (or options) on a workspace tab:
  *   page grants site access in its click → this handler signs in (Databricks OAuth PKCE through a
- *   registered app or the built-in databricks-cli client, a personal access token the user pasted,
- *   or the user's existing browser login relayed through the open tab), resolves the workspace ID,
+ *   registered app or the built-in databricks-cli client, or a personal access token the user
+ *   pasted), resolves the workspace ID,
  *   picks a warehouse automatically, saves the connection with list prices, registers content
  *   scripts and injects into open tabs.
  * Progress is mirrored to chrome.storage.session so a popup that closed while the sign-in window
@@ -38,7 +38,7 @@
     }
 
     /**
-     * @param msg {url|origin, method?: 'oauth'|'pat'|'session', clientId?, token?, remember?}
+     * @param msg {url|origin, method?: 'oauth'|'pat', clientId?, token?, remember?}
      * Without a method: Sign in with Databricks, through the account's registered app when one is
      * configured, otherwise through the built-in client (no setup). 'pat' saves the pasted token
      * only after Databricks accepted it.
@@ -51,9 +51,8 @@
 
       const settings = await store.getSettings();
       const typed = msg.clientId !== undefined && msg.clientId !== '' ? String(msg.clientId).trim() : null;
-      const sessionAllowed = !(DCC.flags && DCC.flags.sessionLogin === false);
-      if (msg.method === 'session' && !sessionAllowed) throw new errors.DccError({ code: 'UNKNOWN', message: 'This sign-in method is not available in this build' });
-      const method = ['session', 'pat'].includes(msg.method) ? msg.method : 'oauth';
+      if (msg.method !== undefined && msg.method !== 'oauth' && msg.method !== 'pat') throw new errors.DccError({ code: 'UNKNOWN', message: 'Unknown sign-in method' });
+      const method = msg.method === 'pat' ? 'pat' : 'oauth';
       if (typed !== null && !DCC.oauth.isClientId(typed)) {
         return { needsChoice: true, needsClientId: true, redirectUrl: chromeApi.identity.getRedirectURL() };
       }
@@ -63,16 +62,11 @@
         if (typed && typed !== settings.oauth.clientId) await store.updateSettings({ oauth: { clientId: typed } });
         await setStatus({ state: 'signing-in', origin, builtin: DCC.oauth.isBuiltin(clientId) });
         await oauth.signIn({ origin, clientId, purpose: 'cost', interactive: true });
-      } else if (method === 'pat') {
+      } else {
         const token = String(msg.token || '').trim();
         if (!V.isPlausiblePat(token)) throw new errors.DccError({ code: 'PAT_FORMAT', message: 'Token format not accepted' });
         await setStatus({ state: 'checking-token', origin });
         await deps.secrets.setPat(origin, token, { remember: msg.remember === true });
-      } else {
-        // Browser login works through the tab: make sure our bridge is loaded there first.
-        await setStatus({ state: 'checking-login', origin });
-        await DCC.registration.sync(chromeApi);
-        await DCC.registration.injectIntoOpenTabs(chromeApi, origin);
       }
 
       await setStatus({ state: 'configuring', origin });
@@ -143,29 +137,6 @@
         trust: 'page',
         async handle() {
           return { redirectUrl: chromeApi.identity.getRedirectURL() };
-        },
-      },
-      // The broader all-apis consent is one sign-in shared by the run monitor and Genie
-      // (oauth purpose 'apis'; 'monitor' and 'genie' are aliases). Genie's panel uses genie:signIn.
-      'connect:signInMonitor': {
-        trust: 'page',
-        async handle(msg) {
-          const cls = ids.classifyOrigin(msg.origin);
-          const conn = cls.ok ? await store.getConnection(cls.origin) : null;
-          if (!conn || conn.authMode !== 'oauth') throw new errors.DccError({ code: 'NOT_CONNECTED' });
-          const settings = await store.getSettings();
-          await oauth.signIn({ origin: conn.origin, clientId: DCC.oauth.effectiveClientId(conn, settings), purpose: 'apis', interactive: true });
-          return { signedIn: true };
-        },
-      },
-      'connect:signOut': {
-        trust: 'page',
-        async handle(msg) {
-          const cls = ids.classifyOrigin(msg.origin);
-          if (!cls.ok) throw new errors.DccError({ code: 'UNKNOWN', message: 'Unsupported origin' });
-          await oauth.signOut(cls.origin);
-          data.cache.clear();
-          return { signedOut: true };
         },
       },
     };

@@ -1015,38 +1015,34 @@ test('popup: "Other ways to sign in" toggles the chooser without moving focus; s
   env.close();
 });
 
-test('popup: the store build (flags.sessionLogin false) removes "Use my Databricks login" and still connects', async () => {
+test('popup: the store build removes developer-only links; every build offers only Sign in with Databricks, a token or an app connection', async () => {
   const sw = popupWorker({
     hooks: {
       'connect:oneClick': async (msg) => (msg.clientId ? ok({ connected: true, origin: A, workspaceId: '42', warehouseName: null }) : ok({ needsChoice: true, needsClientId: true, redirectUrl: 'https://testextensionid.chromiumapp.org/' })),
       'connect:status': async () => ok(null),
     },
   });
-  const env = openPage('popup', { onMessage: sw.fn, tabs: [{ id: 7, url: A + '/jobs?o=42' }], granted: [A + '/*'], flags: { sessionLogin: false } });
+  const env = openPage('popup', { onMessage: sw.fn, tabs: [{ id: 7, url: A + '/jobs?o=42' }], granted: [A + '/*'], flags: { devTools: false } });
   await env.window.DCC.popupPage.ready;
-  assert.equal(env.window.DCC.flags.sessionLogin, false);
-  assert.equal(env.$('use-session'), null);
-  assert.equal(env.document.querySelectorAll('[data-feature="session-login"]').length, 0);
-  assert.ok(!/Use my Databricks login/.test(env.text()), 'no trace of the method in the page');
+  assert.equal(env.document.querySelectorAll('[data-feature="dev-tools"]').length, 0);
+  assert.ok(!/Use my Databricks login/.test(env.text()), 'the old browser login is gone');
   env.$('connect-btn').click();
   await settle();
-  assert.equal(env.$('oauth-setup').hidden, false, 'the chooser still opens');
-  assert.ok(env.$('pat-input') && env.$('oauth-client-id'), 'token and client ID choices remain');
+  assert.equal(env.$('oauth-setup').hidden, false, 'the chooser opens');
+  assert.ok(env.$('pat-input') && env.$('oauth-client-id'), 'token and client ID choices');
   env.$('oauth-client-id').value = 'lakeline-client-0001';
   env.$('oauth-save-connect').click();
   await settle();
   assert.deepEqual(env.sent('connect:oneClick').at(-1), { type: 'connect:oneClick', url: A + '/jobs?o=42', clientId: 'lakeline-client-0001' });
-  assert.ok(!env.sent('connect:oneClick').some((m) => m.method === 'session'));
   assert.match(env.text('tab-status'), /Connected · workspace 42/);
   env.close();
 
-  // The development build keeps it.
+  // The development build has no browser-login option either.
   const dev = openPage('popup', { onMessage: popupWorker().fn, tabs: [{ id: 7, url: A + '/jobs?o=42' }] });
   await dev.window.DCC.popupPage.ready;
-  assert.ok(dev.$('use-session'));
+  assert.ok(!/Use my Databricks login/.test(dev.text()));
   dev.close();
 });
-
 test('options: a saved connection opens condensed: three one-line summaries with Edit links, Save hidden until editing', async () => {
   const { env } = await openOptions({ connections: { [A]: savedConn(A) } }, { granted: [A + '/*'] });
   for (const [id, body] of [['connect', 'connect-body'], ['auth', 'auth-body'], ['warehouse', 'warehouse-body']]) {
@@ -1092,13 +1088,13 @@ test('options: with no workspace chosen, Sign in and Warehouse wait; typing or a
   env.close();
 });
 
-test('options: a hand-off from the popup condenses step 1; the four sign-in methods are listed in order', async () => {
+test('options: a hand-off from the popup condenses step 1; the three sign-in methods are listed in order', async () => {
   const { env } = await openOptions({ pending: { origin: A, workspaceId: '42', conflict: false } });
   assert.equal(env.$('connect-body').hidden, true);
   assert.equal(env.text('ws-summary'), 'dbc-aaa.cloud.databricks.com · workspace 42');
-  assert.deepEqual([...env.document.querySelectorAll('input[name="auth"]')].map((r) => r.value), ['oauth', 'pat', 'session', 'helper']);
-  assert.match(env.text('auth'), /Databricks currently rejects browser-login API calls on tested workspaces/);
-  const visible = ['auth-oauth', 'auth-pat', 'auth-session', 'auth-helper'].filter((id) => !env.$(id).hidden);
+  assert.deepEqual([...env.document.querySelectorAll('input[name="auth"]')].map((r) => r.value), ['oauth', 'pat', 'helper']);
+  assert.ok(!/browser-login|Use my Databricks login/.test(env.text('auth')));
+  const visible = ['auth-oauth', 'auth-pat', 'auth-helper'].filter((id) => !env.$(id).hidden);
   assert.deepEqual(visible, ['auth-oauth'], 'only the chosen method shows its panel');
   for (const id of ['advanced', 'import', 'diagnostics', 'storage', 'disconnect']) {
     assert.equal(env.$(id).tagName, 'DETAILS', id);
@@ -1110,13 +1106,8 @@ test('options: a hand-off from the popup condenses step 1; the four sign-in meth
   env.close();
 });
 
-test('options: the store build (flags.sessionLogin false) removes "Use my Databricks login" and the page still works', async () => {
-  const { env } = await openOptions({ pending: { origin: A, workspaceId: '42', conflict: false } }, { flags: { sessionLogin: false } });
-  assert.equal(env.$('auth-session'), null);
-  assert.equal(env.$('auth-session-radio'), null);
-  assert.equal(env.$('session-connect'), null);
-  assert.equal(env.document.querySelectorAll('[data-feature="session-login"]').length, 0);
-  assert.ok(!/Use my Databricks login/.test(env.text()));
+test('options: a personal access token connection saves through the options page', async () => {
+  const { env } = await openOptions({ pending: { origin: A, workspaceId: '42', conflict: false } });
   assert.deepEqual([...env.document.querySelectorAll('input[name="auth"]')].map((r) => r.value), ['oauth', 'pat', 'helper']);
   env.$('auth-pat-radio').click();
   await settle();
@@ -1132,7 +1123,7 @@ test('options: the store build (flags.sessionLogin false) removes "Use my Databr
 });
 
 test('popup: store build removes developer-only links (local test workspace); dev build keeps them', async () => {
-  const store = openPage('popup', { onMessage: popupWorker().fn, tabs: [{ id: 7, url: A + '/jobs?o=42' }], flags: { sessionLogin: false, devTools: false } });
+  const store = openPage('popup', { onMessage: popupWorker().fn, tabs: [{ id: 7, url: A + '/jobs?o=42' }], flags: { devTools: false } });
   await store.window.DCC.popupPage.ready;
   assert.equal(store.$('fixture-link'), null);
   assert.ok(!/127\.0\.0\.1/.test(store.document.body.innerHTML), 'no local address anywhere in the store popup');

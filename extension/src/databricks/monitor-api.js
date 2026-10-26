@@ -120,7 +120,6 @@
     skipped: 'Skipped',
     unknown: 'Status unknown',
   });
-  const OUTCOMES = Object.freeze(Object.keys(OUTCOME_TEXT));
 
   function outcomeText(outcome, state, code) {
     if (STATE_TEXT[state]) return STATE_TEXT[state];
@@ -488,7 +487,6 @@
     MONITOR_PATHS,
     RECENT_WINDOW_MS,
     RUNS_LIMIT,
-    OUTCOMES,
     OUTCOME_TEXT,
     isMonitorPath,
     pageToken,

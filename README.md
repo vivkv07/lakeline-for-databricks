@@ -22,7 +22,7 @@ The guide is also linked from the banner (**How costs work**), the popup and Con
 
 - [What it does](#what-it-does)
 - [Screenshots](#screenshots)
-- [Requirements](#requirements)
+- [Prerequisites](#prerequisites)
 - [Install](#install)
 - [Modes](#modes)
 - [Connect a workspace](#connect-a-workspace)
@@ -36,6 +36,8 @@ The guide is also linked from the banner (**How costs work**), the popup and Con
 - [Security model](#security-model)
 - [Privacy](#privacy)
 - [Project layout](#project-layout)
+- [Contributing and releases](#contributing-and-releases)
+- [License](#license)
 
 ## What it does
 
@@ -66,21 +68,64 @@ Every amount is labeled as an estimate, and missing data is never shown as zero.
 
 ## Screenshots
 
-No screenshots are included yet. If you add any, take them only from **Demo mode** or the
-**local fixture**, which use synthetic data. Never use a real workspace, real costs, real
-names or real IDs.
+Captured from the extension against a synthetic workspace ("Northpeak Retail"), so no real data
+appears. More in [`store/assets/`](store/assets/).
 
-## Requirements
+| Cost banner on a workspace | Ask Genie in the side panel |
+|---|---|
+| ![Cost banner showing 30-day spend inside a Databricks workspace](store/assets/screenshot-light-1.png) | ![Genie answer with a bar chart in the side panel](store/assets/screenshot-dark-1.png) |
+| **Cost Explorer: top drivers** | **Workspace colors for dev, stage and prod** |
+| ![Cost Explorer listing the jobs and warehouses that drive spend](store/assets/screenshot-light-4.png) | ![Three workspaces with green, amber and red top bars](store/assets/screenshot-light-5.png) |
 
-- **Browser:** Google Chrome or Microsoft Edge, version 116 or newer, on desktop.
-- **Connected mode:**
-  - A Unity Catalog-enabled workspace with system tables available.
-  - A SQL warehouse you can use.
-  - The grants listed under [Databricks permissions](#databricks-permissions).
-- **Sign-in:** nothing to install or register. **Sign in with Databricks** uses Databricks'
-  built-in sign-in app, the one the Databricks CLI uses. If an admin turned that app off, paste a
-  personal access token (PAT), or have an account admin register an app connection once.
-- **Optional local helper:** [Node.js](https://nodejs.org) 20 or newer and the
+If you add screenshots, take them only from **Demo mode** or the **local fixture**. Never use a
+real workspace, real costs, real names or real IDs.
+
+## Prerequisites
+
+Lakeline reads costs from Databricks **system tables** by running read-only SQL on a **SQL
+warehouse**, as you. So before you connect, you need:
+
+1. **A Unity Catalog workspace with system tables.** Lakeline reads these tables:
+
+   | Table | Used for | Required? |
+   |---|---|---|
+   | `system.billing.usage` | All cost amounts | Yes |
+   | `system.billing.list_prices` | Pricing (or `system.billing.account_prices`, if you choose it) | Yes |
+   | `system.lakeflow.job_run_timeline`, `job_task_run_timeline`, `pipeline_update_timeline` | Run costs, job totals that include triggered pipelines, run durations | Recommended |
+   | `system.query.history` | Query History estimates | Optional |
+
+   The `billing` schema is on by default. If `lakeflow` or `query` isn't available, an account
+   admin can enable it: see
+   [Enable system table schemas](https://docs.databricks.com/aws/en/admin/system-tables/#enable-system-table-schemas).
+
+2. **Permission to read them.** A metastore admin grants access, for example to a group:
+
+   ```sql
+   GRANT USE CATALOG ON CATALOG system TO `lakeline-users`;
+   GRANT USE SCHEMA, SELECT ON SCHEMA system.billing TO `lakeline-users`;
+   -- Recommended: run costs and job and pipeline attribution
+   GRANT USE SCHEMA, SELECT ON SCHEMA system.lakeflow TO `lakeline-users`;
+   -- Optional: Query History estimates (admin-only by default)
+   GRANT USE SCHEMA ON SCHEMA system.query TO `lakeline-users`;
+   GRANT SELECT ON TABLE system.query.history TO `lakeline-users`;
+   ```
+
+3. **A SQL warehouse that can read them.** Any Unity Catalog SQL warehouse works, and serverless
+   starts fastest. You need **Can use** on it (SQL Warehouses, the warehouse, Permissions).
+   Lakeline picks a running warehouse you can use automatically, and you can choose another in
+   Connection preferences.
+
+4. **A supported browser:** Google Chrome or Microsoft Edge, version 116 or newer, on desktop.
+
+Nothing else to install. **Sign in with Databricks** uses Databricks' built-in sign-in app, the
+one the Databricks CLI uses. If an admin turned that app off, paste a personal access token
+instead (or have an account admin register an app connection once). The run monitor and Genie
+also need permission to view the jobs, pipelines, warehouses and Genie spaces you use. The full
+table is under [Databricks permissions](#databricks-permissions).
+
+Optional:
+
+- **Local helper:** [Node.js](https://nodejs.org) 20 or newer and the
   [Databricks CLI](https://docs.databricks.com/aws/en/dev-tools/cli/install) v1.12 or newer.
 - **Development and tests:** Node.js 20 or newer and npm.
 
@@ -203,8 +248,11 @@ PAT mode works without the helper or CLI.
 2. In Connection preferences, choose **Personal access token**, paste it into **Token**, and select
    **Save token**.
 
-The token is kept only in session storage. It is never written to disk by the extension, and
-content scripts can't read it. Enter it again after a browser restart or an extension reload.
+By default the token is kept only in session storage, which content scripts can't read. Enter it
+again after a browser restart or an extension reload. If you tick **Remember on this computer**,
+it is also saved in the extension's own IndexedDB, which only the extension can open (content
+scripts and Databricks pages can't). Versions up to 0.1.1 kept remembered tokens in
+`chrome.storage.local`; they move over automatically on the first start after updating.
 Workspace admins can disable PATs, and Databricks recommends OAuth where possible.
 
 ### Workspace and warehouse selection
@@ -278,6 +326,8 @@ as it has the same columns.
 1. In the popup, turn on **Monitor runs and compute**. In Connected mode, the monitor follows one
    saved workspace.
 2. Sign in for the monitor:
+   - **Sign in with Databricks:** the default sign-in already covers the monitor. With your
+     organization's own app connection, the monitor asks once for the broader `all-apis` consent.
    - **Helper:** select **Sign in for monitor (broader access)** in Connection preferences. This is
      a separate one-time sign-in with the `all-apis` scope on its own `dcc-mon-<host>-<hash>`
      profile. The helper forwards only an allowlist of read-only `GET` requests, and cost queries
@@ -324,11 +374,13 @@ The service worker sends the question, waits for Genie and keeps the answer for 
 
 **Sign-in.** Connected workspaces only:
 
-- **Sign in with Databricks:** the panel asks once with **Allow Genie and run status**. That is the
-  broader `all-apis` consent, shared with the run monitor; cost queries keep their SQL-only
-  sign-in. Every Genie API needs the `genie` scope, which `all-apis` includes.
+- **Sign in with Databricks:** the default sign-in (Databricks' built-in app) already grants
+  `all-apis`, so Genie, the run monitor and cost queries share one sign-in. With your
+  organization's own app connection, cost queries use a SQL-only sign-in, and the panel asks once
+  more with **Allow Genie and run status** for the broader `all-apis` consent. Every Genie API
+  needs the `genie` scope, which `all-apis` includes.
 - **Personal access token:** the token is used. A scoped token needs the `genie` scope.
-- **Local helper** and **Use my Databricks login** aren't supported for Genie; the panel says so.
+- **Local helper** isn't supported for Genie; the panel says so.
 - **Demo mode** shows synthetic agents and canned answers, labeled DEMO, with no requests.
   **Local import** mode has no Genie.
 
@@ -387,7 +439,7 @@ npm test            # node --test local/test-*.mjs
   time, because each starts the fixture on port 8765. `local/browser/test-genie-e2e.mjs` drives the
   Genie panel page in a tab against the fixture's simulated Genie API.
 - `npm run test:edge` runs the same browser tests in an installed Microsoft Edge (Playwright
-  channel `msedge`). Last run: Edge 155, 24 of 24 passed.
+  channel `msedge`).
 - Live SQL against a real workspace is never part of the automated tests.
 - `npm run package` builds a sanitized ZIP in `dist/` from an explicit allowlist. It refuses files
   that look like tokens, keys, CLI config or real workspace hosts.
@@ -470,16 +522,20 @@ Found a vulnerability? Please report it privately, as described in [SECURITY.md]
 - **Optional per-site access.** Site access is requested per workspace origin through
   `optional_host_permissions`, for `*.cloud.databricks.com`, `*.azuredatabricks.net`,
   `*.gcp.databricks.com` and the local fixture. Content scripts are registered only for origins you
-  granted, and account-console hosts are excluded. Other permissions are `storage`, `activeTab`,
-  `scripting`, `alarms` and the optional `notifications`. The extension requests no cookies,
-  debugger, web-request or all-sites access, and loads no remote code.
+  granted, and account-console hosts are excluded. "Sign in with Databricks" also asks once for
+  `http://localhost:8020`, only to read the address of its own sign-in tab. Other permissions are
+  `storage`, `activeTab`, `scripting`, `alarms`, `identity`, `sidePanel` and the optional
+  `notifications`. The extension requests no cookies, debugger, web-request or all-sites access,
+  and loads no remote code. Its content security policy allows connections only to Databricks
+  workspace hosts and the local helper.
 - **Strict message validation.** Content-script messages must come from the extension's top-frame
   script on a supported origin, with a workspace ID that matches the page and the saved connection.
   Admin actions are accepted only from the options page. Pairing messages are accepted only from
   the helper's `/setup` page on `http://127.0.0.1:8766`.
-- **Secrets.** PATs and the helper pairing live in `chrome.storage.session`, which is memory-only
-  and hidden from content scripts. They are never returned to pages or written to logs. Diagnostics
-  are redacted.
+- **Secrets.** Sign-in tokens, PATs and the helper pairing live in `chrome.storage.session`, which
+  is memory-only and hidden from content scripts. A PAT the user chose to remember is also kept in
+  the extension origin's IndexedDB, never in `chrome.storage.local` (content scripts can read that
+  area). Secrets are never returned to pages or written to logs, and diagnostics are redacted.
 - **Helper.**
   - Binds to `127.0.0.1` only and validates the `Host` header.
   - Bridge calls must carry the random pairing key and come from this extension's origin. CORS
@@ -509,20 +565,31 @@ Found a vulnerability? Please report it privately, as described in [SECURITY.md]
 
 ```
 extension/            the unpacked extension (load this folder)
-  manifest.json       MV3 manifest with a stable public key
+  manifest.json       MV3 manifest with the store item's public key
   src/core/           validation, IDs, UTC periods, labels, allocation, demo and import data
   src/databricks/     pricing adapter, config, HTTP client, warehouses, monitor API, query kinds
-  src/background/     service worker, router, sender checks, store, secrets, cache, helper client, monitor
+  src/background/     service worker, router, sender checks, sign-in, store, secrets, monitor, Genie
   src/content/        banner, badges, Query History estimates, compute previews, colors
   src/explorer/       Cost Explorer model, data, charts, CSV export
-  ui/                 popup, Connection preferences (options), monitor window
+  ui/                 popup, Connection preferences (options), side panel, monitor window
   docs/               calculation guide (offline HTML + CSS)
-local/                local helper (server.mjs, oauth-bridge.mjs, setup page), fixture, tests
-scripts/              icon generation, sanitized packaging
-start-helper.command  macOS launcher (double-click)
-start-helper.sh       macOS/Linux launcher
+local/                local helper, fixture server and data, tests (local/test-*.mjs, local/browser/)
+scripts/              icon generation, sanitized store packaging
+docs/                 project site and privacy policy (GitHub Pages)
+store/                Chrome Web Store and Edge Add-ons listings, screenshots and promo images
+notes/                developer notes: module contracts, house style, Genie, launch video
+video/                launch video composer and music (npm run video:*)
+.github/              CI, DCO check, issue and pull request templates, code owners
+start-helper.command  macOS launcher for the local helper (double-click)
+start-helper.sh       macOS/Linux launcher for the local helper
 costs.example.json    synthetic import example
 ```
+
+## Contributing and releases
+
+Contributions are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) covers setup, the pull request
+checklist and the DCO sign-off, and [RELEASING.md](RELEASING.md) describes how a merged change
+reaches the Chrome Web Store and Microsoft Edge Add-ons.
 
 ## License
 

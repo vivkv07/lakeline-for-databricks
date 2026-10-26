@@ -1,8 +1,7 @@
 # House style for every extension surface
 
-This is the project owner's personal visual language. Rule: no brand names, marks, logos or
-company labels from that style anywhere, in UI, code comments, docs or file names. The product
-has its own name: "Lakeline for Databricks" ("Lakeline" where space is short).
+Lakeline's visual language for the popup, options, side panel, monitor, in-page surfaces, store
+images and video. The product name is "Lakeline for Databricks" ("Lakeline" where space is short).
 
 ## Look
 

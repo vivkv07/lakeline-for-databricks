@@ -8,10 +8,11 @@
   const NODE = typeof module === 'object' && module && module.exports;
   const V = NODE ? require('./core/validate.js') : root.DCC.validate;
 
+  // Token shapes match anywhere, even glued to other word characters ("xdapi…", "dapi…abc").
   const REDACTIONS = [
     [/Bearer\s+[A-Za-z0-9._~+/=-]+/gi, 'Bearer [redacted]'],
-    [/\bdapi[0-9a-f]{32}(?:-\d+)?\b/gi, '[redacted-pat]'],
-    [/\b(?:dose|dkea|dsapi)[0-9a-f]{32}\b/gi, '[redacted-token]'],
+    [/dapi[0-9a-f]{32}(?:-\d+)?/gi, '[redacted-pat]'],
+    [/(?:dose|dkea|dsapi)[0-9a-f]{32}/gi, '[redacted-token]'],
     [/eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/g, '[redacted-jwt]'],
     [/("?(?:access_token|refresh_token|id_token|client_secret|token|password|secret)"?\s*[:=]\s*)"?[^"\s,}&]+"?/gi, '$1[redacted]'],
     [/(x-dcc-key\s*[:=]\s*)[0-9a-f]{24}/gi, '$1[redacted]'],
@@ -19,10 +20,15 @@
     [/\b[0-9a-f]{24}\b/g, '[redacted-key]'],
   ];
 
+  const REDACT_MAX = 2000;
+  // Redact first, then cut: cutting first can leave the start of a token behind. The scan window
+  // covers any token that starts inside the kept text.
+  const REDACT_SCAN = 16 * 1024;
+
   function redact(text) {
-    let out = V.safeText(text, 2000);
+    let out = V.safeText(text, REDACT_SCAN);
     for (const [re, rep] of REDACTIONS) out = out.replace(re, rep);
-    return out;
+    return out.slice(0, REDACT_MAX);
   }
 
   const CATALOG = {
@@ -70,21 +76,6 @@
     UNMATCHED_PRICES: {
       title: 'Some usage has no matching price',
       steps: ['Amounts are shown as a priced subtotal. See the expanded details for affected SKUs and dates.'],
-    },
-    SESSION_TAB_REQUIRED: {
-      title: 'Open a Databricks tab for this workspace',
-      steps: ['"Use my Databricks login" works through an open workspace tab. Open (or reload) a tab for this workspace and try again, or switch to Sign in with Databricks for background features.'],
-    },
-    SESSION_REJECTED: {
-      title: 'Databricks did not accept your browser login for API calls',
-      steps: [
-        'The Databricks API answered that a browser login is not a supported credential for it. Nothing is wrong with your login.',
-        'Use a personal access token (create it with the sql scope and tick Remember on this computer), or Sign in with Databricks.',
-      ],
-    },
-    SESSION_EXPIRED: {
-      title: 'Your Databricks login in this browser has expired',
-      steps: ['Sign in to Databricks again in the workspace tab, then select Refresh.'],
     },
     AUTH_EXPIRED: {
       title: 'Sign-in expired',
@@ -175,7 +166,7 @@
     },
     GENIE_AUTH_UNSUPPORTED: {
       title: 'Genie needs Sign in with Databricks or a personal access token',
-      steps: ['This workspace connects with "Use my Databricks login", which relays through an open tab, so Genie can\'t keep working in the background with it. Reconnect with Sign in with Databricks from the popup, or save a personal access token in Connection preferences.'],
+      steps: ['This workspace\'s connection type can\'t ask Genie. Reconnect with Sign in with Databricks from the popup, or save a personal access token in Connection preferences.'],
     },
     GENIE_MODE: {
       title: 'Genie is off in Local import mode',

@@ -45,12 +45,13 @@ const REPO = path.resolve(HERE, '../..');
 const OUT = path.join(REPO, 'dist/video');
 const CAPTURES = path.join(OUT, 'captures');
 const MUSIC = path.join(OUT, 'music/lakeline-theme.wav');
-/** Music plus sound effects, premixed by the music agent; used instead of MUSIC when present. */
+/** Music plus sound effects, premixed by video/music (npm run video:music); used instead of MUSIC when present. */
 const MIX = path.join(OUT, 'music/mix.wav');
 const EVENTS = path.join(OUT, 'music/events.json');
 const MARKERS = path.join(OUT, 'music/markers.json');
 const FONTS = path.join(REPO, 'extension/fonts');
-const DEFAULT_PH = 'dist/video/placeholder';
+/** Development placeholder images (never shipped); override with --placeholder-root or LAKELINE_PLACEHOLDER_ROOT. */
+const DEFAULT_PH = path.join(OUT, 'placeholder');
 
 /* ------------------------------------------------------------------ args */
 

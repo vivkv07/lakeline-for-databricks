@@ -23,20 +23,12 @@
   const cacheMod = dep('cache', './cache.js');
   const registry = NODE ? require('../databricks/queries/index.js') : root.DCC.queries.registry;
 
-  const DIRECT_MODES = Object.freeze(['oauth', 'pat', 'session']);
+  const DIRECT_MODES = Object.freeze(['oauth', 'pat']);
 
-  function create({ store, secrets, helper, oauth, sessionTransport, fetch: doFetch, now = () => Date.now(), cache = cacheMod.create({ now }) }) {
-    /**
-     * HTTP client for direct (non-helper) modes. Browser login relays through an open workspace
-     * tab and carries no token; OAuth and PAT send a bearer token from session storage.
-     */
+  function create({ store, secrets, helper, oauth, fetch: doFetch, now = () => Date.now(), cache = cacheMod.create({ now }) }) {
+    /** HTTP client for direct (non-helper) modes: OAuth and PAT send a bearer token. */
     async function clientFor(origin, authMode, { onHeaders, purpose = 'cost', scope = null } = {}) {
       const s = scope === 'genie' ? 'genie' : null; // a Genie client reaches only Genie paths
-      if (authMode === 'session') {
-        const flags = NODE ? null : root.DCC.flags;
-        if (!sessionTransport || (flags && flags.sessionLogin === false)) throw new errors.DccError({ code: 'SESSION_REJECTED', message: 'Browser login is not available in this build' });
-        return http.create({ origin, token: null, fetch: sessionTransport.fetchFor(origin, { scope: s }), onHeaders, scope: s });
-      }
       return http.create({ origin, token: await directToken(origin, authMode, purpose), fetch: doFetch, onHeaders, scope: s });
     }
 

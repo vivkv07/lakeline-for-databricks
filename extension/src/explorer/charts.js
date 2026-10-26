@@ -37,12 +37,8 @@
   }
   const PALETTES = Object.freeze({ light: paletteFor('light'), dark: paletteFor('dark') });
   const colors = (theme) => (theme === 'dark' ? PALETTES.dark : PALETTES.light);
-  // Light-theme values, kept for callers that don't pass a theme.
-  const INK = PALETTES.light.ink;
+  // Light-theme value, kept for callers that don't pass a theme.
   const MUTED = PALETTES.light.muted;
-  const ACCENT = PALETTES.light.accent;
-  const WARM = PALETTES.light.warm;
-  const UNAVAILABLE = PALETTES.light.unavailable;
   let uid = 0;
 
   function s(doc, tag, attrs, children) {
@@ -468,7 +464,7 @@
     return svg;
   }
 
-  const api = Object.freeze({ SVG, ACCENT, INK, MUTED, WARM, UNAVAILABLE, colors, paletteFor, s, truncate, domain, niceStep, bindMarks, stackedBars, hBars, scatter, heatmap, swatch });
+  const api = Object.freeze({ SVG, MUTED, colors, paletteFor, s, truncate, domain, niceStep, bindMarks, stackedBars, hBars, scatter, heatmap, swatch });
   if (NODE) module.exports = api;
   else (root.DCC || (root.DCC = {})).exploreCharts = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

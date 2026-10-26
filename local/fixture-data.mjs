@@ -81,6 +81,8 @@ export const LIST_PRICES = Object.freeze({
   PREMIUM_SERVERLESS_REAL_TIME_INFERENCE_US_EAST: 0.082,
 });
 export const JOBS_PRICE_AFTER_CHANGE = 0.16;
+/** Jobs API only: job 101's failed manual re-run, three hours before now (see monitorSnapshot). */
+export const RECENT_FAILED_RUN_ID = 101900003;
 export const ACCOUNT_DISCOUNT = 0.85;
 
 /* ------------------------------------------------------------------ helpers */
@@ -411,6 +413,11 @@ export function monitorSnapshot(nowMs = Date.now(), origin = 'http://127.0.0.1:8
     if (d0 + 220 * min <= nowMs) runs.push(terminated(JOBS[0], Number(jobRunId('101', ed)), d0 + 120 * min, d0 + 220 * min, true));
     if (d0 + 420 * min <= nowMs) runs.push(terminated(JOBS[1], Number(jobRunId('102', ed)), d0 + 360 * min, d0 + 420 * min, k !== 1, 'Task refresh_pipeline failed (synthetic fixture failure).'));
   }
+  // A manual re-run of job 101 that failed three hours ago. It is always inside the monitor's
+  // 24-hour window, whatever the time of day, so monitor tests don't depend on the clock. It is too
+  // recent for the lakeflow system tables, which lag by hours, so like a real run that hasn't reached
+  // them yet it exists only in the Jobs API, never in buildDataset().
+  runs.push(Object.assign(terminated(JOBS[0], RECENT_FAILED_RUN_ID, nowMs - 180 * min, nowMs - 142 * min, false, 'Task load_sales failed (synthetic fixture failure).'), { trigger: 'ONE_TIME' }));
   runs.push({
     job_id: 101,
     run_id: 101900001,

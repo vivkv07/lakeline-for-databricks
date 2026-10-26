@@ -26,6 +26,7 @@ importScripts(
   '../databricks/queries/explore.js',
   '../databricks/queries/index.js',
   './sender.js',
+  './idb-area.js',
   './secrets.js',
   './store.js',
   './cache.js',
@@ -33,7 +34,6 @@ importScripts(
   './registration.js',
   './appearance-handlers.js',
   './oauth.js',
-  './session-transport.js',
   './data-service.js',
   './ui-handlers.js',
   './connect-handlers.js',
@@ -50,13 +50,15 @@ const HELPER_PORT = 8766;
 const EXTENSION_ORIGIN = 'chrome-extension://' + chrome.runtime.id;
 
 const store = DCC.store.create(chrome.storage.local);
-const secrets = DCC.secrets.create(chrome.storage.session, chrome.storage.local);
+// Remembered tokens live in the extension's own IndexedDB, never in chrome.storage.local, which
+// content scripts can read. Older versions' tokens are moved over at startup.
+const secrets = DCC.secrets.create(chrome.storage.session, DCC.idbArea.create(), { legacyArea: chrome.storage.local });
+secrets.migrate().catch(() => {});
 const fetchImpl = (...args) => fetch(...args);
 const helperFactory = (o) => DCC.helperClient.create({ fetch: fetchImpl, getBridge: o.getBridge });
 const helper = helperFactory({ getBridge: () => secrets.getBridge() });
 const oauth = DCC.oauth.create({ chromeApi: chrome, fetch: fetchImpl });
-const sessionTransport = DCC.sessionTransport.create({ chromeApi: chrome });
-const data = DCC.dataService.create({ store, secrets, helper, oauth, sessionTransport, fetch: fetchImpl });
+const data = DCC.dataService.create({ store, secrets, helper, oauth, fetch: fetchImpl });
 
 async function openPage(path) {
   const url = chrome.runtime.getURL(path);
@@ -77,6 +79,7 @@ async function openPage(path) {
 const router = DCC.router.create({
   store,
   secrets,
+  oauth,
   data,
   helper,
   helperFactory,
@@ -87,7 +90,14 @@ const router = DCC.router.create({
   helperPort: HELPER_PORT,
   openPage,
   // Add-on modules (e.g. monitor) register handler factories: DCC.handlerFactories.push(deps => ({...})).
-  extra: (DCC.handlerFactories || []).reduce((acc, make) => Object.assign(acc, make({ store, secrets, data, helper, oauth, openPage, chromeApi: chrome })), {}),
+  // A message type registered twice is a bug, never an override: the router then refuses to start.
+  extra: (DCC.handlerFactories || []).reduce((acc, make) => {
+    for (const [type, h] of Object.entries(make({ store, secrets, data, helper, oauth, openPage, chromeApi: chrome }))) {
+      if (Object.prototype.hasOwnProperty.call(acc, type)) throw new Error('Duplicate message handler: ' + type);
+      acc[type] = h;
+    }
+    return acc;
+  }, {}),
 });
 (DCC.backgroundInits || []).forEach((init) => {
   try {

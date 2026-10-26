@@ -450,7 +450,7 @@ export async function startHelper(o = {}) {
       // Never answer 401/403 for upstream failures: the extension reserves those for pairing.
       const status = e instanceof HttpError ? e.status : 502;
       const error = e instanceof HttpError ? e.payload : errors.toPayload(e);
-      log('bridge ' + pathname + ' failed: ' + error.code + (error.details && error.details.message ? ' — ' + error.details.message : '') + ' (' + (Date.now() - started) + ' ms)');
+      log('bridge ' + pathname + ' failed: ' + error.code + (error.details && error.details.message ? ': ' + error.details.message : '') + ' (' + (Date.now() - started) + ' ms)');
       if (!res.headersSent) sendJson(res, status, { ok: false, error }, status === 413 ? Object.assign({ Connection: 'close' }, cors) : cors);
     }
   }
@@ -623,7 +623,7 @@ async function main(argv) {
     }
     const mod = await import(pathToFileURL(path.join(HERE, 'fixture-server.mjs')).href);
     const fx = await mod.startFixtureServer({ port: FIXTURE_PORT });
-    process.stdout.write('Synthetic fixture (dev only) on ' + fx.origin + ' — Ctrl+C to stop.\n');
+    process.stdout.write('Synthetic fixture (dev only) on ' + fx.origin + '. Ctrl+C to stop.\n');
     const stop = () => fx.close().then(() => process.exit(0));
     process.on('SIGINT', stop);
     process.on('SIGTERM', stop);
