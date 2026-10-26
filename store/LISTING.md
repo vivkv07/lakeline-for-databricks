@@ -140,7 +140,8 @@ The extension runs only read-only SQL and read-only API calls. Asking Genie a qu
 ## Submission record
 
 - Item ID: `gcadffgngihfjameoafjagofiompdngo`. Publisher: Vivek Kovvuru (non-trader). Visibility: Unlisted.
-- 0.1.0 was submitted on 16 October 2026, then withdrawn the same day. 0.1.1 (sign-in with no setup, token box in the popup) was submitted in its place, with "publish automatically after review" ticked.
+- 0.1.0 was submitted on 16 October 2026, then withdrawn the same day. 0.1.1 (sign-in with no setup, token box in the popup) was submitted in its place, with "publish automatically after review" ticked. It passed review and was live as Unlisted by 18 October 2026.
+- 0.1.2 (encrypted remembered tokens, administrator sign-in policy, disclosure before sign-in, Limited Use statement, trimmed listing) was submitted on 25 October 2026, with "publish automatically after review" ticked. 0.1.1 stays live until 0.1.2 passes review. The same submission updated the description, the five screenshots (now with the synthetic-data footer) and the `identity` justification to match this file. Permissions are unchanged from 0.1.1.
 - Done after the first upload:
   1. The item's public key is in `extension/manifest.json` as `"key"`, so unpacked builds share the store ID. The store ZIP still strips it.
   2. `extension/EXTENSION_ID` and the constant in `local/setup.js` hold the store ID.
