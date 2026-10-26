@@ -298,6 +298,38 @@ test('one click with a pasted token: saved only after Databricks accepts it; a r
   assert.equal(await env.secrets.isPatRemembered(ORIGIN), false, 'remembered only when asked');
 });
 
+test('a failed one click is mirrored for its own workspace (connect:status), and a later success replaces it', async () => {
+  const env = await connectEnv();
+  await assert.rejects(env.handlers['connect:oneClick'].handle({ url: ORIGIN + '/genie/rooms/x?o=999' }), (e) => e.dcc.code === 'WORKSPACE_MISMATCH');
+  let st = await env.handlers['connect:status'].handle();
+  assert.deepEqual([st.state, st.origin, st.error.code], ['error', ORIGIN, 'WORKSPACE_MISMATCH']);
+  assert.ok(Number.isFinite(st.at));
+
+  await assert.rejects(env.handlers['connect:oneClick'].handle({ url: 'https://accounts.cloud.databricks.com/' }));
+  st = await env.handlers['connect:status'].handle();
+  assert.deepEqual([st.state, st.origin], ['error', null], 'no workspace, so no tab ever shows it');
+
+  // A step after the save fails (here: Chrome refusing the content-script files, as an old service
+  // worker did once session-bridge.js was deleted): the connection exists, the failure is UNKNOWN
+  // with Chrome's own words, and it is scoped to this workspace.
+  const realRegister = env.chrome.scripting.registerContentScripts;
+  env.chrome.scripting.registerContentScripts = async () => {
+    throw new Error("Could not load javascript 'src/content/session-bridge.js' for script.");
+  };
+  await assert.rejects(env.handlers['connect:oneClick'].handle({ url: ORIGIN + '/jobs' }), (e) => !e.dcc && /session-bridge/.test(e.message));
+  st = await env.handlers['connect:status'].handle();
+  assert.deepEqual([st.state, st.origin, st.error.code, st.error.title], ['error', ORIGIN, 'UNKNOWN', 'Something went wrong']);
+  assert.match(st.error.details.message, /Could not load javascript 'src\/content\/session-bridge\.js'/);
+  const saved = await env.store.getConnection(ORIGIN);
+  assert.ok(saved && saved.savedAt <= st.at, 'saved before the failure was mirrored');
+
+  env.chrome.scripting.registerContentScripts = realRegister;
+  const out = await env.handlers['connect:oneClick'].handle({ url: ORIGIN + '/jobs' });
+  assert.equal(out.connected, true);
+  st = await env.handlers['connect:status'].handle();
+  assert.deepEqual([st.state, st.origin], ['connected', ORIGIN]);
+});
+
 test('one click refuses conflicting workspace IDs and non-workspace pages', async () => {
   const env = await connectEnv({ orgId: '999' });
   await assert.rejects(env.handlers['connect:oneClick'].handle({ url: ORIGIN + '/jobs?o=1234567890' }), (e) => e.dcc.code === 'WORKSPACE_MISMATCH');

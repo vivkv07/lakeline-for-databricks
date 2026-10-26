@@ -47,6 +47,15 @@ aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   session-only tokens; they now match 0.1.1.
 - The browser test for the run monitor no longer depends on the time of day. The fixture adds a
   failed manual re-run three hours before now, which is always inside the monitor's 24-hour window.
+- The popup no longer shows a red "Something went wrong" over a connected workspace. The last
+  one-click connect is remembered per workspace: a failed attempt shows only on a tab of that
+  workspace, only while it isn't connected, for at most three minutes, and never once a later save
+  replaced it. The failure stays under Diagnostics.
+- Popup errors that come from a request now have Technical details naming the request that failed
+  (for example `connect:oneClick`) and the background's message, redacted. Popup Diagnostics list
+  that message too.
+- "Sign-in was cancelled" no longer reads "use a personal access token: [redacted] ways to sign in".
+  Display-time redaction took the catalog text for a token; no catalog text looks like one now.
 
 ## [0.1.1] (2026-10-16)
 

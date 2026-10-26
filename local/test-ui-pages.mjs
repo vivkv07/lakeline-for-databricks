@@ -526,6 +526,153 @@ test('popup: diagnostics are sanitized and can be cleared; guide link opens the 
   env.close();
 });
 
+/* ------------------------------------------------------------------ last connect outcome (connect:status) */
+
+const C = 'https://dbc-ccc.cloud.databricks.com';
+const GENIE_A = A + '/genie/rooms/01f0aaaabbbbccccddddeeeeffff0000?o=42';
+const unknownPayload = (message) => ({ code: 'UNKNOWN', title: 'Something went wrong', steps: ['Select Refresh. If it keeps happening, copy the technical details from Diagnostics.'], details: { errorCode: null, sqlState: null, statementId: null, httpStatus: null, message } });
+const cancelledPayload = () => ({ code: 'AUTH_CANCELLED', title: 'Sign-in was cancelled', steps: [load('errors.js').CATALOG.AUTH_CANCELLED.steps[0]], details: { message: 'Sign-in tab was closed' } });
+
+/** Two Sign in with Databricks (built-in client) workspaces saved, Genie notifications on. */
+function twoWorkspaces({ status, monitorEnabled = false, savedAt = 1 } = {}) {
+  const oauthConn = (origin, workspaceId) => savedConn(origin, { authMode: 'oauth', workspaceId, savedAt, secrets: { hasPat: false, patRemembered: false, bridgePaired: false, helperVersion: null, capabilities: null } });
+  return popupWorker({
+    settings: { monitor: { enabled: monitorEnabled, autoOpen: false, notifyFailures: false, intervalSec: 60, origin: null }, genie: { notify: true, lastSpace: {} }, oauth: { clientId: null } },
+    connections: { [A]: oauthConn(A, '42'), [B]: oauthConn(B, '7') },
+    hooks: { 'connect:status': async () => ok(status === undefined ? null : status) },
+  });
+}
+
+test('popup: a stale connect failure never shows on a connected workspace tab (Genie page, two workspaces, monitor on or off)', async () => {
+  const now = Date.now();
+  const cases = [
+    ['a failed Reconnect of this workspace (UNKNOWN)', { at: now - 60e3, state: 'error', origin: A, error: unknownPayload("Could not load javascript 'src/content/session-bridge.js' for script.") }],
+    ['a cancelled built-in sign-in of this workspace', { at: now - 30e3, state: 'error', origin: A, error: cancelledPayload() }],
+    ['a failure saved by an older version (no origin)', { at: now - 30e3, state: 'error', error: unknownPayload('Unknown sign-in method') }],
+    ['a failure for the other saved workspace', { at: now - 30e3, state: 'error', origin: B, error: unknownPayload('x') }],
+  ];
+  for (const monitorEnabled of [false, true]) {
+    for (const [label, status] of cases) {
+      const sw = twoWorkspaces({ status, monitorEnabled });
+      const env = openPage('popup', { onMessage: sw.fn, tabs: [{ id: 7, windowId: 3, url: GENIE_A }], granted: [A + '/*', B + '/*', 'http://localhost:8020/*'] });
+      await env.window.DCC.popupPage.ready;
+      const what = label + (monitorEnabled ? ', monitor on' : ', monitor off');
+      assert.equal(env.sent('connect:status').length, 1, what);
+      assert.equal(env.text('page-alert'), '', what + ': no alert');
+      assert.match(env.text('mode-summary'), /^Connected · 2 workspaces · 30 days$/, what);
+      assert.match(env.text('tab-status'), /Connected · workspace 42/, what);
+      assert.equal(env.$('ws-actions').firstElementChild.id, 'genie-open', what + ': Ask Genie stays the primary action');
+      assert.equal(env.$('connect-btn').textContent, 'Reconnect', what);
+      assert.equal(env.$('genie-notify').checked, true, what);
+      assert.equal(env.$('monitor-enabled').checked, monitorEnabled, what);
+      env.close();
+    }
+  }
+});
+
+test('popup: a recent failure shows only on a tab of that workspace while it is not connected, and names the request', async () => {
+  const now = Date.now();
+  const tabC = [{ id: 7, url: C + '/genie/rooms/01f0aaaabbbbccccddddeeeeffff0000?o=4242' }];
+  const failure = { at: now - 20e3, state: 'error', origin: C, error: unknownPayload('Could not determine the workspace ID; open any workspace page and try again') };
+
+  const shown = openPage('popup', { onMessage: twoWorkspaces({ status: failure }).fn, tabs: tabC });
+  await shown.window.DCC.popupPage.ready;
+  assert.match(shown.text('page-alert'), /^Something went wrong/);
+  const tech = shown.$('page-alert').querySelector('details.dcc-tech-details');
+  assert.ok(tech, 'technical details are offered');
+  assert.equal(tech.open, false, 'collapsed by default');
+  const rows = Object.fromEntries([...tech.querySelectorAll('dt')].map((dt) => [dt.textContent, dt.nextElementSibling.textContent]));
+  assert.deepEqual(rows, { Code: 'UNKNOWN', Request: 'connect:oneClick', Message: 'Could not determine the workspace ID; open any workspace page and try again' });
+  shown.close();
+
+  // Expired, superseded by a later save, or about another workspace: nothing.
+  for (const [label, status, tabs, savedAt] of [
+    ['older than three minutes', Object.assign({}, failure, { at: now - 4 * 60e3 }), tabC, 1],
+    ['another workspace', Object.assign({}, failure, { origin: B }), tabC, 1],
+    ['superseded by a later save (tab shows another workspace ID)', Object.assign({}, failure, { origin: A, at: now - 60e3 }), [{ id: 7, url: A + '/?o=99' }], now - 10e3],
+  ]) {
+    const env = openPage('popup', { onMessage: twoWorkspaces({ status, savedAt }).fn, tabs });
+    await env.window.DCC.popupPage.ready;
+    assert.equal(env.text('page-alert'), '', label);
+    env.close();
+  }
+
+  // Not superseded: the attempt came after the save, and this tab's workspace ID isn't the saved one.
+  const mismatch = openPage('popup', { onMessage: twoWorkspaces({ status: Object.assign({}, failure, { origin: A, error: { code: 'WORKSPACE_MISMATCH', title: 'This page belongs to a different workspace', steps: ['Open Connection preferences.'], details: { message: 'The page and the API report different workspace IDs' } } }) }).fn, tabs: [{ id: 7, url: A + '/?o=99' }] });
+  await mismatch.window.DCC.popupPage.ready;
+  assert.match(mismatch.text('page-alert'), /different workspace/);
+  mismatch.close();
+
+  // A cancelled built-in sign-in reads in full: catalog text is never mangled by redaction.
+  const cancelled = openPage('popup', { onMessage: twoWorkspaces({ status: { at: now - 5e3, state: 'error', origin: C, error: cancelledPayload() } }).fn, tabs: tabC });
+  await cancelled.window.DCC.popupPage.ready;
+  assert.match(cancelled.text('page-alert'), /Sign-in was cancelled/);
+  assert.match(cancelled.text('page-alert'), /Other ways to sign in, Use a token/);
+  assert.ok(!cancelled.text('page-alert').includes('[redacted]'));
+  cancelled.close();
+
+  // A sign-in still running: only for its own workspace.
+  const signing = { at: now - 5e3, state: 'signing-in', origin: A, builtin: true };
+  const here = openPage('popup', { onMessage: twoWorkspaces({ status: signing }).fn, tabs: [{ id: 7, url: GENIE_A }] });
+  await here.window.DCC.popupPage.ready;
+  assert.match(here.text('tab-status'), /Finishing sign-in…/);
+  here.close();
+  const elsewhere = openPage('popup', { onMessage: twoWorkspaces({ status: signing }).fn, tabs: tabC });
+  await elsewhere.window.DCC.popupPage.ready;
+  assert.ok(!/Finishing sign-in/.test(elsewhere.text('tab-status')));
+  elsewhere.close();
+});
+
+test('popup: an older service worker that answers unknown request types never alerts on open; failed requests are named', async () => {
+  const known = new Set(['page:state']);
+  const sw = twoWorkspaces();
+  const env = openPage('popup', { onMessage: (m) => (known.has(m.type) ? sw.fn(m) : unknown('Unknown message')), tabs: [{ id: 7, windowId: 3, url: GENIE_A }], granted: [A + '/*'] });
+  await env.window.DCC.popupPage.ready;
+  assert.equal(env.text('page-alert'), '', 'connect:status answered UNKNOWN: nothing to show');
+  assert.match(env.text('tab-status'), /Connected · workspace 42/);
+
+  env.$('period-7').click();
+  await settle();
+  assert.match(env.text('page-alert'), /^Something went wrong/);
+  const rows = () => Object.fromEntries([...env.$('page-alert').querySelectorAll('dt')].map((dt) => [dt.textContent, dt.nextElementSibling.textContent]));
+  assert.deepEqual(rows(), { Code: 'UNKNOWN', Request: 'page:updateSettings', Message: 'Unknown message' });
+
+  env.$('guide-link').click();
+  await settle();
+  assert.equal(rows().Request, 'page:open');
+  env.close();
+
+  // No receiving end at all (the worker failed to start): the request is named too, secrets never shown.
+  const secret = 'dapi' + '0123456789abcdef'.repeat(2);
+  const dead = openPage('popup', {
+    onMessage: async (m) => {
+      if (m.type === 'page:state') throw new Error('Could not establish connection. Receiving end does not exist. ' + secret);
+      return undefined;
+    },
+  });
+  await dead.window.DCC.popupPage.ready;
+  assert.match(dead.text('page-alert'), /Could not reach the extension background/);
+  assert.match(dead.text('page-alert'), /Request page:state/);
+  assert.match(dead.text('page-alert'), /Receiving end does not exist/);
+  assert.ok(!dead.text().includes(secret));
+  dead.close();
+});
+
+test('popup: Diagnostics show the background\'s message for a generic failure, redacted', async () => {
+  const secret = 'dapi' + 'abcdef0123456789'.repeat(2);
+  const sw = popupWorker({
+    diagnostics: [{ at: Date.parse('2026-10-25T18:20:00Z'), type: 'connect:oneClick', code: 'UNKNOWN', details: { httpStatus: 500, message: "Could not load javascript 'src/content/session-bridge.js' for script. " + secret } }],
+  });
+  const env = openPage('popup', { onMessage: sw.fn });
+  await env.window.DCC.popupPage.ready;
+  const diag = env.text('diag-list');
+  assert.match(diag, /Something went wrong/);
+  assert.match(diag, /UNKNOWN · connect:oneClick · HTTP 500/);
+  assert.match(diag, /Could not load javascript 'src\/content\/session-bridge\.js' for script\./);
+  assert.ok(!env.text().includes(secret));
+  env.close();
+});
+
 /* ================================================================== options */
 
 async function openOptions(cfg = {}, pageOpts = {}) {
