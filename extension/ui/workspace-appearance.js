@@ -212,12 +212,14 @@
     function renderPreview(theme, t) {
       previewName.textContent = t && t.ok ? (t.workspaceId ? 'Workspace ' + t.workspaceId : t.host) : 'Workspace';
       const side = Boolean(theme && sidebarBox.checked);
-      // Every value below is a validated #RRGGBB from themeFor, or '' to fall back to the CSS.
+      // Every value below is a validated #RRGGBB from themeFor, one of its fixed rgba constants
+      // (line), or '' to fall back to the CSS.
       previewSide.classList.toggle('dcc-ap-pv-side--on', side);
       previewSide.style.backgroundColor = side ? theme.bg : '';
       previewActive.style.backgroundColor = side ? theme.surface : '';
       previewSearch.style.backgroundColor = theme ? theme.surface : '';
       previewSearch.style.color = theme ? theme.muted : '';
+      previewSearch.style.borderColor = theme ? theme.line : '';
       if (!theme) {
         previewBar.style.backgroundColor = '';
         previewBar.style.color = '';

@@ -22,7 +22,7 @@ const FIXTURE_BODY = FIXTURE.replace(FIXTURE_STYLE, '');
 const FEATURE_FILES = ['src/core/validate.js', 'src/core/ids.js', 'src/content/dom.js', 'src/content/native-adapter.js', 'src/content/workspace-color.js', 'src/content/workspace-theme.js'];
 const appearance = (entries) => ({ [KEY]: { version: 1, entries } });
 const entry = (color, extra) => ({ color, savedAt: 1, ...extra });
-const BAR = ':is([data-dcc-themed="top"], [data-dcc-themed="side"])';
+const BAR = ':is([data-dcc-themed="top"], [data-dcc-themed="side"]):not(#dcc-theme-lift)';
 
 const summary = {
   kind: 'summary', pricingBasis: 'list', priceTable: 'system.billing.list_prices', currency: 'USD',
@@ -92,8 +92,8 @@ test('with the content bootstrap: only the native top nav is marked; sidebar, he
 });
 
 /** Drives the feature directly against the fixture with its native-like styles in <head>. */
-function direct(entries, body = FIXTURE_BODY) {
-  const env = createContentEnv({ url: ORIGIN + '/jobs?o=42', html: page(body, FIXTURE_STYLE), files: FEATURE_FILES, storage: appearance(entries) });
+function direct(entries, body = FIXTURE_BODY, style = FIXTURE_STYLE) {
+  const env = createContentEnv({ url: ORIGIN + '/jobs?o=42', html: page(body, style), files: FEATURE_FILES, storage: appearance(entries) });
   const feature = env.window.DCC.features.find((f) => f.name === 'workspace-theme');
   const ctx = { doc: env.document, origin: ORIGIN, workspaceId: '42', connection: null, settings: { showCosts: true } };
   feature.onStart(ctx);
@@ -132,7 +132,8 @@ test('computed cascade: bar tinted, search blends as a darker shade, others unto
   // descendant's inherited property is computed first.
   const field = css(env, q('.fx-field'));
   assert.equal(field.boxShadow.toUpperCase(), ('inset 0 0 0 100vmax ' + t.surface).toUpperCase());
-  assert.equal(field.borderTopColor, 'rgba(0, 0, 0, 0)');
+  assert.equal(field.borderTopColor, 'rgba(255, 255, 255, 0.28)', 'a subtle frame: the translucent line');
+  assert.equal(field.backgroundClip, 'padding-box');
   assert.equal(field.color, rgb(t.muted));
   const input = q('nav input');
   assert.equal(css(env, input).backgroundColor, 'rgba(0, 0, 0, 0)', 'no white box inside the field');
@@ -206,6 +207,83 @@ test('a host default with the sidebar option applies to workspaces without their
   const env = direct({ [ORIGIN + '|*']: entry('#067647', { sidebar: true }), [ORIGIN + '|43']: entry('#B42318') });
   await settle(30);
   assert.deepEqual(marked(env).map((el) => el.getAttribute('data-dcc-themed')), ['top', 'shell', 'side', 'card']);
+  env.close();
+});
+
+/* Dark top bar (local/fixture/topbar-dark.html): the structure captured on a real workspace, with
+ * the search inside a 0x0 dark-token wrapper. jsdom resolves the cascade by order, not
+ * specificity, and has no layout or ::placeholder styles; local/browser/test-colors-dark-topbar.mjs
+ * checks the real cascade, geometry and pixels. */
+const DARK = readFileSync(new URL('./fixture/topbar-dark.html', import.meta.url), 'utf8');
+const DARK_STYLE = /<style data-fixture="topbar-dark">[\s\S]*?<\/style>/.exec(DARK)[0];
+const DARK_BODY = DARK.replace(DARK_STYLE, '');
+const DARK_COLORS = ['#194AD2', '#F5D90A', '#1B1F2A', '#D92D20', '#12B76A']; // vivid, light, near-black, red, green
+const rgbOf = (hex) => `rgb(${parseInt(hex.slice(1, 3), 16)}, ${parseInt(hex.slice(3, 5), 16)}, ${parseInt(hex.slice(5, 7), 16)})`;
+
+test('dark top bar: the affix wrapper is the field, found through the 0x0 dark-token wrapper; only the initials circle is kept (simulated)', async () => {
+  const env = direct({ [ORIGIN + '|42']: entry('#194AD2') }, DARK_BODY, DARK_STYLE);
+  await settle(30);
+  const q = (sel) => env.document.querySelector(sel);
+  assert.deepEqual(marked(env), [nav(env)]);
+  assert.deepEqual(tones(env), [
+    ['field', 'du-bois-dark-input-affix-wrapper'],
+    ['keep', 'fxd-initials'],
+  ]);
+  for (const sel of ['[data-testid="ds-override-tokens-wrapper"]', 'form', '[role="combobox"]', 'input', '[data-fx="verify"]', '[data-fx="switcher"]']) {
+    assert.equal(q(sel).hasAttribute('data-dcc-tone'), false, sel);
+  }
+  env.close();
+});
+
+test('dark top bar, five colors: the field is a shade of the bar in a subtle frame, no input box, readable text; the circle is untouched (simulated)', async () => {
+  for (const color of DARK_COLORS) {
+    const env = direct({ [ORIGIN + '|42']: entry(color) }, DARK_BODY, DARK_STYLE);
+    await settle(30);
+    const C = env.window.DCC.workspaceColor;
+    const t = C.themeFor(color);
+    const q = (sel) => env.document.querySelector(sel);
+    assert.equal(css(env, nav(env)).backgroundColor, rgbOf(color), color);
+    // Ancestors before descendants (jsdom computed-style cache).
+    const wrap = css(env, q('.du-bois-dark-input-affix-wrapper'));
+    assert.equal(wrap.boxShadow.toUpperCase(), ('inset 0 0 0 100vmax ' + t.surface).toUpperCase(), color + ' field paint');
+    assert.equal(wrap.backgroundClip, 'padding-box', color);
+    assert.equal(wrap.borderTopColor, t.fg === '#FFFFFF' ? 'rgba(255, 255, 255, 0.28)' : 'rgba(0, 0, 0, 0.18)', color + ' frame');
+    assert.equal(wrap.color, rgbOf(t.muted), color);
+    const input = css(env, q('input'));
+    assert.equal(input.backgroundColor, 'rgba(0, 0, 0, 0)', color + ' no input box');
+    assert.equal(input.color, rgbOf(t.fg), color + ' typed text');
+    assert.equal(css(env, q('.fxd-kbd')).color, rgbOf(t.muted), color + ' hint');
+    assert.ok(styles(env)[0].textContent.includes('::placeholder { color: ' + t.muted + ' !important; opacity: 1 !important; }'), color + ' placeholder rule');
+    // The shade: not the native near-black, not black or white, apart from the bar; text AA on it.
+    assert.ok(!['#11171C', '#000000', '#FFFFFF'].includes(t.surface), color + ' ' + t.surface);
+    assert.ok(C.contrastRatio(t.surface, color) >= 1.1, color);
+    assert.ok(C.contrastRatio(t.fg, t.surface) >= 4.5, color);
+    assert.ok(C.contrastRatio(t.muted, t.surface) >= 4.5, color);
+    const circle = css(env, q('.fxd-initials'));
+    assert.equal(circle.backgroundColor, 'rgb(127, 86, 217)', color);
+    assert.doesNotMatch(circle.boxShadow, /inset/, color);
+    assert.equal(circle.color, 'rgb(255, 255, 255)', color);
+    env.close();
+  }
+});
+
+test('dark top bar: removing the color restores every native computed style (simulated)', async () => {
+  const env = direct({}, DARK_BODY, DARK_STYLE);
+  await settle(30);
+  const props = ['backgroundColor', 'backgroundClip', 'color', 'caretColor', 'boxShadow', 'borderTopColor'];
+  const snap = () => [nav(env), ...nav(env).querySelectorAll('*')].map((el) => el.tagName + ' ' + props.map((p) => css(env, el)[p]).join(' | '));
+  const native = snap();
+  assert.equal(css(env, env.document.querySelector('.du-bois-dark-input-affix-wrapper')).backgroundColor, 'rgb(17, 23, 28)');
+  await env.setStorage(appearance({ [ORIGIN + '|42']: entry('#194AD2') }));
+  env.feature.onAppearance(env.ctx);
+  await settle(50);
+  assert.equal(css(env, nav(env)).backgroundColor, 'rgb(25, 74, 210)');
+  assert.notDeepEqual(snap(), native);
+  await env.setStorage(appearance({}));
+  env.feature.onAppearance(env.ctx);
+  await settle(50);
+  assert.equal(env.document.querySelectorAll('style[data-dcc="theme"], [data-dcc-themed], [data-dcc-tone]').length, 0);
+  assert.deepEqual(snap(), native);
   env.close();
 });
 

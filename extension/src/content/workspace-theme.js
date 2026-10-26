@@ -10,7 +10,8 @@
  * the selected sidebar item), so recoloring text alone leaves dark or blue patches on the tint. A
  * DOM-agnostic scan reads each container's native computed backgrounds and tags every painted
  * descendant with a tone (data-dcc-tone):
- *   field    the painted box around a text entry → surface shade, soft text, full-color input
+ *   field    the painted box around a text entry → surface shade in a subtle frame, soft text,
+ *            full-color input
  *   surface  smaller painted controls → surface shade (a lighter or darker step of the bar color)
  *   layer    tall inner panels → the bar color itself
  *   keep     circles (account initials, status dots) → left exactly as they are
@@ -38,8 +39,14 @@
   const MARKED = '[' + MARK_ATTR + ']';
   const marked = (kind) => '[' + MARK_ATTR + '="' + kind + '"]';
   const tone = (t) => '[' + TONE_ATTR + '="' + t + '"]';
+  // Design systems put class-level !important on some field properties: on a real workspace the
+  // native search box kept its dark background and placeholder color against an !important
+  // override. So every rule inside a themed container carries one ID's worth of specificity:
+  // `:not(#…)` with an ID that no element has matches everything, outranks any class-based
+  // selector, and matches nothing new.
+  const LIFT = ':not(#dcc-theme-lift)';
   // Containers whose descendants follow the theme. The shell and card only get one property each.
-  const BAR = ':is(' + marked('top') + ', ' + marked('side') + ')';
+  const BAR = ':is(' + marked('top') + ', ' + marked('side') + ')' + LIFT;
 
   // Menus and popovers rendered inside a container keep their own native colors.
   const POPOVER = '[role="menu"], [role="listbox"], [role="dialog"], [role="tooltip"]';
@@ -81,8 +88,10 @@
     if (![surface, muted].every(V.isHexColor)) return null;
     const fill = (...layers) => 'box-shadow: ' + layers.map((c) => 'inset 0 0 0 100vmax ' + c).join(', ') + ' !important;';
     // Shadows fill the padding box; clipping the native background there keeps it from showing
-    // through the (now transparent) border as a dark or tinted ring.
+    // through the border as a dark or tinted ring. Surfaces drop their border; fields keep a
+    // subtle frame: the translucent line over the bar color.
     const unframe = 'background-clip: padding-box !important; border-color: transparent !important;';
+    const frame = 'background-clip: padding-box !important; border-color: ' + line + ' !important;';
     return [
       '/* Lakeline for Databricks: workspace colors (removable; scoped to the native top bar, sidebar and shell). */',
       `${BAR} { background-color: ${bg} !important; background-image: none !important; color: ${fg} !important; border-color: ${line} !important; }`,
@@ -95,9 +104,9 @@
       `${BAR} ${tone('layer')} { ${fill(bg)} }`,
       `${BAR} :is(${tone('surface')}, :is(${SELECTED}):not(${SKIP}, [${TONE_ATTR}])) { ${fill(surface)} ${unframe} }`,
       `${BAR} :is(${INTERACTIVE})${tone('surface')}:hover { ${fill(hover, surface)} }`,
-      // Search and other fields: one shade of the bar color, soft secondary text, full-strength
-      // typed text, and a foreground ring while focused.
-      `${BAR} ${tone('field')} { ${fill(surface)} ${unframe} color: ${muted} !important; }`,
+      // Search and other fields: one shade of the bar color inside a subtle frame, soft secondary
+      // text, full-strength typed text, and a foreground ring while focused.
+      `${BAR} ${tone('field')} { ${fill(surface)} ${frame} color: ${muted} !important; }`,
       `${BAR} ${tone('field')}:focus-within { box-shadow: inset 0 0 0 1px ${fg}, inset 0 0 0 100vmax ${surface} !important; }`,
       `${BAR} ${tone('field')} *:not(${SKIP}) { background-color: transparent !important; box-shadow: none !important; color: ${muted} !important; }`,
       `${BAR} ${tone('field')} :is(input, textarea, select, [contenteditable="true"]), ${BAR} :is(input, textarea, select)${tone('field')} { color: ${fg} !important; caret-color: ${fg} !important; }`,

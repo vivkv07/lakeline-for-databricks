@@ -56,6 +56,11 @@ aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   that message too.
 - "Sign-in was cancelled" no longer reads "use a personal access token: [redacted] ways to sign in".
   Display-time redaction took the catalog text for a token; no catalog text looks like one now.
+- Workspace colors on the dark top bar: the search placeholder kept its native dark-theme gray,
+  which was unreadable on light and bright colors, because the design system sets it (and the field
+  background) with class-level `!important`. Theme rules inside the bar now outrank class-based
+  styles. The search box also keeps a subtle frame instead of losing its border. A new fixture
+  (`local/fixture/topbar-dark.html`) and browser test cover this search structure in five colors.
 
 ## [0.1.1] (2026-10-16)
 

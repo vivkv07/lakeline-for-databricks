@@ -355,6 +355,7 @@ test('popup: the preview shows the sidebar strip and blended search only from va
   const rgb = (hex) => `rgb(${parseInt(hex.slice(1, 3), 16)}, ${parseInt(hex.slice(3, 5), 16)}, ${parseInt(hex.slice(5, 7), 16)})`;
   assert.equal(search.style.backgroundColor, rgb(t.surface));
   assert.equal(search.style.color, rgb(t.muted));
+  assert.equal(search.style.borderColor, 'rgba(255, 255, 255, 0.28)', 'the subtle frame of the theme rule');
   assert.equal(side.style.backgroundColor, '', 'sidebar strip stays neutral while the option is off');
   assert.match(p.el.preview.getAttribute('aria-label'), /top bar only/);
   assert.match(p.el.contrast.textContent, /darker shade of the same color/);
@@ -373,5 +374,6 @@ test('popup: the preview shows the sidebar strip and blended search only from va
   assert.equal(side.style.backgroundColor, '');
   assert.equal(search.style.backgroundColor, '');
   assert.equal(search.style.color, '');
+  assert.equal(search.style.borderColor, '');
   p.close();
 });

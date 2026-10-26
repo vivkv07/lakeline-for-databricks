@@ -94,8 +94,13 @@ test('colors: surface and muted tones keep the foreground readable and never ech
 test('colors: CSS is built only from validated values and scoped to the marked containers', () => {
   const css = theme.buildCss(C.themeFor('#1d4ed8'));
   const t = C.themeFor('#1D4ED8');
-  const BAR = ':is([data-dcc-themed="top"], [data-dcc-themed="side"])';
+  // Every rule inside a themed container carries an ID-level lift (an ID no element has), so
+  // class-level !important rules of the native design system can't outrank it.
+  const BAR = ':is([data-dcc-themed="top"], [data-dcc-themed="side"]):not(#dcc-theme-lift)';
   assert.ok(css.includes(BAR + ' { background-color: #1D4ED8 !important;'));
+  for (const sel of css.split('\n').filter((l) => !l.startsWith('/*')).flatMap((r) => r.slice(0, r.lastIndexOf(' {')).split(/,\s(?=:is\(\[data-dcc-themed)/))) {
+    assert.ok(sel.startsWith(BAR) || /^\[data-dcc-themed="(shell|card)"\]$/.test(sel), sel);
+  }
   assert.match(css, /color: #FFFFFF !important/);
   const rules = css.split('\n').filter((l) => !l.startsWith('/*'));
   for (const r of rules) assert.ok(r.startsWith(BAR) || r.startsWith('[data-dcc-themed="shell"] {') || r.startsWith('[data-dcc-themed="card"] {'), r);
@@ -104,14 +109,18 @@ test('colors: CSS is built only from validated values and scoped to the marked c
   assert.equal(rules.find((r) => r.startsWith('[data-dcc-themed="card"]')), '[data-dcc-themed="card"] { border-color: #1D4ED8 !important; }');
   // Tones are painted with inset shadows from the derived shades; fields are no longer forced white.
   assert.ok(css.includes('[data-dcc-tone="field"] { box-shadow: inset 0 0 0 100vmax ' + t.surface + ' !important;'));
+  // Fields keep a subtle frame (the translucent line over the bar); surfaces drop theirs.
+  assert.ok(css.includes('[data-dcc-tone="field"] { box-shadow: inset 0 0 0 100vmax ' + t.surface + ' !important; background-clip: padding-box !important; border-color: rgba(255, 255, 255, 0.28) !important;'));
+  assert.match(css, /\[data-dcc-tone="surface"\][^\n]*border-color: transparent !important;/);
   assert.ok(css.includes('[data-dcc-tone="layer"] { box-shadow: inset 0 0 0 100vmax #1D4ED8 !important; }'));
   assert.ok(css.includes('color: ' + t.muted + ' !important'));
   assert.doesNotMatch(css, /#FFFFFF !important; color: #1F2933/);
   // Brand graphics: no fill/stroke rules, SVG, images and kept circles excluded from the color rule.
   assert.doesNotMatch(css, /\bfill\s*:|\bstroke\s*:/);
   assert.ok(css.includes('*:not([role="menu"], [role="listbox"], [role="dialog"], [role="tooltip"], :is([role="menu"], [role="listbox"], [role="dialog"], [role="tooltip"]) *, svg, img, canvas, video, [class*="avatar"], [data-dcc], :is(svg, img, canvas, video, [class*="avatar"], [data-dcc]) *, [data-dcc-tone="keep"], :is([data-dcc-tone="keep"]) *) { color: #FFFFFF'));
-  // Every color literal in the stylesheet is a canonical #RRGGBB or one of the fixed overlays.
-  for (const c of css.match(/#[0-9A-Za-z]+|rgba?\([^)]*\)/g)) assert.match(c, /^#[0-9A-F]{6}$|^rgba\((0, 0, 0|255, 255, 255), 0\.\d+\)$/, c);
+  // Every color literal in the stylesheet is a canonical #RRGGBB or one of the fixed overlays
+  // (the lift's ID selector is the only other `#`).
+  for (const c of css.split(':not(#dcc-theme-lift)').join('').match(/#[0-9A-Za-z]+|rgba?\([^)]*\)/g)) assert.match(c, /^#[0-9A-F]{6}$|^rgba\((0, 0, 0|255, 255, 255), 0\.\d+\)$/, c);
   // Forged theme objects never produce CSS.
   assert.equal(theme.buildCss({ bg: '#123456;}body{background:red', fg: '#FFFFFF' }), null);
   assert.equal(theme.buildCss({ bg: '#1D4ED8', fg: '#000000' }), null); // wrong foreground for this bg
