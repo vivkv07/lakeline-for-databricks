@@ -33,7 +33,9 @@ Tests never touch a real Databricks workspace. Keep it that way.
 - One focused change per pull request, with tests for new behavior.
 - `npm test` passes. Run `npm run test:browser` too if you changed UI or content scripts.
 - Use synthetic data only. Never commit real workspace URLs, IDs, tokens, costs, names or
-  screenshots of a real workspace.
+  screenshots of a real workspace (including Databricks Free Edition and employer workspaces).
+- Don't add Databricks logos or other Databricks brand assets, and don't describe Lakeline as
+  official, certified or endorsed by Databricks. See [TRADEMARKS.md](TRADEMARKS.md).
 - UI text: plain, short, active voice, no em dashes. Every amount is labeled as an estimate.
 - Add a line to `CHANGELOG.md` under the next version.
 - Sign off every commit (see below).

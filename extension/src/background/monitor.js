@@ -573,7 +573,7 @@
           if (r.more) {
             await n.create('dcc-more-' + nowMs, { type: 'basic', iconUrl, title: plural(r.more, 'more job run') + ' failed', message: 'Open the run monitor for details.', contextMessage: host, priority: 0 });
           } else {
-            await n.create('dcc-run-' + r.runId, { type: 'basic', iconUrl, title: 'Databricks job run failed', message: (r.name || 'Run ' + r.runId) + ' · ' + r.statusText, contextMessage: host, priority: 0 });
+            await n.create('dcc-run-' + r.runId, { type: 'basic', iconUrl, title: 'Job run failed', message: (r.name || 'Run ' + r.runId) + ' · ' + r.statusText, contextMessage: host, priority: 0 });
           }
         } catch (e) {
           warn(e);

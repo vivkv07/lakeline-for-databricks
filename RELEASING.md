@@ -81,6 +81,16 @@ gh release create vx.y.z dist/lakeline-for-databricks-store-x.y.z.zip --title "L
 
 ## Safety rules
 
+- Capture store images, videos and demos only from Demo mode or the local fixture (synthetic data).
+  Never from a Databricks Free Edition workspace (its terms allow personal, not-for-profit use and
+  forbid publishing information obtained from it), an employer's workspace, or any workspace with
+  real costs or negotiated prices.
+- Never give store reviewers, testers or anyone else the login of your own Databricks account.
+  Reviewers use Demo mode; the reviewer notes explain why no test account is provided.
+- Keep "Lakeline" first in names and listings, never use the Databricks logo, and never describe
+  Lakeline as official, certified, partnered with or endorsed by Databricks. Keep the
+  "independent project" line on every listing, page and video.
+
 - Build and upload only from your own machine, from a reviewed commit on `main`. Never from CI and
   never from someone else's build.
 - Keep 2-step verification on the Google, Microsoft and GitHub accounts that can publish.

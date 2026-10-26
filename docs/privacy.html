@@ -40,7 +40,7 @@
   <h2>What the extension sends, and to whom</h2>
   <ul>
     <li><strong>Your Databricks workspace:</strong> read-only SQL queries against Databricks system tables (billing, query history, job and pipeline timelines), and read-only API calls for SQL warehouses, job runs, pipelines and clusters. If you ask Genie a question, the question text goes to the Genie Agent you selected in your own workspace. Requests carry your sign-in token, which goes only to that workspace.</li>
-    <li><strong>Databricks sign-in:</strong> "Sign in with Databricks" uses your workspace's own OAuth endpoints, through Databricks' built-in sign-in app (the one the Databricks CLI uses) or your organization's app connection. With the built-in app, the sign-in ends at <code>http://localhost:8020</code>: the extension reads the one-time code from the address of the sign-in tab it opened, then closes that tab. Nothing is sent to, or served from, your computer.</li>
+    <li><strong>Databricks sign-in:</strong> "Sign in with Databricks" uses your workspace's own OAuth endpoints, through the public OAuth client that Databricks provides for its own CLI (<code>databricks-cli</code>; Databricks did not create it for Lakeline and does not endorse Lakeline) or your organization's app connection. With the CLI's public client, the sign-in ends at <code>http://localhost:8020</code>: the extension reads the one-time code from the address of the sign-in tab it opened, then closes that tab. Nothing is sent to, or served from, your computer.</li>
     <li><strong>The optional local helper</strong> (if you choose to run it): it runs on your computer at 127.0.0.1, and its Databricks credentials stay in the Databricks CLI on your computer.</li>
   </ul>
   <p>The extension does not read the text of your SQL queries or the result rows of your queries in Query History. Cost estimates use only timestamps, durations, warehouse IDs and billing records.</p>
@@ -65,7 +65,7 @@
   <h2>Contact</h2>
   <p>Vivek Kovvuru · questions and requests: <a href="https://github.com/vivkv07/lakeline-for-databricks/issues">GitHub Issues</a></p>
 
-  <p class="fine">Lakeline is an independent project and is not affiliated with, endorsed by or sponsored by Databricks, Inc. Databricks and Genie are trademarks of Databricks, Inc.</p>
+  <p class="fine">Lakeline is an independent project and is not affiliated with, endorsed by or sponsored by Databricks, Inc. Databricks is a registered trademark of Databricks, Inc.; Genie and other Databricks product names are used only to identify Databricks products.</p>
 </main>
 </body>
 </html>

@@ -50,10 +50,12 @@ Privacy
 - Sign-in tokens and Genie conversations stay in your browser.
 
 Sign in
-- Sign in with Databricks in one click. No admin setup: it uses Databricks' built-in sign-in app, the one the Databricks CLI uses.
+- Sign in with your Databricks account in one click, with no admin setup. Lakeline reuses the public OAuth client that Databricks provides for its own CLI (databricks-cli); Databricks did not create it for Lakeline and does not endorse Lakeline.
 - Or paste a personal access token, or use your organization's own app connection.
 
-Lakeline is an independent project and is not affiliated with, endorsed by or sponsored by Databricks, Inc. Databricks and Genie are trademarks of Databricks, Inc.
+Screenshots show a synthetic sample workspace with made-up data.
+
+Lakeline is an independent project and is not affiliated with, endorsed by or sponsored by Databricks, Inc. Databricks is a registered trademark of Databricks, Inc.; Genie and other Databricks product names are used only to identify Databricks products.
 
 **Graphic assets** (all in `store/assets/`, 24-bit PNG without alpha, as the store requires)
 
@@ -98,7 +100,7 @@ Show estimated Databricks costs, job run status and Genie answers for the user's
 | scripting | Registers the in-page cost banner and badges only for Databricks workspaces the user has granted access to, and loads them into tabs that were already open when access was granted. |
 | alarms | Refreshes the opt-in run monitor on a schedule (60 to 300 seconds) and resumes Genie questions that were in flight when the background worker restarted. |
 | identity | "Sign in with Databricks" through an organization's own app connection: OAuth authorization code with PKCE through chrome.identity.launchWebAuthFlow against the user's own workspace. |
-| Host permission (optional): http://localhost:8020/* | Requested only when the user clicks "Sign in with Databricks" without an app connection. Databricks' built-in public sign-in client (databricks-cli) only redirects to http://localhost:8020. The extension opens the workspace's own sign-in page in a tab, reads the one-time code from that tab's address when it reaches localhost:8020, and closes the tab. Nothing is served from or sent to localhost, and no content script runs there. |
+| Host permission (optional): http://localhost:8020/* | Requested only when the user clicks "Sign in with Databricks" without an app connection. The Databricks CLI's public sign-in client (databricks-cli) only redirects to http://localhost:8020. The extension opens the workspace's own sign-in page in a tab, reads the one-time code from that tab's address when it reaches localhost:8020, and closes the tab. Nothing is served from or sent to localhost, and no content script runs there. |
 | sidePanel | The "Ask Genie" side panel, where the user picks a Genie Agent in their own workspace, asks a question and reads the answer while they keep working in other tabs. |
 | notifications (optional) | Requested only when the user turns on notifications for failed job runs or for Genie answers that are ready. Notifications never contain query data. |
 | Host permissions (optional): https://*.cloud.databricks.com/*, https://*.azuredatabricks.net/*, https://*.gcp.databricks.com/* | Requested at runtime for the one workspace the user chooses to connect, never for all sites. Used to show costs inside that workspace and to call that workspace's Databricks APIs (SQL Statement Execution, SQL warehouses, Jobs, Pipelines, Clusters and Genie). Account console hosts are excluded. |

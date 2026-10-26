@@ -123,7 +123,7 @@
           <div class="op-actions">
             <button type="button" id="oauth-signin" class="dcc-btn dcc-btn--primary">Sign in with Databricks</button>
           </div>
-          <p class="op-help">No setup needed: Lakeline signs in through Databricks' built-in sign-in app, the one the Databricks CLI uses, in a tab that closes itself. If an admin turned that app off, use a personal access token or your organization's app connection.</p>
+          <p class="op-help">No setup needed: Lakeline reuses the Databricks CLI's public sign-in client (databricks-cli) in a tab that closes itself. Databricks provides that client for its own tools and does not endorse Lakeline. If an admin turned it off, use a personal access token or your organization's app connection.</p>
           <div id="oauth-result" class="op-result" aria-live="polite"></div>
           <details id="oauth-setup-opt" class="dcc-disclosure op-inline-disclosure">
             <summary>Optional: use your organization's app connection</summary>

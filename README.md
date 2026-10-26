@@ -8,12 +8,13 @@ Explorer, workspace top-bar colors, and an optional run monitor.
 > **Estimated costs. Billing can be delayed; final invoices may differ.**
 >
 > This is an independent project. It is not affiliated with, endorsed by, or sponsored by
-> Databricks, Inc. Databricks and related marks are trademarks of Databricks, Inc.
+> Databricks, Inc. Databricks is a registered trademark of Databricks, Inc.; Genie and other
+> Databricks product names are used only to identify Databricks products.
 
 Created and maintained by **Vivek Kovvuru**. Open source under the
 [Apache License 2.0](LICENSE); contributions are welcome, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
-Status: version 0.1.1, in review on the Chrome Web Store. See [CHANGELOG.md](CHANGELOG.md).
+Status: version 0.1.2, in review on the Chrome Web Store. See [CHANGELOG.md](CHANGELOG.md).
 
 **How the numbers are calculated:** [`extension/docs/calculation-guide.html`](extension/docs/calculation-guide.html).
 The guide is also linked from the banner (**How costs work**), the popup and Connection preferences.
@@ -73,7 +74,7 @@ appears. More in [`store/assets/`](store/assets/).
 
 | Cost banner on a workspace | Ask Genie in the side panel |
 |---|---|
-| ![Cost banner showing 30-day spend inside a Databricks workspace](store/assets/screenshot-light-1.png) | ![Genie answer with a bar chart in the side panel](store/assets/screenshot-dark-1.png) |
+| ![Cost banner showing 30-day spend in a synthetic Databricks-style sample workspace](store/assets/screenshot-light-1.png) | ![Genie answer with a bar chart in the side panel](store/assets/screenshot-dark-1.png) |
 | **Cost Explorer: top drivers** | **Workspace colors for dev, stage and prod** |
 | ![Cost Explorer listing the jobs and warehouses that drive spend](store/assets/screenshot-light-4.png) | ![Three workspaces with green, amber and red top bars](store/assets/screenshot-light-5.png) |
 
@@ -117,11 +118,14 @@ warehouse**, as you. So before you connect, you need:
 
 4. **A supported browser:** Google Chrome or Microsoft Edge, version 116 or newer, on desktop.
 
-Nothing else to install. **Sign in with Databricks** uses Databricks' built-in sign-in app, the
-one the Databricks CLI uses. If an admin turned that app off, paste a personal access token
-instead (or have an account admin register an app connection once). The run monitor and Genie
-also need permission to view the jobs, pipelines, warehouses and Genie spaces you use. The full
-table is under [Databricks permissions](#databricks-permissions).
+Nothing else to install. **Sign in with Databricks** reuses the public OAuth client that
+Databricks provides for its own CLI and SDKs (`databricks-cli`). Databricks did not create that
+client for Lakeline and does not review or endorse Lakeline. Tokens are issued to that client ID,
+so sign-ins most likely appear in audit logs as the Databricks CLI. If an admin turned that client
+off (which also affects the Databricks CLI), paste a personal access token instead, or have an
+account admin register an app connection for Lakeline once. The run monitor and Genie also need
+permission to view the jobs, pipelines, warehouses and Genie spaces you use. The full table is
+under [Databricks permissions](#databricks-permissions).
 
 Optional:
 
@@ -182,7 +186,7 @@ Open a Databricks workspace tab, open the popup, and select **Connect this works
    itself after a moment.
 3. Lakeline reads the workspace ID, picks a SQL warehouse and shows costs on the page.
 
-Why `localhost:8020`: Databricks' built-in sign-in app (`databricks-cli`) only sends you back to
+Why `localhost:8020`: the Databricks CLI's public sign-in client (`databricks-cli`) only sends you back to
 that address. Nothing runs there; Lakeline reads the one-time code from its own sign-in tab and
 closes it. Tokens stay in browser session storage.
 
@@ -375,7 +379,7 @@ The service worker sends the question, waits for Genie and keeps the answer for 
 
 **Sign-in.** Connected workspaces only:
 
-- **Sign in with Databricks:** the default sign-in (Databricks' built-in app) already grants
+- **Sign in with Databricks:** the default sign-in (the Databricks CLI's public client) already grants
   `all-apis`, so Genie, the run monitor and cost queries share one sign-in. With your
   organization's own app connection, cost queries use a SQL-only sign-in, and the panel asks once
   more with **Allow Genie and run status** for the broader `all-apis` consent. Every Genie API

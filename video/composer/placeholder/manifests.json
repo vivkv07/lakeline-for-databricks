@@ -103,7 +103,7 @@
   "10": {
     "scene": "10-monitor (placeholder)",
     "placeholder": true,
-    "notification": { "title": "Databricks job run failed", "message": "customer_360_refresh · Failed", "context": "northpeak-prod.cloud.databricks.com" },
+    "notification": { "title": "Job run failed", "message": "customer_360_refresh · Failed", "context": "northpeak-prod.cloud.databricks.com" },
     "states": [
       { "id": "page-prod", "kind": "page", "theme": "dark", "file": "shots/inpage-jobs-banner-1280-dark.png", "viewport": { "width": 1280, "height": 900 }, "deviceScaleFactor": 1 },
       { "id": "monitor-failed", "kind": "monitor", "theme": "dark", "file": "shots/monitor-380-dark.png", "viewport": { "width": 380, "height": 600 }, "deviceScaleFactor": 1,

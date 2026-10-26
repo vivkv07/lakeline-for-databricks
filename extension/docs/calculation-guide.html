@@ -24,7 +24,7 @@
     <h1>How costs are calculated</h1>
     <p class="lede">This guide explains where each number in Lakeline for Databricks comes from. It covers what each number includes and excludes, and why the extension sometimes withholds a value instead of showing zero. All examples use made-up numbers. None of them come from a real workspace.</p>
     <p class="notice" role="note">Estimated costs. Billing can be delayed; final invoices may differ.</p>
-    <p class="independent">Lakeline for Databricks is an independent project. It is not affiliated with, endorsed by, or sponsored by Databricks, Inc. Databricks and related marks are trademarks of Databricks, Inc.</p>
+    <p class="independent">Lakeline for Databricks is an independent project. It is not affiliated with, endorsed by, or sponsored by Databricks, Inc. Databricks is a registered trademark of Databricks, Inc.; Genie and other Databricks product names are used only to identify Databricks products.</p>
   </div>
 </header>
 
@@ -603,7 +603,7 @@ AND (price.price_end_time IS NULL OR usage.usage_end_time &lt; price.price_end_t
         <tr><th scope="row"><code>alarms</code></th><td>Schedules background work such as monitor polling.</td></tr>
         <tr><th scope="row"><code>identity</code></th><td>Sign in with Databricks through your organization's own app connection, in a sign-in window.</td></tr>
         <tr><th scope="row"><code>sidePanel</code></th><td>The Ask Genie side panel.</td></tr>
-        <tr><th scope="row"><code>http://localhost:8020</code> (optional)</th><td>Requested with the workspace when you use Sign in with Databricks without an app connection. Databricks' built-in sign-in app returns to this address; the extension reads the one-time code from its own sign-in tab and closes it. Nothing runs or is served there.</td></tr>
+        <tr><th scope="row"><code>http://localhost:8020</code> (optional)</th><td>Requested with the workspace when you use Sign in with Databricks without an app connection. The Databricks CLI's public sign-in client returns to this address; the extension reads the one-time code from its own sign-in tab and closes it. Nothing runs or is served there.</td></tr>
         <tr><th scope="row"><code>notifications</code> (optional)</th><td>Requested only if you turn on failed-run or Genie-answer notifications.</td></tr>
         <tr><th scope="row">Helper setup page connection</th><td>Only <code>http://127.0.0.1:8766</code> (the local helper's setup page) may send the extension a pairing message.</td></tr>
       </tbody>
@@ -657,8 +657,8 @@ AND (price.price_end_time IS NULL OR usage.usage_end_time &lt; price.price_end_t
 <section id="sign-in" aria-labelledby="sign-in-title">
   <h2 id="sign-in-title">Sign in with Databricks</h2>
   <p>The recommended way to connect, with no setup. On a workspace tab, open the extension and click <strong>Connect this workspace</strong>. Chrome asks once to allow access to that workspace and to <code>localhost:8020</code>. A tab opens on your workspace's own sign-in page and closes by itself once you are signed in. The extension then picks a SQL warehouse and list prices automatically, and costs show on the page.</p>
-  <p>It uses Databricks OAuth (authorization code with PKCE) against the workspace's own <code>/oidc/v1/authorize</code> and <code>/oidc/v1/token</code> endpoints, through Databricks' built-in public sign-in app (<code>databricks-cli</code>, the one the Databricks CLI uses). That app only returns to <code>http://localhost:8020</code>, so the extension reads the one-time code from its own sign-in tab; the code is useless without the PKCE secret the extension keeps. One <code>all-apis</code> sign-in covers cost queries, the run monitor and Genie. Tokens stay in browser session storage, refresh automatically, and are cleared when the browser closes or you disconnect the workspace.</p>
-  <p>If an admin turned off the built-in app, the popup says so: use a personal access token, or your organization's own app connection (below).</p>
+  <p>It uses Databricks OAuth (authorization code with PKCE) against the workspace's own <code>/oidc/v1/authorize</code> and <code>/oidc/v1/token</code> endpoints, through the public OAuth client that Databricks provides for its own CLI and SDKs (<code>databricks-cli</code>). Databricks did not create it for Lakeline and does not endorse Lakeline; tokens are issued to that client ID. That app only returns to <code>http://localhost:8020</code>, so the extension reads the one-time code from its own sign-in tab; the code is useless without the PKCE secret the extension keeps. One <code>all-apis</code> sign-in covers cost queries, the run monitor and Genie. Tokens stay in browser session storage, refresh automatically, and are cleared when the browser closes or you disconnect the workspace.</p>
+  <p>If an admin turned off that client, the popup says so: use a personal access token, or your organization's own app connection (below).</p>
   <h3 id="sign-in-setup">Optional: your organization's app connection</h3>
   <p>An account admin can register Lakeline once so the sign-in screen names your app and cost queries use a SQL-only sign-in (the run monitor and Genie then ask once more for <code>all-apis</code>):</p>
   <ol>

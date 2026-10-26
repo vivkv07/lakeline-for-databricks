@@ -29,7 +29,8 @@
 
   const SIZES = Object.freeze(['2X-Small', 'X-Small', 'Small', 'Medium', 'Large', 'X-Large', '2X-Large', '3X-Large', '4X-Large', '5X-Large']);
   const CANONICAL = new Map(SIZES.map((s) => [s.toLowerCase(), s]));
-  // Azure Databricks serverless SQL warehouse DBU/h per cluster (verified 2026-10-15).
+  // Azure Databricks serverless SQL warehouse DBU/h per cluster (verified 2026-10-15). Source:
+  // https://learn.microsoft.com/en-us/azure/databricks/resources/pricing (serverless DBU consumption by size).
   // 5X-Large has no published rate and is deliberately absent.
   const AZURE_SERVERLESS_DBU = Object.freeze({ '2X-Small': 4, 'X-Small': 6, Small: 12, Medium: 24, Large: 40, 'X-Large': 80, '2X-Large': 144, '3X-Large': 272, '4X-Large': 528 });
   const SIZE_RE = /(?:^|[^A-Za-z0-9-])(2X-Small|X-Small|5X-Large|4X-Large|3X-Large|2X-Large|X-Large|Small|Medium|Large)(?=$|[^A-Za-z0-9-])/i;
