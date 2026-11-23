@@ -268,6 +268,7 @@ export async function startHelper(o = {}) {
   const doFetch = o.fetch || ((...a) => globalThis.fetch(...a));
   const opener = o.opener || openInBrowser;
   const devFixture = o.devFixture === true;
+  const now = typeof o.now === 'function' ? o.now : () => Date.now(); // injectable so tests can pin the query window
   let port = o.port === undefined ? DEFAULT_PORT : o.port;
   let expectedHost = null;
   let lastLaunch = 0;
@@ -385,7 +386,7 @@ export async function startHelper(o = {}) {
       };
       let out;
       try {
-        out = await registry.run(kind, { conn, args, nowMs: Date.now(), exec });
+        out = await registry.run(kind, { conn, args, nowMs: now(), exec });
       } catch (e) {
         onUpstreamError(cls, 'cost', e);
       }
