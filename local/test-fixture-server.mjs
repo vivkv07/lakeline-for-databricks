@@ -271,7 +271,7 @@ test('monitor REST data: runs (limit ≤ 25, active/failed), pipelines, clusters
 
 test('helper started with --fixture semantics runs summary against the DuckDB fixture with the fake token', async () => {
   const id = readExtensionId();
-  const h = await startHelper({ port: 0, extensionId: id, devFixture: true, fetch: rewriteFetch(FIXTURE_ORIGIN, fx.origin), log: () => {}, opener: async () => ({ ok: true }), oauth: { cliInfo: async () => ({ found: false }), getToken: async () => { throw new Error('CLI must not be used for the fixture'); }, login: async () => { throw new Error('no'); }, forget() {} } });
+  const h = await startHelper({ port: 0, extensionId: id, devFixture: true, now: () => NOW, fetch: rewriteFetch(FIXTURE_ORIGIN, fx.origin), log: () => {}, opener: async () => ({ ok: true }), oauth: { cliInfo: async () => ({ found: false }), getToken: async () => { throw new Error('CLI must not be used for the fixture'); }, login: async () => { throw new Error('no'); }, forget() {} } });
   try {
     const call = (p, body) => rawRequest({ port: h.port, method: 'POST', path: p, headers: { Host: '127.0.0.1:' + h.port, Origin: 'chrome-extension://' + id, 'X-DCC-Key': h.key, 'X-DCC-Protocol': '1', 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     const wh = await call('/bridge/warehouses', { origin: FIXTURE_ORIGIN });
