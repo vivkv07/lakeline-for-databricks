@@ -111,5 +111,5 @@ git push --force-with-lease
 
 ## Conduct
 
-Be respectful and assume good intent. Harassment or personal attacks in issues, pull requests or
+This project follows its [code of conduct](CODE_OF_CONDUCT.md). In short: be respectful and assume good intent. Harassment or personal attacks in issues, pull requests or
 reviews aren't accepted, and the maintainer may remove such content or block the account.

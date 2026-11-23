@@ -606,7 +606,10 @@ costs.example.json    synthetic import example
 
 Contributions are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) covers setup, the pull request
 checklist and the DCO sign-off, and [RELEASING.md](RELEASING.md) describes how a merged change
-reaches the Chrome Web Store and Microsoft Edge Add-ons.
+reaches the Chrome Web Store and Microsoft Edge Add-ons. See [SUPPORT.md](SUPPORT.md) for where to
+ask for help, [SECURITY.md](SECURITY.md) to report a vulnerability privately,
+[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for how we treat each other and
+[MAINTAINERS.md](MAINTAINERS.md) for who decides what.
 
 ## License
 
